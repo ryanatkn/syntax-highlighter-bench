@@ -5,7 +5,7 @@
  *
  * The file separates two classes of number. **Machine-dependent** numbers come
  * from the timed harness on a named machine: each cell's `values` and the
- * `startup` section. **Deterministic** numbers regenerate identically anywhere:
+ * `startup` section (cold start). **Deterministic** numbers regenerate identically anywhere:
  * each cell's `tokens` and `output`, plus `bundle` and `coverage`. A file may
  * hold only the deterministic ones: it then records no machine, time, or commit,
  * since none of them shaped its numbers.
@@ -196,21 +196,32 @@ export const BenchRunKind = z.enum(['full', 'smoke', 'calibrate']);
 export type BenchRunKind = z.infer<typeof BenchRunKind>;
 
 /**
+ * A machine-dependent measurement a run makes: `throughput` is the timed cells,
+ * and `startup` is cold start.
+ */
+export const BenchRunMetric = z.enum(['throughput', 'startup']);
+export type BenchRunMetric = z.infer<typeof BenchRunMetric>;
+
+/**
  * The filters a run was restricted by. Each is null when the run was not
- * restricted on that axis.
+ * restricted on that axis. `libraries` and `langs` narrow the cells and the
+ * cold-start scenarios alike; `sizes`, `modes`, and `sources` select inputs, so
+ * they narrow the cells only.
  */
 export const BenchRunFilters = z.strictObject({
 	libraries: z.array(LibraryId).min(1).nullable(),
 	langs: z.array(LangId).min(1).nullable(),
 	sizes: z.array(BenchSize).min(1).nullable(),
 	modes: z.array(BenchMode).min(1).nullable(),
-	sources: z.array(BenchSource).min(1).nullable()
+	sources: z.array(BenchSource).min(1).nullable(),
+	metrics: z.array(BenchRunMetric).min(1).nullable()
 });
 export type BenchRunFilters = z.infer<typeof BenchRunFilters>;
 
 /**
- * How the timed cells of a run were measured. It tells a complete `full` run
- * from a smoke, calibration, or partial run: see `bench_results_is_publishable`.
+ * How the timed numbers of a run were measured: its cells and its cold-start
+ * scenarios. It tells a complete `full` run from a smoke, calibration, or
+ * partial run: see `bench_results_is_publishable`.
  */
 export const BenchRun = z.strictObject({
 	kind: BenchRunKind,
@@ -236,6 +247,18 @@ export const BenchRun = z.strictObject({
 		description:
 			"Which languages each cell's process set up in every library: `cell` is exactly the cell's language."
 	}),
+	startup_samples: z.number().int().positive().nullable().meta({
+		description:
+			'How many samples each cold-start scenario kept, each a fresh process. Null, like the two fields after it, exactly when the run measured no cold start: a calibration, or a run whose metrics filter leaves it out.'
+	}),
+	startup_discard: z.number().int().nonnegative().nullable().meta({
+		description:
+			'How many rounds of cold-start processes ran before the kept ones and were thrown away: they warm the page cache.'
+	}),
+	startup_compile_cache: z.literal('disabled').nullable().meta({
+		description:
+			"Whether V8's compile cache could serve a cold-start process: `disabled` is `NODE_DISABLE_COMPILE_CACHE=1` with no `NODE_COMPILE_CACHE`, so every sample compiles what it loads."
+	}),
 	filters: BenchRunFilters,
 	segments: z.number().int().positive().meta({
 		description:
@@ -249,9 +272,10 @@ export const BenchRun = z.strictObject({
 export type BenchRun = z.infer<typeof BenchRun>;
 
 /**
- * Whether a run set out to cover everything: every library on every cell,
- * measured for real. A smoke run never did, and neither did a run with any
- * filter. Whether the file then holds everything is `bench_results_find_gaps`.
+ * Whether a run set out to cover everything: every library on every cell, and
+ * for a `full` run in every cold-start scenario, measured for real. A smoke run
+ * never did, and neither did a run with any filter. Whether the file then holds
+ * everything is `bench_results_find_gaps` and `bench_results_find_startup_gaps`.
  */
 export const bench_run_is_complete = (run: Pick<BenchRun, 'kind' | 'filters'>): boolean =>
 	run.kind !== 'smoke' && Object.values(run.filters).every((filter) => filter === null);
@@ -272,6 +296,90 @@ export const BenchBundler = z.strictObject({
 	brotli_quality: z.number().int().min(0).max(11)
 });
 export type BenchBundler = z.infer<typeof BenchBundler>;
+
+/**
+ * What a cold-start sample does before it stops the clock: `bare` is Node alone,
+ * `core` imports a library with no language, `lang` imports it with one
+ * language, `set` imports it with a feature set's languages, and
+ * `first_highlight` imports it with one language and highlights once.
+ */
+export const BenchStartupScenario = z.enum(['bare', 'core', 'lang', 'set', 'first_highlight']);
+export type BenchStartupScenario = z.infer<typeof BenchStartupScenario>;
+
+/** What names a cold-start scenario: what is loaded, by which library, in which form. */
+const startup_key_shape = {
+	scenario: BenchStartupScenario,
+	library: LibraryId.nullable().meta({ description: 'Null exactly for the bare Node baseline.' }),
+	lang: LangId.nullable().meta({
+		description:
+			'The language loaded, a timed one. Set exactly for the lang and first_highlight scenarios.'
+	}),
+	set: Id.nullable().meta({
+		description: 'The feature set loaded. Set exactly for the set scenario.'
+	}),
+	bundled: z.boolean().meta({
+		description:
+			'Whether the library was loaded as one bundled chunk, the one its bundle size is measured on. Otherwise the same module was imported unbundled, resolving from `node_modules`.'
+	})
+};
+
+/** What tells one cold-start scenario from another. */
+export type BenchStartupKey = Pick<
+	BenchStartup,
+	'scenario' | 'library' | 'lang' | 'set' | 'bundled'
+>;
+
+/**
+ * One cold-start measurement. Each sample is a fresh Node process that does the
+ * scenario's work and nothing else, and its time is the process's own clock
+ * when the work is done, which counts from the start of the process. So every
+ * time includes Node starting up, and the `bare` entry is that part alone.
+ * Machine-dependent.
+ */
+export const BenchStartup = z
+	.strictObject({
+		...startup_key_shape,
+		samples: z
+			.number()
+			.int()
+			.positive()
+			.meta({ description: 'How many processes were kept, after the discarded rounds.' }),
+		median_ms: z.number().positive().meta({
+			description: 'The median, in milliseconds since the process started.'
+		}),
+		p10_ms: z.number().positive().meta({ description: '10th percentile across the samples.' }),
+		p90_ms: z.number().positive().meta({ description: '90th percentile across the samples.' }),
+		spread: z.number().min(1).meta({
+			description:
+				"Slowest sample over fastest. A process start has a long slow tail, so this is wider than a cell's spread, and the percentiles say more."
+		}),
+		rss_peak_bytes: z.number().int().positive().meta({
+			description:
+				"The median peak resident set size of the samples' processes, read when the clock stopped. A whole process: the `bare` entry's is Node's own, to subtract."
+		})
+	})
+	.refine((entry) => entry.p10_ms <= entry.median_ms && entry.median_ms <= entry.p90_ms, {
+		path: ['median_ms'],
+		message: 'the median is between the 10th and the 90th percentile'
+	});
+export type BenchStartup = z.infer<typeof BenchStartup>;
+
+/**
+ * A cold-start scenario a library was not sampled in: its first process there
+ * failed to import, exported nothing, or highlighted with too few kinds of
+ * span. Distinct from unsupported, which is a scenario whose languages the
+ * library doesn't claim, and which has no entry anywhere.
+ */
+export const BenchStartupExcluded = z.strictObject({
+	...startup_key_shape,
+	library: LibraryId.meta({ description: 'The id of the library.' }),
+	reason: z.string().min(1).meta({ description: 'What the check found.' })
+});
+export type BenchStartupExcluded = z.infer<typeof BenchStartupExcluded>;
+
+/** The string a cold-start scenario is told apart by. */
+export const to_bench_startup_key = (entry: BenchStartupKey): string =>
+	JSON.stringify([entry.scenario, entry.library, entry.lang, entry.set, entry.bundled]);
 
 /**
  * Where, when, and from what a run was produced. `generated_at`, `machine`,
@@ -300,10 +408,14 @@ export const BenchMeta = z.strictObject({
 	corpus_hash: Sha256.meta({
 		description: 'A hash over the corpus manifest. Runs with different hashes are not comparable.'
 	}),
-	run: BenchRun.nullable().meta({ description: 'Null when no cell was timed.' }),
+	run: BenchRun.nullable().meta({ description: 'Null when nothing was timed.' }),
 	anchor: BenchAnchor.nullable().meta({ description: 'Null when nothing was timed.' }),
 	libraries: z.array(BenchLibrary),
 	excluded: z.array(BenchExcluded),
+	startup_excluded: z.array(BenchStartupExcluded).meta({
+		description:
+			'The cold-start scenarios a library was not sampled in, because its first process there failed its check.'
+	}),
 	noise_floor: BenchNoiseFloor.nullable().meta({
 		description:
 			'Null until the machine has been calibrated with the parameters of this run. A calibration run carries the floor it measured.'
@@ -454,7 +566,7 @@ export const BenchCellValue = z
 		}),
 		rss_peak_bytes: z.number().int().positive().meta({
 			description:
-				"The peak resident set size of the library's process, the largest across its passes. The process holds this library alone, with Node itself and the input, so it is a whole-process peak and not what the library adds."
+				"The peak resident set size of the library's process, the largest across its passes. The process holds this library alone, with Node itself and the input, so it is a whole-process peak and not what the library adds. The process warms up and is timed for a fixed duration, so on a small input the peak follows how much the library allocated in that time more than what it holds: a cold-start entry's `rss_peak_bytes` is the figure to compare footprints by."
 		}),
 		attempts: z.number().int().positive().meta({
 			description:
@@ -523,29 +635,6 @@ export const BenchCell = z.strictObject({
 	})
 });
 export type BenchCell = z.infer<typeof BenchCell>;
-
-/** What a cold-start sample loads before it stops the clock. */
-export const BenchStartupScenario = z.enum(['bare', 'core', 'lang', 'set', 'first_highlight']);
-export type BenchStartupScenario = z.infer<typeof BenchStartupScenario>;
-
-/** One cold-start measurement, each sample in a fresh process. Machine-dependent. */
-export const BenchStartup = z.strictObject({
-	scenario: BenchStartupScenario,
-	library: LibraryId.nullable().meta({ description: 'Null exactly for the bare Node baseline.' }),
-	lang: LangId.nullable().meta({
-		description: 'The language loaded. Set exactly for the lang and first_highlight scenarios.'
-	}),
-	set: Id.nullable().meta({
-		description: 'The feature set loaded. Set exactly for the set scenario.'
-	}),
-	bundled: z
-		.boolean()
-		.meta({ description: 'Whether the library was loaded as one bundled chunk.' }),
-	samples: z.number().int().positive(),
-	median_ms: z.number().positive(),
-	spread: z.number().min(1)
-});
-export type BenchStartup = z.infer<typeof BenchStartup>;
 
 /**
  * The most a compressed size may exceed the raw one by: a compression format
@@ -729,6 +818,67 @@ export const bench_results_find_gaps = (
 	return gaps;
 };
 
+/** The parts of a results file that say whether its cold start has a gap. */
+export interface BenchResultsStartupCoverage {
+	meta: { libraries: Array<{ id: string }>; startup_excluded: Array<BenchStartupKey> };
+	langs: Array<BenchLang>;
+	sets: Array<{ id: string; langs: Array<string> }>;
+	startup: Array<BenchStartupKey>;
+	coverage: Record<string, Record<string, unknown>>;
+}
+
+/**
+ * Lists the cold-start scenarios a results file lacks to be a complete run, from
+ * the file alone. Each of these has an entry in `startup` or in
+ * `meta.startup_excluded`:
+ *
+ * - the `bare` baseline
+ * - for every library of the roster, unbundled and bundled: `core`, then `lang`
+ *   and `first_highlight` for every timed language it claims, then `set` for
+ *   every feature set the file's cold start names, where the library claims
+ *   every language of it
+ *
+ * A scenario over a language or a set the library doesn't claim is unsupported,
+ * and is no gap. The sets are taken from the file, since the schema doesn't say
+ * which sets a harness starts cold. So one thing the file can't show: with every
+ * `set` entry removed it names no set, and still reads as complete.
+ *
+ * @param results - the file, or the parts of it that say
+ * @returns the gaps, none for a file whose cold start is whole
+ */
+export const bench_results_find_startup_gaps = (
+	results: BenchResultsStartupCoverage
+): Array<BenchResultsGap> => {
+	const entries = [...results.startup, ...results.meta.startup_excluded];
+	const have = new Set(entries.map(to_bench_startup_key));
+	const set_ids = new Set(entries.flatMap((entry) => entry.set ?? []));
+	const sets = results.sets.filter((set) => set_ids.has(set.id));
+	const timed_langs = results.langs.filter((l) => l.timed).map((l) => l.id);
+	const implied: Array<BenchStartupKey> = [
+		{ scenario: 'bare', library: null, lang: null, set: null, bundled: false }
+	];
+	for (const { id: library } of results.meta.libraries) {
+		const claimed = timed_langs.filter((lang) => coverage_claims(results.coverage, library, lang));
+		for (const bundled of [false, true]) {
+			implied.push({ scenario: 'core', library, lang: null, set: null, bundled });
+			for (const scenario of ['lang', 'first_highlight'] as const) {
+				for (const lang of claimed) implied.push({ scenario, library, lang, set: null, bundled });
+			}
+			for (const set of sets) {
+				if (set.langs.every((lang) => coverage_claims(results.coverage, library, lang))) {
+					implied.push({ scenario: 'set', library, lang: null, set: set.id, bundled });
+				}
+			}
+		}
+	}
+	return implied
+		.filter((key) => !have.has(to_bench_startup_key(key)))
+		.map((key) => ({
+			path: ['startup'],
+			message: `${key.library === null ? 'the bare baseline' : `library "${key.library}"`} has neither an entry nor an excluded entry for the ${key.bundled ? 'bundled' : 'unbundled'} ${key.scenario} scenario${key.lang === null ? '' : ` of lang "${key.lang}"`}${key.set === null ? '' : ` of set "${key.set}"`}`
+		}));
+};
+
 /**
  * One run of the benchmark. Beyond each section's shape, parsing checks that
  * the sections agree: ids are unique and refer to roster entries, every cell
@@ -736,7 +886,8 @@ export const bench_results_find_gaps = (
  * library has numbers for a language it doesn't claim or a cell it was excluded
  * from, no cell covers an untimed language, a run with timed numbers has an
  * anchor, its run parameters, and where it came from, a run with no filters has
- * no gap (`bench_results_find_gaps`), each deterministic number of an input is
+ * no gap (`bench_results_find_gaps`, and for a `full` run
+ * `bench_results_find_startup_gaps`), each deterministic number of an input is
  * stated on one cell, and bundle sizes cover every library and set or none.
  */
 export const BenchResults = z
@@ -855,7 +1006,7 @@ export const BenchResults = z
 
 		// cells
 		const cell_inputs: Set<string> = new Set();
-		let timed = results.startup.length > 0;
+		let timed = results.startup.length > 0 || results.meta.startup_excluded.length > 0;
 		let cells_timed = false;
 		for (const [i, cell] of results.cells.entries()) {
 			const path = ['cells', i];
@@ -928,8 +1079,8 @@ export const BenchResults = z
 				issue(['meta', key], `a run with timed numbers records its ${key}`);
 			}
 		}
-		if (cells_timed && results.meta.run === null) {
-			issue(['meta', 'run'], 'a run with timed cells records how they were measured');
+		if (timed && results.meta.run === null) {
+			issue(['meta', 'run'], 'a run with timed numbers records how they were measured');
 		}
 		// run: the filters describe what the file holds
 		const { run } = results.meta;
@@ -988,9 +1139,33 @@ export const BenchResults = z
 					}
 				}
 			}
+			if (filters.metrics && !filters.metrics.includes('throughput') && cells_timed) {
+				issue(['cells'], "timed cells are outside the run's metrics filter");
+			}
+			// how cold start was sampled is recorded exactly when the run measured any
+			const measures_startup =
+				run.kind !== 'calibrate' && (filters.metrics?.includes('startup') ?? true);
+			for (const key of ['startup_samples', 'startup_discard', 'startup_compile_cache'] as const) {
+				if ((run[key] !== null) !== measures_startup) {
+					issue(
+						['meta', 'run', key],
+						`${key} is set exactly when the run measures cold start: not a calibration, and not left out by the metrics filter`
+					);
+				}
+			}
+			const has_startup = results.startup.length + results.meta.startup_excluded.length > 0;
+			if (has_startup && filters.metrics && !filters.metrics.includes('startup')) {
+				issue(['startup'], "cold start is outside the run's metrics filter");
+			}
+			if (has_startup && run.kind === 'calibrate') {
+				issue(['startup'], 'a calibration measures no cold start');
+			}
 			// a run that says it covered everything has no gap
 			if (cells_timed && bench_run_is_complete(run)) {
 				for (const gap of bench_results_find_gaps(results)) issue(gap.path, gap.message);
+			}
+			if (timed && run.kind === 'full' && bench_run_is_complete(run)) {
+				for (const gap of bench_results_find_startup_gaps(results)) issue(gap.path, gap.message);
 			}
 		} else if (!cells_timed) {
 			// a deterministic-only file has no filters, so it covers everything it lists
@@ -999,12 +1174,11 @@ export const BenchResults = z
 			}
 		}
 
-		// startup
+		// startup: the entries and the exclusions name scenarios the same way
 		const startup_keys: Set<string> = new Set();
-		for (const [i, entry] of results.startup.entries()) {
-			const path = ['startup', i];
+		const check_startup_key = (entry: BenchStartupKey, path: Array<string | number>): void => {
 			const { scenario, library } = entry;
-			const key = JSON.stringify([scenario, library, entry.lang, entry.set, entry.bundled]);
+			const key = to_bench_startup_key(entry);
 			if (startup_keys.has(key)) issue(path, 'duplicate startup entry');
 			startup_keys.add(key);
 			if ((scenario === 'lang' || scenario === 'first_highlight') !== (entry.lang !== null)) {
@@ -1031,18 +1205,41 @@ export const BenchResults = z
 					);
 				}
 			}
-			if ((entry.scenario === 'bare') !== (entry.library === null)) {
+			if ((scenario === 'bare') !== (library === null)) {
 				issue([...path, 'library'], 'library is null exactly for the bare scenario');
 			}
-			if (entry.library !== null && !library_ids.has(entry.library)) {
-				issue([...path, 'library'], `unknown library "${entry.library}"`);
+			if (library !== null && !library_ids.has(library)) {
+				issue([...path, 'library'], `unknown library "${library}"`);
 			}
 			if (entry.lang !== null && !lang_ids.has(entry.lang)) {
 				issue([...path, 'lang'], `unknown lang "${entry.lang}"`);
 			}
+			// a set may hold an untimed language, and a scenario of one language may not be one
+			if (entry.lang !== null && untimed_langs.has(entry.lang)) {
+				issue(
+					[...path, 'lang'],
+					`lang "${entry.lang}" is not timed, so no cold-start scenario loads it alone`
+				);
+			}
+			if (entry.lang !== null && run?.filters.langs && !run.filters.langs.includes(entry.lang)) {
+				issue([...path, 'lang'], `"${entry.lang}" is outside the run's langs filter`);
+			}
 			if (entry.set !== null && !sets.has(entry.set)) {
 				issue([...path, 'set'], `unknown set "${entry.set}"`);
 			}
+		};
+		for (const [i, entry] of results.startup.entries()) {
+			check_startup_key(entry, ['startup', i]);
+			if (run && entry.samples !== run.startup_samples) {
+				issue(
+					['startup', i, 'samples'],
+					`every scenario keeps the run's ${run.startup_samples} samples`
+				);
+			}
+		}
+		// in the same set of keys: a scenario is measured or excluded, never both
+		for (const [i, entry] of results.meta.startup_excluded.entries()) {
+			check_startup_key(entry, ['meta', 'startup_excluded', i]);
 		}
 
 		// bundle: measured for every library over every set, or not at all
@@ -1107,7 +1304,8 @@ export type BenchResults = z.infer<typeof BenchResults>;
 
 /**
  * Whether a run's numbers can be published as results: a complete `full` run
- * with no gap (`bench_results_find_gaps`), from a commit that records everything
+ * with no gap in its cells or its cold start (`bench_results_find_gaps`,
+ * `bench_results_find_startup_gaps`), from a commit that records everything
  * that ran, on a machine that held still. A run that was stopped and resumed
  * qualifies like any other: its anchor covers every segment. A site shows
  * anything else as what it is, never as a result.
@@ -1122,7 +1320,8 @@ export const bench_results_is_publishable = (results: BenchResults): boolean => 
 		anchor.stable &&
 		commit !== null &&
 		!commit.endsWith('-dirty') &&
-		bench_results_find_gaps(results).length === 0
+		bench_results_find_gaps(results).length === 0 &&
+		bench_results_find_startup_gaps(results).length === 0
 	);
 };
 

@@ -6,10 +6,12 @@ import {
 	BenchInput,
 	BenchResults,
 	bench_results_find_gaps,
+	bench_results_find_startup_gaps,
 	bench_results_is_publishable,
 	bench_run_is_complete,
 	parse_bench_results,
 	to_bench_cell_id,
+	type BenchStartupKey,
 	to_max_compressed_bytes
 } from '$lib/results_schema.ts';
 
@@ -52,6 +54,19 @@ const clear_bundle = (data: BenchResults): void => {
 	data.meta.bundler = null;
 };
 
+/** Removes the cold start: its entries and its exclusions. */
+const clear_startup = (data: BenchResults): void => {
+	data.startup = [];
+	data.meta.startup_excluded = [];
+};
+
+/** Removes the cold start, and how it was sampled: what a run that measured none records. */
+const clear_startup_run = (data: BenchResults): void => {
+	clear_startup(data);
+	const run = data.meta.run!;
+	run.startup_samples = run.startup_discard = run.startup_compile_cache = null;
+};
+
 /** Marks the fixture as a smoke run, which is neither retried nor resumed nor carries a floor. */
 const to_smoke = (data: BenchResults): BenchResults => {
 	const run = data.meta.run!;
@@ -85,7 +100,7 @@ describe('round trip', () => {
 describe('sections later filled', () => {
 	test('startup, bundle, cells, inputs, and excluded can be empty', () => {
 		const data = load_fixture();
-		data.startup = [];
+		clear_startup(data);
 		clear_bundle(data);
 		data.cells = [];
 		data.inputs = [];
@@ -318,7 +333,7 @@ describe('unsupported and excluded', () => {
 const load_deterministic_fixture = (): BenchResults => {
 	const data = load_fixture();
 	for (const cell of data.cells) cell.values = {};
-	data.startup = [];
+	clear_startup(data);
 	return data;
 };
 
@@ -345,28 +360,30 @@ describe('anchor', () => {
 });
 
 describe('run', () => {
-	test('a run with timed cells records how they were measured', () => {
+	test('a run with timed numbers records how they were measured', () => {
 		const data = load_fixture();
 		data.meta.run = null;
-		assert_rejects(data, 'a run with timed cells records how they were measured');
+		assert_rejects(data, 'a run with timed numbers records how they were measured');
+		// cold start alone is timed too, and its samples are among the parameters
+		const data2 = load_fixture();
+		for (const cell of data2.cells) cell.values = {};
+		data2.meta.run = null;
+		assert_rejects(data2, 'a run with timed numbers records how they were measured');
 	});
 
-	test('a run that timed no cell needs no run parameters', () => {
+	test('a run that timed nothing needs no run parameters', () => {
 		const data = load_deterministic_fixture();
 		data.meta.run = null;
 		data.meta.anchor = null;
 		BenchResults.parse(data);
-		// cold start alone is timed, and has parameters of its own
-		const data2 = load_fixture();
-		for (const cell of data2.cells) cell.values = {};
-		data2.meta.run = null;
-		BenchResults.parse(data2);
 	});
 
 	test('the kinds of run are told apart', () => {
 		for (const kind of ['full', 'calibrate'] as const) {
 			const data = load_fixture();
 			data.meta.run!.kind = kind;
+			// a calibration measures the cells only
+			if (kind === 'calibrate') clear_startup_run(data);
 			BenchResults.parse(data);
 		}
 		const data = load_fixture();
@@ -426,7 +443,7 @@ describe('run', () => {
 		const libraries = Object.keys(cell.values);
 		data.cells = [cell];
 		data.meta.excluded = [];
-		data.startup = [];
+		clear_startup_run(data);
 		clear_bundle(data);
 		data.meta.libraries = data.meta.libraries.filter((l) => libraries.includes(l.id));
 		data.coverage = Object.fromEntries(
@@ -437,7 +454,8 @@ describe('run', () => {
 			langs: [cell.lang],
 			sizes: [cell.size],
 			modes: [cell.mode],
-			sources: [cell.source]
+			sources: [cell.source],
+			metrics: ['throughput']
 		};
 		return data;
 	};
@@ -537,6 +555,7 @@ describe('run', () => {
 		for (const kind of ['full', 'calibrate'] as const) {
 			const data = load_fixture();
 			data.meta.run!.kind = kind;
+			if (kind === 'calibrate') clear_startup_run(data);
 			remove_library(data, cell_id, 'prism');
 			assert_rejects(data, `cells.1.values: ${message}`);
 			// the predicate says so of a file that was never parsed too
@@ -558,7 +577,9 @@ describe('run', () => {
 		}
 		delete data.coverage.twinkleplop!.rust;
 		clear_bundle(data);
-		data.startup = [];
+		// and so are the cold-start scenarios that load it
+		data.startup = data.startup.filter((s) => !(s.library === 'twinkleplop' && s.lang === 'rust'));
+		assert.deepStrictEqual(bench_results_find_startup_gaps(data), []);
 		assert.ok(bench_results_is_publishable(BenchResults.parse(data)));
 	});
 
@@ -618,13 +639,28 @@ describe('startup', () => {
 	const find_startup = (data: BenchResults, scenario: string) =>
 		data.startup.find((s) => s.scenario === scenario)!;
 
+	/** What names a scenario, without its numbers or its reason. */
+	const to_scenario = ({ scenario, library, lang, set, bundled }: BenchStartupKey) => ({
+		scenario,
+		library,
+		lang,
+		set,
+		bundled
+	});
+	const to_key = (entry: BenchStartupKey): string => JSON.stringify(to_scenario(entry));
+
 	test('rejects an unknown library or lang', () => {
 		const data = load_fixture();
-		find_startup(data, 'core').library = 'highlight_js';
-		assert_rejects(data, 'startup.1.library: unknown library "highlight_js"');
+		const core = find_startup(data, 'core');
+		core.library = 'highlight_js';
+		assert_rejects(
+			data,
+			`startup.${data.startup.indexOf(core)}.library: unknown library "highlight_js"`
+		);
 		const data2 = load_fixture();
-		find_startup(data2, 'lang').lang = 'tsx';
-		assert_rejects(data2, 'startup.2.lang: unknown lang "tsx"');
+		const lang = find_startup(data2, 'lang');
+		lang.lang = 'tsx';
+		assert_rejects(data2, `startup.${data2.startup.indexOf(lang)}.lang: unknown lang "tsx"`);
 	});
 
 	test('rejects a lang on a scenario that loads none, and a missing one', () => {
@@ -676,9 +712,191 @@ describe('startup', () => {
 
 	test('rejects a set with a lang the library does not claim', () => {
 		const data = load_fixture();
-		const entry = find_startup(data, 'set');
+		const entry = data.startup.find((s) => s.scenario === 'set' && s.library === 'twinkleplop')!;
 		entry.set = 'web_rust';
 		assert_rejects(data, `doesn't claim every lang of set "web_rust": xml`);
+	});
+
+	test('a set may hold an untimed lang, and a scenario of one language may not be one', () => {
+		// fuz_code claims xml, which no cell covers: a set that holds it can still be started cold
+		const data = load_fixture();
+		const set_entries = data.startup.filter(
+			(s) => s.scenario === 'set' && s.library === 'fuz_code'
+		);
+		assert.strictEqual(set_entries.length, 2);
+		data.startup.push(...set_entries.map((entry) => ({ ...entry, set: 'web_rust' })));
+		BenchResults.parse(data);
+		for (const scenario of ['lang', 'first_highlight']) {
+			const data2 = load_fixture();
+			const entry = data2.startup.find((s) => s.scenario === scenario && s.library === 'fuz_code')!;
+			entry.lang = 'xml';
+			assert_rejects(data2, 'lang "xml" is not timed, so no cold-start scenario loads it alone');
+		}
+	});
+
+	test('every entry keeps the samples the run says, and orders its percentiles', () => {
+		const data = load_fixture();
+		find_startup(data, 'core').samples = data.meta.run!.startup_samples! - 1;
+		assert_rejects(data, `samples: every scenario keeps the run's 20 samples`);
+		const data2 = load_fixture();
+		const entry = find_startup(data2, 'core');
+		entry.p10_ms = entry.p90_ms + 1;
+		assert_rejects(data2, 'the median is between the 10th and the 90th percentile');
+		for (const [key, factor] of [
+			['p10_ms', 1.01],
+			['p90_ms', 0.99]
+		] as const) {
+			const data5 = load_fixture();
+			const own = find_startup(data5, 'core');
+			own[key] = own.median_ms * factor;
+			assert_rejects(data5, 'median_ms: the median is between the 10th and the 90th percentile');
+		}
+		for (const key of ['median_ms', 'rss_peak_bytes', 'samples'] as const) {
+			const data3 = load_fixture();
+			find_startup(data3, 'core')[key] = 0;
+			assert_rejects(data3, key);
+		}
+		const data4 = load_fixture();
+		find_startup(data4, 'core').spread = 0.9;
+		assert_rejects(data4, 'spread');
+	});
+
+	test('the run says how cold start was sampled', () => {
+		for (const key of ['startup_samples', 'startup_discard', 'startup_compile_cache'] as const) {
+			const data = load_fixture();
+			delete (data.meta.run as any)[key];
+			assert_rejects(data, `meta.run.${key}`);
+		}
+		const data = load_fixture();
+		(data.meta.run as any).startup_compile_cache = 'enabled';
+		assert_rejects(data, 'meta.run.startup_compile_cache');
+		const data2 = load_fixture();
+		data2.meta.run!.startup_samples = 0;
+		assert_rejects(data2, 'meta.run.startup_samples');
+	});
+
+	test('how cold start was sampled is recorded exactly when the run measured any', () => {
+		const KEYS = ['startup_samples', 'startup_discard', 'startup_compile_cache'] as const;
+		// a run that measures cold start says how
+		for (const key of KEYS) {
+			const data = load_fixture();
+			data.meta.run![key] = null;
+			assert_rejects(
+				data,
+				`meta.run.${key}: ${key} is set exactly when the run measures cold start`
+			);
+		}
+		// a calibration, and a run that left cold start out, sampled nothing
+		const to_cells_only = [
+			(data: BenchResults) => (data.meta.run!.kind = 'calibrate'),
+			(data: BenchResults) => (data.meta.run!.filters.metrics = ['throughput'])
+		];
+		for (const change of to_cells_only) {
+			const data = load_fixture();
+			clear_startup_run(data);
+			change(data);
+			BenchResults.parse(data);
+			for (const key of KEYS) {
+				const data2 = load_fixture();
+				clear_startup(data2);
+				change(data2);
+				const run = data2.meta.run!;
+				for (const other of KEYS) if (other !== key) (run[other] as unknown) = null;
+				assert_rejects(data2, `meta.run.${key}: ${key} is set exactly when`);
+			}
+		}
+	});
+
+	test('excluded is an entry with a reason, and never beside a number', () => {
+		const data = load_fixture();
+		assert.ok(data.meta.startup_excluded.length > 0);
+		const [excluded] = data.meta.startup_excluded;
+		assert.ok(!data.startup.some((s) => to_key(s) === to_key(excluded!)));
+		// measured and excluded at once
+		data.startup.push({ ...find_startup(data, 'core'), ...to_scenario(excluded!) });
+		assert_rejects(data, 'meta.startup_excluded.0: duplicate startup entry');
+		// the shape rules are the entries'
+		const data2 = load_fixture();
+		data2.meta.startup_excluded[0]!.lang = null;
+		assert_rejects(data2, 'meta.startup_excluded.0.lang: lang is set exactly for');
+		const data3 = load_fixture();
+		delete data3.coverage.prism!.rust;
+		for (const cell of data3.cells) for (const section of SECTIONS) delete cell[section].prism;
+		data3.meta.excluded = [];
+		clear_bundle(data3);
+		data3.startup = data3.startup.filter((s) => !(s.library === 'prism' && s.lang === 'rust'));
+		assert_rejects(data3, `library "prism" doesn't claim lang "rust"`);
+		// the baseline loads no library, so nothing can exclude it
+		const data4 = load_fixture();
+		(data4.meta.startup_excluded[0] as any).library = null;
+		assert_rejects(data4, 'meta.startup_excluded.0.library');
+		const data5 = load_fixture();
+		(data5.meta.startup_excluded[0] as any).reason = '';
+		assert_rejects(data5, 'meta.startup_excluded.0.reason');
+	});
+
+	test('a full run with no filters has every scenario it implies, or excludes it', () => {
+		const data = load_fixture();
+		assert.deepStrictEqual(bench_results_find_startup_gaps(data), []);
+		const index = data.startup.findIndex(
+			(s) => s.scenario === 'lang' && s.library === 'prism' && s.lang === 'ts' && s.bundled
+		);
+		const [removed] = data.startup.splice(index, 1);
+		const message =
+			'library "prism" has neither an entry nor an excluded entry for the bundled lang scenario of lang "ts"';
+		assert_rejects(data, `startup: ${message}`);
+		assert.deepStrictEqual(bench_results_find_startup_gaps(data), [{ path: ['startup'], message }]);
+		assert.ok(!bench_results_is_publishable(data));
+		// excluded there, it is accounted for
+		data.meta.startup_excluded.push({ ...to_scenario(removed!), library: 'prism', reason: 'x' });
+		assert.ok(bench_results_is_publishable(BenchResults.parse(data)));
+		// the baseline is implied too, and every form of every scenario
+		const data2 = load_fixture();
+		data2.startup.shift();
+		assert_rejects(data2, 'the bare baseline has neither an entry nor an excluded entry');
+		const data3 = load_fixture();
+		data3.startup = data3.startup.filter((s) => !(s.scenario === 'set' && s.bundled));
+		assert_rejects(
+			data3,
+			'library "fuz_code" has neither an entry nor an excluded entry for the bundled set scenario of set "docs"'
+		);
+		// with no cold start at all, a full run that timed its cells is not whole
+		const data4 = load_fixture();
+		clear_startup(data4);
+		assert_rejects(data4, 'the bare baseline has neither an entry');
+	});
+
+	test('a filtered, smoke, or calibration run need not hold every scenario', () => {
+		const smoke = to_smoke(load_fixture());
+		smoke.startup.pop();
+		BenchResults.parse(smoke);
+		const filtered = load_fixture();
+		filtered.meta.run!.filters.langs = ['ts'];
+		filtered.cells = filtered.cells.filter((c) => c.lang === 'ts');
+		filtered.inputs = filtered.inputs.filter((i) => i.lang === 'ts');
+		filtered.meta.excluded = [];
+		filtered.startup = filtered.startup.filter((s) => s.lang === null || s.lang === 'ts');
+		filtered.meta.startup_excluded = [];
+		filtered.startup.pop();
+		BenchResults.parse(filtered);
+	});
+
+	test('the filters describe the cold start too', () => {
+		const data = load_fixture();
+		data.meta.run!.filters.langs = ['ts'];
+		assert_rejects(data, `is outside the run's langs filter`);
+		const data2 = load_fixture();
+		data2.meta.run!.filters.metrics = ['throughput'];
+		assert_rejects(data2, `startup: cold start is outside the run's metrics filter`);
+		const data3 = load_fixture();
+		data3.meta.run!.filters.metrics = ['startup'];
+		assert_rejects(data3, `cells: timed cells are outside the run's metrics filter`);
+		// cold start alone: the cells are not timed
+		for (const cell of data3.cells) cell.values = {};
+		BenchResults.parse(data3);
+		const data4 = load_fixture();
+		data4.meta.run!.kind = 'calibrate';
+		assert_rejects(data4, 'startup: a calibration measures no cold start');
 	});
 
 	test('rejects a duplicate entry', () => {
@@ -687,10 +905,12 @@ describe('startup', () => {
 		assert_rejects(data, 'duplicate startup entry');
 	});
 
-	test('accepts the same scenario bundled and unbundled', () => {
+	test('holds the same scenario bundled and unbundled', () => {
 		const data = load_fixture();
-		data.startup.push({ ...data.startup[1]!, bundled: !data.startup[1]!.bundled });
-		BenchResults.parse(data);
+		const forms = data.startup
+			.filter((s) => s.scenario === 'core' && s.library === 'fuz_code')
+			.map((s) => s.bundled);
+		assert.deepStrictEqual(forms, [false, true]);
 	});
 });
 

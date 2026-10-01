@@ -177,5 +177,11 @@ export const prism_adapter: HighlighterAdapter<Array<string | Token>> = {
 		const grammar = bundled.languages[id];
 		if (grammar === undefined) throw new Error(`the ${ID} bundle registered no grammar "${id}"`);
 		return bundled.highlight(src, grammar, id);
+	},
+	bundle_html_source: (lang) => {
+		const [[, id]] = resolve_claimed_langs(ID, LANGS, [lang]) as [[Lang, string]];
+		const quoted = JSON.stringify(id);
+		// Prism's `highlight` throws for a grammar that was never registered
+		return `exports.default.highlight(src, exports.default.languages[${quoted}], ${quoted})`;
 	}
 };

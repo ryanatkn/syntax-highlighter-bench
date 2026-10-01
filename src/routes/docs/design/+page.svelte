@@ -11,26 +11,12 @@
 <TomeContent {tome}>
 	<section>
 		<aside>
-			This page describes what is designed and not built: the cold-start measurement, the results
-			pages, and a published timed run. The details may change as they are built. The
-			<TomeLink slug="adapters" />, the <TomeLink slug="corpus" />, the timed harness described in
+			This page describes what is designed and not built: the results pages and a published timed
+			run. The details may change as they are built. The <TomeLink slug="adapters" />, the
+			<TomeLink slug="corpus" />, the timed harness and the cold-start scenarios described in
 			<TomeLink slug="method" />, and the <TomeLink slug="deterministic" /> exist.
 		</aside>
 	</section>
-	<TomeSection>
-		<TomeSectionHeader text="Cold start" />
-		<p>
-			What a first highlight costs: the time from a bare process through importing a library,
-			loading a language, and highlighting a short snippet, with each sample in a fresh process. The
-			timed harness measures only warm libraries, so this is the other half of a library's speed,
-			and the half a short-lived process or a first page load feels.
-		</p>
-		<p>
-			What a library adds to a process's memory belongs here too: the timed harness records each
-			process's peak size, which includes Node itself, and a cold-start process has a bare baseline
-			to subtract.
-		</p>
-	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Results pages" />
 		<p>
@@ -43,6 +29,10 @@
 		<p>
 			For bundle size the pages will show what each language adds to a library, derived from the
 			measured sets as <TomeLink slug="deterministic" /> describes, beside the sets' totals.
+		</p>
+		<p>
+			For cold start they will show each scenario beside the bare baseline it includes, bundled and
+			unbundled, with what the library added to the time and to the process's memory.
 		</p>
 	</TomeSection>
 	<TomeSection>

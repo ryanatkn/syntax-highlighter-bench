@@ -28,6 +28,7 @@
 	html(src: string, lang: Lang): string; // timed: the string consumers ship
 	bundle_entry(langs: ReadonlyArray<Lang>): string; // module source importing exactly these languages
 	bundle_html(exports: Record<string, any>, src: string, lang: Lang): string; // highlights through a built bundle's exports
+	bundle_html_source(lang: Lang): string; // that same call as an expression over \`exports\` and \`src\`
 }`;
 </script>
 
@@ -72,7 +73,10 @@
 			<code>bundle_entry</code> and <code>bundle_html</code> serve the bundle sizes of
 			<TomeLink slug="deterministic" />: the first writes the module a bundle is built from, and the
 			second highlights through that bundle's exports, which is how each bundle is shown to hold its
-			languages.
+			languages. <code>bundle_html_source</code> is the second as text: a cold-start process, which
+			<TomeLink slug="method" /> describes, must load nothing but the module it measures, so it
+			can't load the adapter to make the call. The check of every bundle evaluates the text and
+			requires the same HTML.
 		</p>
 	</TomeSection>
 	<TomeSection>

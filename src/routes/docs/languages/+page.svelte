@@ -28,7 +28,9 @@
 		</p>
 		<p>
 			<code>xml</code> is also an id but is not timed, because the roster doesn't share it:
-			twinkleplop has no XML language. It appears in the coverage matrix and in feature sets.
+			twinkleplop has no XML language. It appears in the coverage matrix and in feature sets. A
+			cold-start scenario that loads one language loads a timed one, so it never names
+			<code>xml</code>.
 		</p>
 		<p>
 			The measured libraries support many more languages than these. An id is added when a feature
@@ -57,9 +59,9 @@
 	<TomeSection>
 		<TomeSectionHeader text="Feature sets" />
 		<p>
-			A feature set is a named list of language ids that bundle size is measured over. The sets are
-			declared in <code>bench/sets.ts</code> before any numbers exist, so a set can't be chosen to
-			flatter a result.
+			A feature set is a named list of language ids that bundle size is measured over, and that a
+			cold-start scenario imports. The sets are declared in <code>bench/sets.ts</code> before any
+			numbers exist, so a set can't be chosen to flatter a result.
 		</p>
 		<table>
 			<thead>
@@ -83,7 +85,10 @@
 				<tr>
 					<td><code>docs</code></td>
 					<td>js, ts, css, html, md, bash, json</td>
-					<td>what a documentation site imports, matching twinkleplop's docs bundle</td>
+					<td>
+						what a documentation site imports, matching twinkleplop's docs bundle. It is also the
+						set a cold-start process loads in the <code>set</code> scenario
+					</td>
 				</tr>
 				<tr>
 					<td><code>web_rust</code></td>

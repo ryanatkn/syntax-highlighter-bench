@@ -11,6 +11,7 @@ import {
 	type BenchRunFilters
 } from '$lib/results_schema.ts';
 import type { CellResult } from '../../../bench/cell.ts';
+import { plan_startup_round, plan_startup_scenarios } from '../../../bench/coldstart.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import {
@@ -42,6 +43,7 @@ import {
 	SMOKE_PARAMS,
 	plan_cells,
 	plan_processes,
+	run_measures,
 	type PlannedProcess,
 	type RunOptions
 } from '../../../bench/run_options.ts';
@@ -51,7 +53,8 @@ const NO_FILTERS: BenchRunFilters = {
 	langs: null,
 	sizes: null,
 	modes: null,
-	sources: null
+	sources: null,
+	metrics: null
 };
 
 const create_options = (overrides: Partial<RunOptions> = {}): RunOptions => ({
@@ -111,6 +114,31 @@ const create_processes = (
 		options.kind === 'calibrate' ? options.passes * 2 : options.passes
 	).map((planned) => ({ planned, result: answer(planned) }));
 
+/** The cold-start scenarios of a run, each sampled in every round at an invented time. */
+const create_startup = (options: RunOptions): Pick<RunRecord, 'startup_scenarios' | 'startup'> => {
+	const startup_scenarios = run_measures(options, 'startup')
+		? plan_startup_scenarios(ADAPTERS, options.filters, manifest.inputs).scenarios
+		: [];
+	const rounds = options.startup_discard + options.startup_samples;
+	return {
+		startup_scenarios,
+		startup: Array.from({ length: rounds }, (_, round) =>
+			plan_startup_round(startup_scenarios, round).map((planned) => ({
+				planned,
+				result: {
+					key: planned.scenario.key,
+					sample: {
+						ms: 30 + round,
+						rss_peak_bytes: 50_000_000,
+						output: planned.scenario.snippet ? { html_bytes: 100, spans: 10 } : null
+					},
+					excluded: null
+				}
+			}))
+		).flat()
+	};
+};
+
 const create_record = (overrides: Partial<RunRecord> = {}): RunRecord => {
 	const options = overrides.options ?? create_options({ filters: SMALL_TS });
 	return {
@@ -124,6 +152,7 @@ const create_record = (overrides: Partial<RunRecord> = {}): RunRecord => {
 		corpus_hash: manifest.corpus_hash,
 		adapters: ADAPTERS.filter((a) => options.filters.libraries?.includes(a.id) ?? true),
 		processes: create_processes(options),
+		...create_startup(options),
 		anchor: { drift: 0.001, stable: true },
 		noise_floor: null,
 		deterministic: null,
@@ -575,6 +604,7 @@ describe('assemble_results', () => {
 			kind: 'full',
 			...FULL_PARAMS,
 			loaded_langs: 'cell',
+			startup_compile_cache: 'disabled',
 			filters: SMALL_TS,
 			segments: 1,
 			duration_ms: 1234
@@ -591,8 +621,13 @@ describe('assemble_results', () => {
 		// the rosters come from the harness, whatever the filters
 		assert.ok(results.langs.some((l) => l.id === 'xml' && !l.timed));
 		assert.ok(results.sets.some((s) => s.id === 'docs'));
-		// cold start is not built, and this record carries no deterministic file
-		assert.deepStrictEqual(results.startup, []);
+		// the cold start of the filtered languages, and no deterministic file to carry
+		assert.deepStrictEqual(
+			results.startup.map((entry) => entry.lang).filter((lang) => lang !== null),
+			results.startup.flatMap((entry) => (entry.lang === null ? [] : ['ts']))
+		);
+		assert.ok(results.startup.some((entry) => entry.scenario === 'first_highlight'));
+		assert.deepStrictEqual(results.meta.startup_excluded, []);
 		assert.deepStrictEqual(results.bundle, {});
 		assert.strictEqual(results.meta.bundler, null);
 		for (const cell of results.cells) {

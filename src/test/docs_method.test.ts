@@ -1,7 +1,14 @@
 import { assert, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { BENCH_ANCHOR_STABLE_BELOW, BenchCellValue, BenchRunKind } from '$lib/results_schema.ts';
+import {
+	BENCH_ANCHOR_STABLE_BELOW,
+	BenchCellValue,
+	BenchRunKind,
+	BenchRunMetric,
+	BenchStartup,
+	BenchStartupScenario
+} from '$lib/results_schema.ts';
 import { DISTURBED_SPREAD } from '../../bench/run.ts';
 import { FULL_PARAMS, RUN_FLAGS } from '../../bench/run_options.ts';
 
@@ -50,5 +57,32 @@ test('the method docs state the retry threshold and how many retries a full run 
 	for (const [name, text] of Object.entries(docs)) {
 		const plain = unwrap(text.replace(/<\/?code>/g, '`'));
 		assert.ok(plain.includes(retries), `${name} lacks "${retries}"`);
+	}
+});
+
+test('the method docs name every cold-start scenario, number, and metric', () => {
+	for (const [name, text] of Object.entries(docs)) {
+		const plain = text.replace(/<\/?code>/g, '`');
+		for (const id of [
+			...BenchStartupScenario.options,
+			...BenchRunMetric.options,
+			...['samples', 'median_ms', 'p10_ms', 'p90_ms', 'spread', 'rss_peak_bytes', 'bundled']
+		]) {
+			assert.ok(plain.includes(`\`${id}\``), `${name} lacks ${id}`);
+		}
+		for (const variable of ['NODE_DISABLE_COMPILE_CACHE=1', 'NODE_COMPILE_CACHE']) {
+			assert.ok(plain.includes(variable), `${name} lacks ${variable}`);
+		}
+	}
+	// and those are the numbers of an entry
+	for (const key of ['samples', 'median_ms', 'p10_ms', 'p90_ms', 'spread', 'rss_peak_bytes']) {
+		assert.ok(Object.hasOwn(BenchStartup.shape, key), key);
+	}
+});
+
+test('the method docs state how many cold-start samples a full run keeps and discards', () => {
+	const samples = `keeps ${FULL_PARAMS.startup_samples} samples of each scenario, after ${FULL_PARAMS.startup_discard} discarded rounds`;
+	for (const [name, text] of Object.entries(docs)) {
+		assert.ok(unwrap(text).includes(samples), `${name} lacks "${samples}"`);
 	}
 });

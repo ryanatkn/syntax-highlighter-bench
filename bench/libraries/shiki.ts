@@ -198,6 +198,10 @@ export const create_shiki_adapter = (
 				theme: THEME.name,
 				tokenizeTimeLimit: TOKENIZE_TIME_LIMIT
 			});
+		},
+		bundle_html_source: (lang) => {
+			const [[, name]] = resolve_claimed_langs(id, LANGS, [lang]) as [[Lang, GrammarName]];
+			return `exports.highlighter.codeToHtml(src, { lang: ${JSON.stringify(name)}, theme: ${JSON.stringify(THEME.name)}, tokenizeTimeLimit: ${TOKENIZE_TIME_LIMIT} })`;
 		}
 	};
 };

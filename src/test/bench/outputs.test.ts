@@ -45,7 +45,8 @@ const create_stub = (
 		count_tokens: (tokens) => tokens,
 		html,
 		bundle_entry: () => '',
-		bundle_html: () => HIGHLIGHTED
+		bundle_html: () => HIGHLIGHTED,
+		bundle_html_source: () => 'null'
 	};
 	return { load: () => Promise.resolve(adapter), setups };
 };

@@ -24,8 +24,8 @@
 	<TomeSection>
 		<TomeSectionHeader text="What exists" />
 		<p>
-			The harness that times the libraries and the deterministic measurements are built. No timed
-			run has been published:
+			The harness that times the libraries, warm and from a cold start, and the deterministic
+			measurements are built. No timed run has been published:
 		</p>
 		<ul>
 			<li>
@@ -47,6 +47,11 @@
 				<TomeLink slug="method" />
 			</li>
 			<li>
+				cold start, where each sample is a fresh process that imports a library and stops its own
+				clock, in <code>bench/coldstart.ts</code>, as more processes of the same run — see
+				<TomeLink slug="method" />
+			</li>
+			<li>
 				the deterministic measurements, which are bundle size over each feature set, token counts,
 				output sizes, and coverage, in <code>bench/deterministic.ts</code>, with their numbers
 				committed as <code>results/deterministic.json</code> — see <TomeLink slug="deterministic" />
@@ -57,9 +62,28 @@
 			</li>
 		</ul>
 		<p>
-			The cold-start measurement, the results pages, and a published timed run are designed but not
-			built. <TomeLink slug="design" /> describes them.
+			The results pages and a published timed run are designed but not built.
+			<TomeLink slug="design" /> describes them.
 		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="What is measured" />
+		<ul>
+			<li>
+				<strong>Throughput</strong>, on one named machine: how long a warm library takes to tokenize
+				an input, and to render it as HTML, with the peak memory of its process beside it.
+			</li>
+			<li>
+				<strong>Cold start</strong>, on the same machine: how long a fresh Node process takes to
+				import a library alone, with one language, and with a documentation site's languages, and to
+				produce a first highlight. Each is measured for the bundled chunk and for the library
+				imported unbundled, beside a bare Node baseline to subtract, with the process's peak memory.
+			</li>
+			<li>
+				<strong>Deterministic numbers</strong>, the same anywhere: bundle size over each feature
+				set, token counts, output sizes, and coverage.
+			</li>
+		</ul>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Layout" />

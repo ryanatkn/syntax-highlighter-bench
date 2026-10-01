@@ -133,6 +133,18 @@ export interface HighlighterAdapter<TTokens = unknown> {
 	 * @returns the HTML
 	 */
 	bundle_html(exports: Record<string, any>, src: string, lang: Lang): string;
+	/**
+	 * The call `bundle_html` makes, as the source of one JavaScript expression
+	 * over the names `exports` and `src`. A cold-start process highlights with it:
+	 * that process must load nothing but the entry it measures, and this module
+	 * imports the library. The check of every built bundle evaluates it and
+	 * requires the HTML `bundle_html` returns.
+	 *
+	 * @param lang - a language the adapter claims
+	 * @returns the expression, which evaluates to the HTML
+	 * @throws if the language is outside `langs`
+	 */
+	bundle_html_source(lang: Lang): string;
 }
 
 /** A WebAssembly binary a library loads, and how it reaches a bundle. */

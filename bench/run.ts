@@ -1,6 +1,7 @@
 /**
- * A run of the timed harness: every library measured on every cell, each in a
- * process of its own, and one results file written through the schema.
+ * A run of the timed harness: every library measured on every cell and in
+ * every cold-start scenario, each in a process of its own, and one results file
+ * written through the schema.
  *
  * ```bash
  * node bench/run.ts --machine <name>   # a full run, to results/<date>_<name>.json
@@ -22,6 +23,11 @@
  * machine lock from before the first anchor reading until the results are ready
  * to write. A smoke run's numbers mean nothing, so it alone runs its processes
  * several at a time.
+ *
+ * After the cells come the cold-start scenarios (`bench/coldstart.ts`): each
+ * sample a fresh process, the scenarios interleaved round by round. They are
+ * more processes of the same run, so they share its lock, its anchor readings,
+ * its journal, and its results file.
  *
  * A timed run appends every result to a journal (`bench/journal.ts`) between
  * processes, so a run that is stopped continues with `--resume` instead of
@@ -66,11 +72,31 @@ import {
 	type BenchExcluded,
 	type BenchMachine,
 	type BenchNoiseFloor,
-	type BenchResults
+	type BenchResults,
+	type BenchStartup,
+	type BenchStartupExcluded
 } from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
 import { measure_anchor, to_anchor_drift } from './anchor.ts';
 import { CellResult, type CellSpec } from './cell.ts';
+import {
+	STARTUP_TIMEOUT_MS,
+	StartupChildOutput,
+	check_startup_output,
+	plan_startup_round,
+	plan_startup_scenarios,
+	prepare_startup,
+	summarize_startup,
+	to_startup_child_path,
+	to_startup_env,
+	to_startup_key,
+	type PlannedStartup,
+	type PreparedStartup,
+	type PrepareStartupOptions,
+	type StartupResult,
+	type StartupScenario,
+	type StartupUnsupported
+} from './coldstart.ts';
 import { load_corpus_manifest } from './corpus.ts';
 import {
 	carry_deterministic,
@@ -85,6 +111,7 @@ import {
 	open_journal,
 	read_journal,
 	to_journal_key,
+	to_startup_journal_key,
 	type Journal,
 	type JournalHeader
 } from './journal.ts';
@@ -101,11 +128,13 @@ import { summarize_passes } from './measure.ts';
 import { to_bench_cell, type CellNumbers } from './outputs.ts';
 import {
 	estimate_run_ms,
+	estimate_startup_ms,
 	format_run_help,
 	parse_run_args,
 	plan_cells,
 	plan_processes,
 	plan_retry,
+	run_measures,
 	to_arm_count,
 	to_calibration_path,
 	to_journal_path,
@@ -175,6 +204,51 @@ export interface ChildOutcome {
 const to_process_label = (planned: PlannedProcess): string =>
 	`cell ${planned.cell.id} (${planned.library})`;
 
+/** A process that exited on its own without succeeding. */
+interface ChildFailure {
+	/** How it ended: its exit code, or the signal. */
+	how: string;
+	stderr: string;
+}
+
+/**
+ * Reads the JSON a process printed, or says that it failed.
+ *
+ * @param label - what the process was, for an error
+ * @param outcome - how it ended and what it printed
+ * @param timeout_ms - how long it was given
+ * @returns the parsed JSON, or how the process failed on its own
+ * @throws `RunError` if the process timed out, was interrupted, could not be
+ * run, or exited cleanly having printed anything but one JSON value
+ */
+const read_child_json = (
+	label: string,
+	outcome: ChildOutcome,
+	timeout_ms: number
+): { data: unknown } | { failed: ChildFailure } => {
+	if (outcome.error?.code === 'ETIMEDOUT') {
+		throw new RunError(`${label} timed out after ${timeout_ms / 1000}s`);
+	}
+	if (outcome.signal !== null && Object.hasOwn(SIGNAL_EXIT, outcome.signal)) {
+		throw new RunError(
+			`interrupted during ${label}`,
+			SIGNAL_EXIT[outcome.signal as keyof typeof SIGNAL_EXIT]
+		);
+	}
+	if (outcome.error) throw new RunError(`${label} could not be run: ${outcome.error.message}`);
+	if (outcome.status !== 0) {
+		const how = outcome.signal === null ? `exit ${outcome.status}` : `signal ${outcome.signal}`;
+		return { failed: { how, stderr: outcome.stderr.trim() } };
+	}
+	try {
+		return { data: JSON.parse(outcome.stdout) };
+	} catch {
+		throw new RunError(
+			`${label} printed something other than one JSON result: ${JSON.stringify(outcome.stdout.slice(0, 200))}`
+		);
+	}
+};
+
 /**
  * Reads what a cell's process reported, or says how it failed.
  *
@@ -186,29 +260,11 @@ const to_process_label = (planned: PlannedProcess): string =>
  */
 export const read_cell_result = (planned: PlannedProcess, outcome: ChildOutcome): CellResult => {
 	const label = to_process_label(planned);
-	if (outcome.error?.code === 'ETIMEDOUT') {
-		throw new RunError(`${label} timed out after ${CELL_TIMEOUT_MS / 1000}s`);
+	const read = read_child_json(label, outcome, CELL_TIMEOUT_MS);
+	if ('failed' in read) {
+		throw new RunError(`${label} failed (${read.failed.how}):\n${read.failed.stderr}`);
 	}
-	if (outcome.signal !== null && Object.hasOwn(SIGNAL_EXIT, outcome.signal)) {
-		throw new RunError(
-			`interrupted during ${label}`,
-			SIGNAL_EXIT[outcome.signal as keyof typeof SIGNAL_EXIT]
-		);
-	}
-	if (outcome.error) throw new RunError(`${label} could not be run: ${outcome.error.message}`);
-	if (outcome.status !== 0) {
-		const how = outcome.signal === null ? `exit ${outcome.status}` : `signal ${outcome.signal}`;
-		throw new RunError(`${label} failed (${how}):\n${outcome.stderr.trim()}`);
-	}
-	let data: unknown;
-	try {
-		data = JSON.parse(outcome.stdout);
-	} catch {
-		throw new RunError(
-			`${label} printed something other than one JSON result: ${JSON.stringify(outcome.stdout.slice(0, 200))}`
-		);
-	}
-	const parsed = CellResult.safeParse(data);
+	const parsed = CellResult.safeParse(read.data);
 	if (!parsed.success) {
 		throw new RunError(`${label} reported a malformed result: ${parsed.error.message}`);
 	}
@@ -224,20 +280,84 @@ export const read_cell_result = (planned: PlannedProcess, outcome: ChildOutcome)
 	return result;
 };
 
-const to_child_args = (spec: CellSpec): Array<string> => [
-	'--expose-gc',
-	CELL_PATH,
-	JSON.stringify(spec)
-];
+const to_startup_label = (planned: PlannedStartup): string =>
+	`cold start ${planned.scenario.key} (round ${planned.round + 1})`;
 
-/** Runs one process and blocks until it exits, so nothing else runs beside it. */
-export const spawn_cell_sync = (spec: CellSpec): ChildOutcome => {
-	const child = spawnSync(process.execPath, to_child_args(spec), {
+/**
+ * What a failed process said, as the reason of an exclusion: the line of its
+ * stderr that names the error, without this checkout's path, which is the
+ * machine's and not the library's.
+ */
+const to_failure_reason = (failure: ChildFailure): string => {
+	const lines = failure.stderr.split('\n').map((line) => line.trim());
+	const line = lines.find((l) => /^\w*Error\b/.test(l)) ?? lines.findLast((l) => l !== '');
+	return (line ?? failure.how).replaceAll(`file://${REPO_DIR}`, '').replaceAll(REPO_DIR, '');
+};
+
+/**
+ * Reads what a cold-start process reported: a sample, or the reason the library
+ * is excluded from the scenario.
+ *
+ * A process that fails on its own is an exclusion, not a failed run: an entry a
+ * library can't be imported through outside a bundler, or a first highlight
+ * that throws, is something the library does. `bare` can't be: it loads no
+ * library, so its failure is the harness's. And a process that was ended, by a
+ * signal or by an abort (the OS out of memory, a crash, the engine's heap
+ * limit), did not fail on its own: that fails the run, which can be resumed,
+ * and never drops the scenario from the results.
+ *
+ * @param planned - the process that was run
+ * @param outcome - how it ended and what it printed
+ * @returns the checked sample, or the exclusion
+ * @throws `RunError` naming the scenario if the process timed out, was ended by
+ * a signal or an abort, printed anything but one result, or ran with a compile
+ * cache
+ */
+export const read_startup_result = (
+	planned: PlannedStartup,
+	outcome: ChildOutcome
+): StartupResult => {
+	const label = to_startup_label(planned);
+	const { scenario } = planned;
+	const read = read_child_json(label, outcome, STARTUP_TIMEOUT_MS);
+	if ('failed' in read) {
+		// an exit code past 128 is a signal's, or an abort's: the process was ended, and did not
+		// fail on its own
+		const ended = outcome.signal !== null || (outcome.status !== null && outcome.status > 128);
+		if (scenario.library === null || ended) {
+			throw new RunError(`${label} failed (${read.failed.how}):\n${read.failed.stderr}`);
+		}
+		return {
+			key: scenario.key,
+			sample: null,
+			excluded: `the process failed: ${to_failure_reason(read.failed)}`
+		};
+	}
+	const parsed = StartupChildOutput.safeParse(read.data);
+	if (!parsed.success) {
+		throw new RunError(`${label} reported a malformed result: ${parsed.error.message}`);
+	}
+	if (parsed.data.compile_cache_dir !== null) {
+		throw new RunError(
+			`${label} ran with V8's compile cache in ${parsed.data.compile_cache_dir}, so it was not a cold start`
+		);
+	}
+	return check_startup_output(scenario, parsed.data);
+};
+
+/** Runs a Node process and blocks until it exits, so nothing else runs beside it. */
+const spawn_node_sync = (
+	args: Array<string>,
+	timeout: number,
+	env: NodeJS.ProcessEnv = process.env
+): ChildOutcome => {
+	const child = spawnSync(process.execPath, args, {
 		cwd: REPO_DIR,
+		env,
 		encoding: 'utf8',
 		stdio: ['ignore', 'pipe', 'pipe'],
 		maxBuffer: 64 * 1024 * 1024,
-		timeout: CELL_TIMEOUT_MS
+		timeout
 	});
 	return {
 		error: child.error ?? null,
@@ -248,14 +368,20 @@ export const spawn_cell_sync = (spec: CellSpec): ChildOutcome => {
 	};
 };
 
-/** Runs one process without blocking. Only a smoke run uses it. */
-const spawn_cell_async = (spec: CellSpec, children: Set<ChildProcess>): Promise<ChildOutcome> =>
+/** Runs a Node process without blocking. Only a smoke run uses it. */
+const spawn_node_async = (
+	args: Array<string>,
+	timeout: number,
+	children: Set<ChildProcess>,
+	env: NodeJS.ProcessEnv = process.env
+): Promise<ChildOutcome> =>
 	new Promise((resolve_outcome) => {
 		const started = performance.now();
-		const child = spawn(process.execPath, to_child_args(spec), {
+		const child = spawn(process.execPath, args, {
 			cwd: REPO_DIR,
+			env,
 			stdio: ['ignore', 'pipe', 'pipe'],
-			timeout: CELL_TIMEOUT_MS
+			timeout
 		});
 		children.add(child);
 		let stdout = '';
@@ -269,11 +395,30 @@ const spawn_cell_async = (spec: CellSpec, children: Set<ChildProcess>): Promise<
 		// a process that never started has no close event
 		child.on('error', (error) => finish({ error, status: null, signal: null }));
 		child.on('close', (status, signal) => {
-			const timed_out = signal !== null && performance.now() - started >= CELL_TIMEOUT_MS;
+			const timed_out = signal !== null && performance.now() - started >= timeout;
 			const error = timed_out ? Object.assign(new Error('timed out'), { code: 'ETIMEDOUT' }) : null;
 			finish({ error, status, signal });
 		});
 	});
+
+const to_child_args = (spec: CellSpec): Array<string> => [
+	'--expose-gc',
+	CELL_PATH,
+	JSON.stringify(spec)
+];
+
+/** Runs one cell's process and blocks until it exits. */
+export const spawn_cell_sync = (spec: CellSpec): ChildOutcome =>
+	spawn_node_sync(to_child_args(spec), CELL_TIMEOUT_MS);
+
+/**
+ * Runs one cold-start process and blocks until it exits: the scenario's module,
+ * with no flags, as a consumer's process runs, and with the compile cache off.
+ *
+ * @param child_path - the module `prepare_startup` wrote for the scenario
+ */
+export const spawn_startup_sync = (child_path: string): ChildOutcome =>
+	spawn_node_sync([child_path], STARTUP_TIMEOUT_MS, to_startup_env(process.env));
 
 /** Lets a pending signal handler run, which a blocking spawn loop otherwise never does. */
 const yield_to_signals = (): Promise<void> => new Promise((r) => setImmediate(r));
@@ -318,48 +463,39 @@ const create_agreement_check = (
 /**
  * Runs the processes of a smoke run, several at a time.
  *
- * @param processes - the processes
- * @param options - the run
+ * @param processes - what to run
  * @param concurrency - how many run at once
- * @param expected - what the deterministic file has, which every result must agree with
- * @param on_result - called after each process, with its stderr
- * @returns their results, in the order planned
- * @throws `RunError` at the first process that fails, or whose result disagrees
- * with an earlier pass of the same library on the same cell
+ * @param run_one - runs one process to its checked result, registering the
+ * child so a failure elsewhere can stop it
+ * @returns the results, in the order planned
+ * @throws what `run_one` throws for the first process that fails, after
+ * stopping the rest
  */
-const run_processes_at_once = async (
-	processes: ReadonlyArray<PlannedProcess>,
-	options: RunOptions,
+const run_at_once = async <TPlanned, TResult>(
+	processes: ReadonlyArray<TPlanned>,
 	concurrency: number,
-	expected: CarriedDeterministic['expected'] | undefined,
-	on_result: (planned: PlannedProcess, done: number, stderr: string) => void
-): Promise<Array<ProcessResult>> => {
-	const results: Array<ProcessResult> = [];
-	const check = create_agreement_check(expected);
+	run_one: (planned: TPlanned, children: Set<ChildProcess>) => Promise<TResult>
+): Promise<Array<TResult>> => {
+	const results: Array<TResult> = [];
 	const children: Set<ChildProcess> = new Set();
 	const kill_children = (): void => {
 		for (const child of children) child.kill();
 	};
 	process.once('exit', kill_children);
 	let next = 0;
-	let done = 0;
 	let failed = false;
 	const work = async (): Promise<void> => {
 		while (!failed && next < processes.length) {
 			const i = next++;
-			const planned = processes[i]!;
-			const outcome = await spawn_cell_async(to_cell_spec(planned, options), children);
-			if (failed) return;
 			try {
-				const result = read_cell_result(planned, outcome);
-				check(planned, result);
-				results[i] = { planned, result };
+				results[i] = await run_one(processes[i]!, children);
 			} catch (error) {
+				// a process stopped because another failed has nothing more to say
+				if (failed) return;
 				failed = true;
 				kill_children();
 				throw error;
 			}
-			on_result(planned, ++done, outcome.stderr);
 		}
 	};
 	try {
@@ -452,6 +588,156 @@ export const run_cells_in_turn = async (
 		}
 	}
 	return results;
+};
+
+/** A cold-start process of a run with what it reported. */
+export interface StartupProcessResult {
+	planned: PlannedStartup;
+	result: StartupResult;
+}
+
+/**
+ * Creates the check each cold-start result goes through as it arrives.
+ *
+ * A scenario's first process decides whether the library is sampled there at
+ * all, and a first highlight's HTML is then compared with what the
+ * deterministic results file has for the same library on the same snippet, when
+ * the run carries one: the bundle of one language renders what the adapter
+ * does, so the sizes are equal. Every later sample must then be a sample, and
+ * of the same HTML.
+ *
+ * @param expected - what the deterministic file has for each input and library
+ */
+const create_startup_check = (
+	expected?: CarriedDeterministic['expected']
+): ((planned: PlannedStartup, result: StartupResult) => void) => {
+	const firsts: Map<string, StartupResult> = new Map();
+	return (planned, result) => {
+		const label = to_startup_label(planned);
+		const { scenario } = planned;
+		const first = firsts.get(scenario.key);
+		if (first) {
+			if (
+				result.excluded !== null ||
+				JSON.stringify(result.sample?.output) !== JSON.stringify(first.sample?.output)
+			) {
+				throw new RunError(
+					`${label} came out differently from an earlier sample of the scenario, in something that should be deterministic: ${JSON.stringify([first, result].map((r) => r.excluded ?? r.sample!.output))}`
+				);
+			}
+			return;
+		}
+		firsts.set(scenario.key, result);
+		if (!expected || scenario.snippet === null || scenario.library === null) return;
+		const numbers = expected.get(to_expected_key(scenario.snippet.file, scenario.library));
+		const matches =
+			numbers !== undefined &&
+			('excluded' in numbers
+				? result.excluded !== null
+				: JSON.stringify(result.sample?.output) === JSON.stringify(numbers.output));
+		if (!matches) {
+			throw new RunError(
+				`${label} disagrees with the deterministic results file, which has ${JSON.stringify(numbers === undefined ? null : 'excluded' in numbers ? numbers : numbers.output)} where the process reported ${JSON.stringify(result.excluded ?? result.sample!.output)}: regenerate the file with \`npm run bench:deterministic\`, and if it still disagrees the library's output is not deterministic`,
+				2
+			);
+		}
+	};
+};
+
+/** How a timed run gets and keeps its cold-start results. */
+export interface RunStartupDeps {
+	/**
+	 * Gets one process's result: by running it and blocking until it exits, or
+	 * from a journal.
+	 */
+	measure: (planned: PlannedStartup) => StartupResult;
+	/** Called with each result once it has passed the check. */
+	on_result?: (planned: PlannedStartup, result: StartupResult) => void;
+	/** What the deterministic file has, which a first highlight's HTML must match. */
+	expected?: CarriedDeterministic['expected'];
+}
+
+/**
+ * Samples the cold-start scenarios of a timed run, one process at a time, round
+ * by round: the discarded rounds, then the kept ones, every scenario once in
+ * each (`plan_startup_round`).
+ *
+ * A scenario whose first process came back excluded is not run again. Nothing
+ * is retried: a disturbance lands on one sample of every scenario and not on
+ * one scenario, the median over many processes already sets a slow one aside,
+ * and sampling one scenario again later would take it out of the interleaving
+ * that makes the scenarios comparable.
+ *
+ * What runs next depends only on the results so far, so replaying a journal's
+ * results through `deps.measure` continues a run where it stopped.
+ *
+ * @param scenarios - the scenarios, as `plan_startup_scenarios` lists them
+ * @param params - how many rounds are discarded, and how many kept
+ * @param deps - how a result is got, and what happens to it
+ * @returns every process with its result, in the order run
+ * @throws `RunError` at the first process that fails as a run, or whose result
+ * disagrees with an earlier sample of its scenario or with the deterministic file
+ */
+export const run_startup_in_turn = async (
+	scenarios: ReadonlyArray<StartupScenario>,
+	params: Pick<RunOptions, 'startup_samples' | 'startup_discard'>,
+	deps: RunStartupDeps
+): Promise<Array<StartupProcessResult>> => {
+	const check = create_startup_check(deps.expected);
+	const excluded: Set<string> = new Set();
+	const results: Array<StartupProcessResult> = [];
+	for (let round = 0; round < params.startup_discard + params.startup_samples; round++) {
+		for (const planned of plan_startup_round(scenarios, round)) {
+			if (excluded.has(planned.scenario.key)) continue;
+			const result = deps.measure(planned);
+			check(planned, result);
+			if (result.excluded !== null) excluded.add(planned.scenario.key);
+			deps.on_result?.(planned, result);
+			results.push({ planned, result });
+			await yield_to_signals();
+		}
+	}
+	return results;
+};
+
+/**
+ * Turns a run's cold-start results into the `startup` section and the
+ * exclusions: for each scenario the samples of the kept rounds, summarized, or
+ * the reason its first process gave.
+ *
+ * @param scenarios - the scenarios of the run, whose order the entries keep
+ * @param processes - every cold-start process with its result
+ * @param params - how many rounds were discarded, and how many kept
+ * @throws `RunError` if a scenario has no result, or not exactly its kept samples
+ */
+export const to_startup_entries = (
+	scenarios: ReadonlyArray<StartupScenario>,
+	processes: ReadonlyArray<StartupProcessResult>,
+	params: Pick<RunOptions, 'startup_samples' | 'startup_discard'>
+): { startup: Array<BenchStartup>; excluded: Array<BenchStartupExcluded> } => {
+	const startup: Array<BenchStartup> = [];
+	const excluded: Array<BenchStartupExcluded> = [];
+	const by_key = Map.groupBy(processes, (p) => p.planned.scenario.key);
+	for (const { key, scenario, library, lang, set, bundled } of scenarios) {
+		const own = (by_key.get(key) ?? []).toSorted((a, b) => a.planned.round - b.planned.round);
+		const first = own[0]?.result;
+		if (!first) throw new RunError(`cold start ${key} was not sampled`);
+		if (first.excluded !== null) {
+			if (library === null) throw new RunError(`cold start ${key} can't be excluded`);
+			excluded.push({ scenario, library, lang, set, bundled, reason: first.excluded });
+			continue;
+		}
+		const kept = own
+			.filter((p) => p.planned.round >= params.startup_discard)
+			.flatMap((p) => p.result.sample ?? []);
+		if (kept.length !== params.startup_samples) {
+			throw new RunError(
+				`cold start ${key} has ${kept.length} of ${params.startup_samples} samples`
+			);
+		}
+		startup.push({ scenario, library, lang, set, bundled, ...summarize_startup(kept) });
+	}
+	return { startup, excluded };
 };
 
 /** The geometric mean of some positive numbers. */
@@ -702,6 +988,10 @@ export interface RunRecord {
 	adapters: ReadonlyArray<HighlighterAdapter>;
 	/** Every process's result, each with the process it answers, retries included. */
 	processes: ReadonlyArray<ProcessResult>;
+	/** The cold-start scenarios the run planned. None when it measures no cold start. */
+	startup_scenarios: ReadonlyArray<StartupScenario>;
+	/** Every cold-start process's result, discarded rounds included. */
+	startup: ReadonlyArray<StartupProcessResult>;
 	anchor: BenchAnchor;
 	/** The floor carried from the machine's calibration. A calibration run derives its own. */
 	noise_floor: BenchNoiseFloor | null;
@@ -718,7 +1008,9 @@ export interface RunRecord {
  *
  * A library that failed the output check in a cell has no numbers there and an
  * entry in `meta.excluded`. A library that doesn't claim a cell's language was
- * never asked about it, and has neither.
+ * never asked about it, and has neither. Cold start keeps the same two apart: a
+ * scenario a library failed its check in is in `meta.startup_excluded`, and one
+ * it doesn't support was never planned.
  *
  * @returns the parsed results, and a calibration's pairs
  * @throws if a library's processes disagree, or the assembled file doesn't
@@ -755,6 +1047,7 @@ export const assemble_results = (
 		}
 		return to_bench_cell(input, cell.mode, numbers, values);
 	});
+	const startup = to_startup_entries(record.startup_scenarios, record.startup, options);
 	const results = parse_bench_results({
 		meta: {
 			generated_at: record.generated_at,
@@ -771,6 +1064,14 @@ export const assemble_results = (
 				rewarm_ms: options.rewarm_ms,
 				retries: options.retries,
 				loaded_langs: 'cell',
+				// how cold start was sampled, for a run that planned any
+				...(run_measures(options, 'startup')
+					? {
+							startup_samples: options.startup_samples,
+							startup_discard: options.startup_discard,
+							startup_compile_cache: 'disabled' as const
+						}
+					: { startup_samples: null, startup_discard: null, startup_compile_cache: null }),
 				filters: options.filters,
 				segments: record.segments,
 				duration_ms: record.duration_ms
@@ -778,6 +1079,7 @@ export const assemble_results = (
 			anchor: record.anchor,
 			libraries: to_bench_libraries(record.adapters),
 			excluded,
+			startup_excluded: startup.excluded,
 			noise_floor: calibrate ? to_noise_floor(pairs) : record.noise_floor,
 			bundler: record.deterministic?.bundler ?? null
 		},
@@ -787,7 +1089,7 @@ export const assemble_results = (
 			(file) => [...by_cell.keys()].find((cell) => cell.input.file === file)!.input
 		),
 		cells,
-		startup: [],
+		startup: startup.startup,
 		bundle: record.deterministic?.bundle ?? {},
 		coverage: to_bench_coverage(record.adapters)
 	} satisfies BenchResults);
@@ -858,15 +1160,16 @@ export const format_run_summary = (
 ): string => {
 	const { meta, cells } = results;
 	const run = meta.run!;
+	const cells_measured = cells.length > 0;
 	const lines = [
-		`${run.kind} run: ${cells.length} cells, ${run.passes} pass(es) of ${run.rounds} round(s), ${run.target_ms}ms batches, in ${time_format_adaptive(run.duration_ms * 1e6)}`
+		`${run.kind} run: ${cells.length} cells, ${cells_measured ? `${run.passes} pass(es) of ${run.rounds} round(s), ${run.target_ms}ms batches, ` : ''}in ${time_format_adaptive(run.duration_ms * 1e6)}`
 	];
 	if (run.segments > 1) {
 		lines.push(`resumed: measured in ${run.segments} segments, and the anchor covers all of them`);
 	}
 	const disturbed: Array<{ cell: string; library: string; spread: number }> = [];
 	let retried = 0;
-	for (const { id } of meta.libraries) {
+	for (const { id } of cells_measured ? meta.libraries : []) {
 		const measured = cells.filter((cell) => Object.hasOwn(cell.values, id));
 		if (measured.length === 0) {
 			lines.push(`  ${id.padEnd(12)} not measured in any cell`);
@@ -884,7 +1187,7 @@ export const format_run_summary = (
 			`  ${id.padEnd(12)} ${String(measured.length).padStart(3)} cells, spread median ${stats_median(spreads).toFixed(3)}, worst ${Math.max(...spreads).toFixed(3)}${run.kind === 'smoke' ? '' : `, ${own_retried} retried`}`
 		);
 	}
-	if (run.kind !== 'smoke') {
+	if (run.kind !== 'smoke' && cells_measured) {
 		const after = run.retries === 0 ? '' : ` after ${run.retries} more attempt(s)`;
 		lines.push(
 			`retried: ${retried === 0 ? 'none' : `${retried} library-cells were measured again, and each keeps the attempt whose rounds agreed best, so its spread is that attempt's`}`,
@@ -924,9 +1227,33 @@ export const format_run_summary = (
 	for (const { cell, library, reason } of meta.excluded) {
 		lines.push(`  ${library} in ${cell}: ${reason}`);
 	}
+	const { startup } = results;
+	if (startup.length + meta.startup_excluded.length === 0) {
+		lines.push('cold start: not measured');
+	} else {
+		lines.push(
+			`cold start: ${startup.length} scenarios, ${run.startup_samples} sample(s) each after ${run.startup_discard} discarded round(s), compile cache ${run.startup_compile_cache}`
+		);
+		// a process start has a long slow tail: the spreads say how long, not that it was disturbed
+		for (const id of [null, ...meta.libraries.map((l) => l.id)]) {
+			const spreads = startup.filter((entry) => entry.library === id).map((entry) => entry.spread);
+			if (spreads.length === 0) continue;
+			lines.push(
+				`  ${(id ?? 'bare').padEnd(12)} ${String(spreads.length).padStart(3)} scenarios, spread median ${stats_median(spreads).toFixed(3)}, worst ${Math.max(...spreads).toFixed(3)}`
+			);
+		}
+		lines.push(
+			meta.startup_excluded.length === 0
+				? 'cold start excluded: none'
+				: `cold start excluded: ${meta.startup_excluded.length} scenarios`
+		);
+		for (const entry of meta.startup_excluded) {
+			lines.push(`  ${to_startup_key(entry)}: ${entry.reason}`);
+		}
+	}
 	lines.push(
 		meta.bundler
-			? 'bundle sizes: carried from the deterministic results file, which every cell agreed with'
+			? 'bundle sizes: carried from the deterministic results file, which every cell and first highlight agreed with'
 			: 'bundle sizes: none'
 	);
 	if (meta.commit?.endsWith('-dirty')) {
@@ -939,7 +1266,8 @@ export const format_run_summary = (
 
 /**
  * What `run_bench` can be given in place of the machine's own: two paths, where
- * its notes go, and for a timed run how a process is run and the anchor read.
+ * its notes go, how the cold-start modules are written, and for a timed run how
+ * a process is run and the anchor read.
  */
 export interface RunBenchOptions {
 	/** The lock file. Tests pass their own so they neither take nor wait on the machine's. */
@@ -950,6 +1278,14 @@ export interface RunBenchOptions {
 	log?: (line: string) => void;
 	/** Runs one process of a timed run and blocks until it exits. */
 	spawn_cell?: (spec: CellSpec) => ChildOutcome;
+	/** Runs one cold-start process of a timed run and blocks until it exits. */
+	spawn_startup?: (planned: PlannedStartup) => ChildOutcome;
+	/** Writes what the cold-start processes load. */
+	prepare_startup?: (
+		scenarios: ReadonlyArray<StartupScenario>,
+		adapters: ReadonlyArray<HighlighterAdapter>,
+		options: PrepareStartupOptions
+	) => Promise<PreparedStartup>;
 	/** Reads the anchor. */
 	measure_anchor?: () => number;
 }
@@ -987,6 +1323,12 @@ export interface RunPlan {
 	cells: Array<PlannedCell>;
 	/** The planned processes, before any retry. */
 	processes: Array<PlannedProcess>;
+	/** The cold-start scenarios. None when the run measures no cold start. */
+	startup_scenarios: Array<StartupScenario>;
+	/** The cold-start scenarios a library doesn't support, which are not planned. */
+	startup_unsupported: Array<StartupUnsupported>;
+	/** How many cold-start processes the run plans: every scenario in every round. */
+	startup_processes: number;
 	/** How many processes run at once: one for anything timed. */
 	concurrency: number;
 	/** Where the results are written. */
@@ -1031,8 +1373,15 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 	}
 	const manifest = load_corpus_manifest();
 	const adapters = ADAPTERS.filter((a) => options.filters.libraries?.includes(a.id) ?? true);
-	const cells = plan_cells(manifest.inputs, options.filters, ADAPTERS);
-	if (cells.length === 0) throw new RunError('no cell matches the filters', 2);
+	const measures_cells = run_measures(options, 'throughput');
+	const cells = measures_cells ? plan_cells(manifest.inputs, options.filters, ADAPTERS) : [];
+	if (measures_cells && cells.length === 0) throw new RunError('no cell matches the filters', 2);
+	const { scenarios: startup_scenarios, unsupported: startup_unsupported } = run_measures(
+		options,
+		'startup'
+	)
+		? plan_startup_scenarios(ADAPTERS, options.filters, manifest.inputs)
+		: { scenarios: [], unsupported: [] };
 	const smoke = options.kind === 'smoke';
 	// a calibration measures each library as two arms, so each gets twice the passes
 	const processes = plan_processes(cells, options.passes * to_arm_count(options.kind));
@@ -1085,6 +1434,8 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 				warmup_ms: options.warmup_ms,
 				rewarm_ms: options.rewarm_ms,
 				retries: options.retries,
+				startup_samples: options.startup_samples,
+				startup_discard: options.startup_discard,
 				filters: options.filters,
 				corpus_hash: manifest.corpus_hash,
 				libraries: libraries.map(({ id, version, extra_packages }) => ({
@@ -1107,7 +1458,7 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 				2
 			);
 		}
-		const unplanned = find_unplanned_result(journal, cells, options);
+		const unplanned = find_unplanned_result(journal, cells, startup_scenarios, options);
 		if (unplanned !== null) {
 			throw new RunError(
 				`${journal_path} holds a result this run never asks for (${unplanned}), so it is not this run's: remove it`,
@@ -1208,6 +1559,10 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 		adapters,
 		cells,
 		processes,
+		startup_scenarios,
+		startup_unsupported,
+		startup_processes:
+			startup_scenarios.length * (options.startup_discard + options.startup_samples),
 		// a smoke run's numbers mean nothing, so only it runs processes side by side
 		concurrency: smoke ? Math.max(1, availableParallelism()) : 1,
 		path,
@@ -1227,20 +1582,29 @@ const describe_journal = (journal: Journal): string => {
 	const filtered = Object.entries(filters)
 		.filter(([, ids]) => ids !== null)
 		.map(([key, ids]) => `${key} ${ids!.join(',')}`);
-	return `a ${kind} run started ${generated_at}, ${filtered.length === 0 ? 'with no filters' : `filtered to ${filtered.join('; ')}`}, holding ${journal.results.size} results`;
+	return `a ${kind} run started ${generated_at}, ${filtered.length === 0 ? 'with no filters' : `filtered to ${filtered.join('; ')}`}, holding ${journal.results.size + journal.startup.size} results`;
 };
 
 /**
  * Finds a journaled result the plan could never ask for: a cell or library it
- * doesn't measure, a pass it doesn't have, or an attempt past its retries.
+ * doesn't measure, a pass it doesn't have, an attempt past its retries, or a
+ * cold-start scenario or round it doesn't have.
  *
  * @returns what the first such result is, or null when every one fits the plan
  */
 const find_unplanned_result = (
 	journal: Journal,
 	cells: ReadonlyArray<PlannedCell>,
-	options: Pick<RunOptions, 'kind' | 'passes' | 'retries'>
+	scenarios: ReadonlyArray<StartupScenario>,
+	options: Pick<RunOptions, 'kind' | 'passes' | 'retries' | 'startup_samples' | 'startup_discard'>
 ): string | null => {
+	const scenario_keys = new Set(scenarios.map((scenario) => scenario.key));
+	for (const journal_key of journal.startup.keys()) {
+		const [key, round] = JSON.parse(journal_key) as [string, number];
+		if (!scenario_keys.has(key) || round >= options.startup_discard + options.startup_samples) {
+			return `cold start ${key}, round ${round + 1}`;
+		}
+	}
 	const by_id = new Map(cells.map((cell) => [cell.id, cell]));
 	const passes = options.passes * to_arm_count(options.kind);
 	for (const key of journal.results.keys()) {
@@ -1269,24 +1633,40 @@ const to_display_path = (path: string): string => {
  * measure, where it would write, and roughly how long it would take.
  */
 export const format_run_plan = (plan: RunPlan): string => {
-	const { options, cells, processes, journal } = plan;
+	const { options, cells, processes, journal, startup_scenarios } = plan;
 	const retry_processes =
 		cells.reduce((sum, cell) => sum + cell.libraries.length, 0) *
 		options.passes *
 		to_arm_count(options.kind) *
 		options.retries;
-	const estimate_ms = estimate_run_ms(processes.length, options, plan.concurrency);
+	const estimate_ms =
+		estimate_run_ms(processes.length, options, plan.concurrency) +
+		estimate_startup_ms(plan.startup_processes, plan.concurrency);
+	const at_a_time = plan.concurrency === 1 ? 'one at a time' : `${plan.concurrency} at a time`;
+	const journaled = (journal?.results.size ?? 0) + (journal?.startup.size ?? 0);
 	const rows: Array<[string, string]> = [
 		['cells', String(cells.length)],
 		['libraries', plan.adapters.map((a) => a.id).join(', ')],
 		[
 			'processes',
-			`${processes.length}, ${plan.concurrency === 1 ? 'one at a time' : `${plan.concurrency} at a time`}${retry_processes > 0 ? `, and at most ${retry_processes} more if every library-cell is measured again` : ''}`
+			`${processes.length}, ${at_a_time}${retry_processes > 0 ? `, and at most ${retry_processes} more if every library-cell is measured again` : ''}`
 		],
 		[
 			'measuring',
 			`${options.passes} pass(es) of ${options.rounds} round(s), ${options.target_ms}ms batches, ${options.warmup_ms}ms warmup, ${options.rewarm_ms}ms rewarm, up to ${options.retries} retries`
 		],
+		[
+			'cold start',
+			startup_scenarios.length === 0
+				? `none: ${options.kind === 'calibrate' ? 'a calibration measures the timed cells only' : 'left out by --metrics'}`
+				: `${startup_scenarios.length} scenarios, each sampled by ${options.startup_samples} fresh process(es) after ${options.startup_discard} discarded round(s): ${plan.startup_processes} more processes, ${at_a_time}, after the cells`
+		],
+		...plan.startup_unsupported.map(
+			({ library, scenario, lang, set, missing }): [string, string] => [
+				'',
+				`${library} is unsupported for ${scenario}${lang === null ? '' : ` ${lang}`}${set === null ? '' : ` ${set}`}, unbundled and bundled: it doesn't claim ${missing.join(', ')}`
+			]
+		),
 		['commit', plan.commit],
 		['output', to_display_path(plan.path)]
 	];
@@ -1295,7 +1675,7 @@ export const format_run_plan = (plan: RunPlan): string => {
 	} else {
 		rows.push([
 			'journal',
-			`${to_display_path(plan.journal_path)}${journal ? `, which holds ${journal.results.size} results from ${journal.segments} segment(s) that this run continues` : ''}`
+			`${to_display_path(plan.journal_path)}${journal ? `, which holds ${journaled} results from ${journal.segments} segment(s) that this run continues` : ''}`
 		]);
 	}
 	if (options.kind === 'full') {
@@ -1323,36 +1703,74 @@ export const format_run_plan = (plan: RunPlan): string => {
 /** What measuring a run's processes comes to. */
 interface Measured {
 	processes: Array<ProcessResult>;
+	startup: Array<StartupProcessResult>;
 	/** Every anchor reading, over every segment. */
 	readings_ns: Array<number>;
 	duration_ms: number;
 	segments: number;
 }
 
-/** Measures a smoke run: its processes several at a time, between two anchor readings. */
+/** Receives each process as it finishes, for the progress line. */
+type OnProgress = (label: string) => void;
+
+/**
+ * Measures a smoke run: its processes several at a time, the cells and then one
+ * sample of every cold-start scenario, between two anchor readings.
+ */
 const measure_smoke = async (
 	plan: RunPlan,
 	bench_options: RunBenchOptions,
-	on_progress: (planned: PlannedProcess, done: number) => void,
+	on_progress: OnProgress,
 	log: (line: string) => void
 ): Promise<Measured> => {
 	const read_anchor = bench_options.measure_anchor ?? measure_anchor;
+	const { options } = plan;
+	const expected = plan.deterministic?.expected;
 	const started = performance.now();
 	const opening = read_anchor();
-	const processes = await run_processes_at_once(
+	const log_stderr = (label: string, stderr: string): void => {
+		if (stderr.trim() !== '') log(`${label} wrote to stderr:\n${stderr.trim()}`);
+	};
+	const check = create_agreement_check(expected);
+	const processes = await run_at_once(
 		plan.processes,
-		plan.options,
 		plan.concurrency,
-		plan.deterministic?.expected,
-		(planned, done, stderr) => {
-			if (stderr.trim() !== '') {
-				log(`${to_process_label(planned)} wrote to stderr:\n${stderr.trim()}`);
-			}
-			on_progress(planned, done);
+		async (planned, children): Promise<ProcessResult> => {
+			const outcome = await spawn_node_async(
+				to_child_args(to_cell_spec(planned, options)),
+				CELL_TIMEOUT_MS,
+				children
+			);
+			const result = read_cell_result(planned, outcome);
+			check(planned, result);
+			log_stderr(to_process_label(planned), outcome.stderr);
+			on_progress(`${planned.cell.id} ${planned.library}`);
+			return { planned, result };
+		}
+	);
+	const check_startup = create_startup_check(expected);
+	const startup_env = to_startup_env(process.env);
+	const startup = await run_at_once(
+		// a smoke run has one round, and discards none
+		plan_startup_round(plan.startup_scenarios, 0),
+		plan.concurrency,
+		async (planned, children): Promise<StartupProcessResult> => {
+			const outcome = await spawn_node_async(
+				[to_startup_child_path(planned.scenario)],
+				STARTUP_TIMEOUT_MS,
+				children,
+				startup_env
+			);
+			const result = read_startup_result(planned, outcome);
+			check_startup(planned, result);
+			if (result.excluded === null) log_stderr(to_startup_label(planned), outcome.stderr);
+			on_progress(`cold start ${planned.scenario.key}`);
+			return { planned, result };
 		}
 	);
 	return {
 		processes,
+		startup,
 		readings_ns: [opening, read_anchor()],
 		duration_ms: Math.round(performance.now() - started),
 		segments: 1
@@ -1374,22 +1792,25 @@ const measure_segment = async (
 	plan: RunPlan,
 	bench_options: RunBenchOptions,
 	lock: MachineLock,
-	on_progress: (planned: PlannedProcess, done: number) => void,
+	on_progress: OnProgress,
 	log: (line: string) => void
 ): Promise<Measured> => {
 	const { options, journal } = plan;
 	const journal_path = plan.journal_path!;
 	const read_anchor = bench_options.measure_anchor ?? measure_anchor;
 	const spawn_cell = bench_options.spawn_cell ?? spawn_cell_sync;
+	const spawn_startup =
+		bench_options.spawn_startup ??
+		((planned: PlannedStartup) => spawn_startup_sync(to_startup_child_path(planned.scenario)));
 	const started = performance.now();
 	const at_ms = (): number => Math.round(performance.now() - started);
 	const readings_ns = [...(journal?.readings_ns ?? [])];
 	const replay = new Map(journal?.results);
-	const fresh: Set<CellResult> = new Set();
-	let done = 0;
+	const replay_startup = new Map(journal?.startup);
+	const fresh: Set<CellResult | StartupResult> = new Set();
 	if (journal) {
 		log(
-			`resuming ${journal_path}: ${replay.size} results from ${journal.segments} segment(s) are kept`
+			`resuming ${journal_path}: ${replay.size + replay_startup.size} results from ${journal.segments} segment(s) are kept`
 		);
 		if (plan.commit.endsWith('-dirty')) {
 			log(
@@ -1460,29 +1881,58 @@ const measure_segment = async (
 			},
 			// journaled only once it agrees with the library's earlier results
 			on_result: (planned, result) => {
-				done++;
-				if (!fresh.has(result)) return;
-				writer.append({
-					type: 'result',
-					at_ms: at_ms(),
-					pass: planned.pass,
-					attempt: planned.attempt,
-					result
-				});
-				on_progress(planned, done);
+				const label = `${planned.cell.id} ${planned.library}${planned.attempt > 0 ? ` (attempt ${planned.attempt + 1})` : ''}`;
+				if (fresh.has(result)) {
+					writer.append({
+						type: 'result',
+						at_ms: at_ms(),
+						pass: planned.pass,
+						attempt: planned.attempt,
+						result
+					});
+				}
+				on_progress(label);
+			}
+		});
+		// the cold-start scenarios: more processes of the same segment, journaled the same way
+		const startup = await run_startup_in_turn(plan.startup_scenarios, options, {
+			...(plan.deterministic && { expected: plan.deterministic.expected }),
+			measure: (planned) => {
+				const key = to_startup_journal_key(planned.scenario.key, planned.round);
+				const journaled = replay_startup.get(key);
+				if (journaled) {
+					replay_startup.delete(key);
+					return journaled;
+				}
+				const outcome = spawn_startup(planned);
+				const result = read_startup_result(planned, outcome);
+				// a process that failed is an exclusion, and its stderr is the reason
+				if (result.excluded === null && outcome.stderr.trim() !== '') {
+					log(`${to_startup_label(planned)} wrote to stderr:\n${outcome.stderr.trim()}`);
+				}
+				fresh.add(result);
+				return result;
+			},
+			on_result: (planned, result) => {
+				if (fresh.has(result)) {
+					writer.append({ type: 'startup', at_ms: at_ms(), round: planned.round, result });
+				}
+				on_progress(`cold start ${planned.scenario.key} (round ${planned.round + 1})`);
 			}
 		});
 		close();
 		if (overlapped) throw new RunError(`${to_hint()}: nothing was written`);
-		if (replay.size > 0) {
-			// each fits the plan, or `plan_run` would have refused: a retry the results don't call for
+		if (replay.size + replay_startup.size > 0) {
+			// each fits the plan, or `plan_run` would have refused: a retry the results don't call
+			// for, or a sample of a scenario that was excluded
 			throw new RunError(
-				`${journal_path} holds ${replay.size} results this run never asked for, so it is not this run's: remove it`,
+				`${journal_path} holds ${replay.size + replay_startup.size} results this run never asked for, so it is not this run's: remove it`,
 				2
 			);
 		}
 		return {
 			processes,
+			startup,
 			readings_ns,
 			duration_ms: (journal?.duration_ms ?? 0) + at_ms(),
 			segments: (journal?.segments ?? 0) + 1
@@ -1518,7 +1968,7 @@ export const run_bench = async (
 	const log = bench_options.log ?? ((line: string) => process.stderr.write(line + '\n'));
 	// everything that could fail is tried before measuring, not after
 	const plan = plan_run(options, bench_options);
-	const { machine, adapters, cells, processes, path, journal_path } = plan;
+	const { machine, adapters, cells, processes, path, journal_path, startup_scenarios } = plan;
 	if (plan.noise_floor_note !== null) log(`no noise floor: ${plan.noise_floor_note}`);
 	if (plan.deterministic_note !== null) log(`no bundle sizes: ${plan.deterministic_note}`);
 	try {
@@ -1536,17 +1986,44 @@ export const run_bench = async (
 	const release_on_exit = (): void => void lock.release();
 	process.once('exit', release_on_exit);
 	try {
+		// under the lock, so no other run is reading the modules while they are written
+		if (startup_scenarios.length > 0) {
+			let prepared: PreparedStartup;
+			try {
+				prepared = await (bench_options.prepare_startup ?? prepare_startup)(
+					startup_scenarios,
+					adapters,
+					{ expected_bundle: plan.deterministic?.bundle ?? null }
+				);
+			} catch (error) {
+				throw new RunError(
+					`the cold-start modules could not be written: ${(error as Error).message}`
+				);
+			}
+			if (prepared.mismatched.length > 0) {
+				throw new RunError(
+					`a bundle built for cold start is not the one the deterministic results file measured, so its time would not be that bundle's:\n${prepared.mismatched.map((line) => `  ${line}`).join('\n')}\nregenerate the file with \`npm run bench:deterministic\``,
+					2
+				);
+			}
+			if (prepared.built.length > 0) {
+				log(
+					`built ${prepared.built.length} bundle(s) for cold start: ${prepared.built.join(', ')}`
+				);
+			}
+		}
+		const total = processes.length + plan.startup_processes;
 		log(
-			`${options.kind} run on ${machine.name}: ${cells.length} cells, ${processes.length} processes${plan.concurrency > 1 ? `, ${plan.concurrency} at a time` : ''}, libraries ${adapters.map((a) => a.id).join(', ')}`
+			`${options.kind} run on ${machine.name}: ${cells.length} cells, ${startup_scenarios.length} cold-start scenarios, ${total} processes${plan.concurrency > 1 ? `, ${plan.concurrency} at a time` : ''}, libraries ${adapters.map((a) => a.id).join(', ')}`
 		);
 		// `plan_run` has already spawned a process, to read the commit: the anchor reads several
 		// percent slower after a process's first spawn, so every reading must come after one
 		const show_progress = process.stderr.isTTY && !bench_options.log;
-		const on_progress = (planned: PlannedProcess, done: number): void => {
+		let done = 0;
+		const on_progress: OnProgress = (label) => {
+			done++;
 			if (!show_progress) return;
-			process.stderr.write(
-				`\r\x1b[K  [${done}/${Math.max(done, processes.length)}] ${planned.cell.id} ${planned.library}${planned.attempt > 0 ? ` (attempt ${planned.attempt + 1})` : ''}`
-			);
+			process.stderr.write(`\r\x1b[K  [${done}/${Math.max(done, total)}] ${label}`);
 		};
 		const measured =
 			options.kind === 'smoke'
@@ -1565,6 +2042,8 @@ export const run_bench = async (
 			corpus_hash: plan.corpus_hash,
 			adapters,
 			processes: measured.processes,
+			startup_scenarios,
+			startup: measured.startup,
 			anchor: to_anchor_drift(measured.readings_ns),
 			noise_floor: plan.noise_floor,
 			deterministic: plan.deterministic

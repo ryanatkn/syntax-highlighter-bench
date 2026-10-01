@@ -94,9 +94,9 @@ describe('find_missing_langs', () => {
 
 describe('to_bundle_file_name', () => {
 	test('is the set id made safe as a file name, and distinct for every set', () => {
-		assert.strictEqual(to_bundle_file_name('core'), 'core.js');
-		assert.strictEqual(to_bundle_file_name('single:ts'), 'single_ts.js');
-		assert.strictEqual(to_bundle_file_name('../x'), '___x.js');
+		assert.strictEqual(to_bundle_file_name('core'), 'core.mjs');
+		assert.strictEqual(to_bundle_file_name('single:ts'), 'single_ts.mjs');
+		assert.strictEqual(to_bundle_file_name('../x'), '___x.mjs');
 		const names = FEATURE_SETS.map((set) => to_bundle_file_name(set.id));
 		assert.strictEqual(new Set(names).size, names.length);
 	});
@@ -240,7 +240,7 @@ describe('build_bundle', () => {
 	});
 
 	test('the bundle highlights its language through its exports', async () => {
-		const path = join(dir, 'single_json.js');
+		const path = join(dir, 'single_json.mjs');
 		writeFileSync(path, code);
 		const result = await check_bundle({ library: adapter.id, langs: ['json'], path });
 		assert.deepStrictEqual(result.exports, ['syntax_styler']);
@@ -249,7 +249,7 @@ describe('build_bundle', () => {
 
 	test('a bundle without the language fails its check', async () => {
 		// what a build that shook the language away would leave: the styler, and plain text out
-		const path = join(dir, 'hollow.js');
+		const path = join(dir, 'hollow.mjs');
 		writeFileSync(path, 'export const syntax_styler = { stylize: (text) => text };\n');
 		let error: unknown;
 		try {
@@ -260,7 +260,7 @@ describe('build_bundle', () => {
 		assert.ok(error instanceof Error);
 		assert.match(error.message, /the language is not in the bundle/);
 		// and one that exports nothing fails before any language is tried
-		const empty = join(dir, 'empty.js');
+		const empty = join(dir, 'empty.mjs');
 		writeFileSync(empty, 'export {};\n');
 		let empty_error: unknown;
 		try {
@@ -283,7 +283,7 @@ describe('build_bundle', () => {
 				''
 			].join('\n')
 		);
-		const path = join(dir, 'starved_html.js');
+		const path = join(dir, 'starved_html.mjs');
 		writeFileSync(path, starved);
 		let error: unknown;
 		try {

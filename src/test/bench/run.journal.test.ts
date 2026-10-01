@@ -61,7 +61,10 @@ afterEach(() => {
 });
 
 /** A narrow run: two cells, two libraries. */
-const FILTERS = ['--langs', 'json', '--sizes', 'micro', '--libraries', 'fuz_code,prism'];
+const FILTERS = [
+	...['--langs', 'json', '--sizes', 'micro', '--libraries', 'fuz_code,prism'],
+	...['--metrics', 'throughput']
+];
 const INPUTS = manifest.inputs.filter((i) => i.lang === 'json' && i.size === 'micro');
 const PLANNED = INPUTS.length * 2 * 2 * 2;
 
@@ -285,7 +288,7 @@ describe('a timed run keeps a journal', () => {
 		// and says what it records, so a leftover from another run is recognisable
 		assert.match(
 			error.message,
-			/it records a full run started \S+, filtered to libraries fuz_code,prism; langs json; sizes micro, holding 3 results/
+			/it records a full run started \S+, filtered to libraries fuz_code,prism; langs json; sizes micro; metrics throughput, holding 3 results/
 		);
 		writeFileSync(journal_path, 'garbage\n');
 		const unreadable = await catch_run_error(parse(), machine.options);

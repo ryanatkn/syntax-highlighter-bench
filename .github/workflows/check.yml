@@ -1,5 +1,6 @@
-# Checks and builds the project, runs every library on every cell once, and
-# checks that the committed deterministic results still regenerate. For more info:
+# Checks and builds the project, checks that the committed deterministic results
+# still regenerate, and runs every library on every cell and cold-start scenario
+# once. For more info:
 # https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
 #
 # Nothing here is a measurement: the timed numbers come from one named machine.
@@ -49,10 +50,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx @fuzdev/gro check --workspace --build
-      # Every library on every cell, one process each, several at a time. Each
-      # process's token count and output size must agree with the deterministic file.
-      - run: npm run bench:smoke
       # Rebuilds every bundle and recounts every input, and fails if
       # results/deterministic.json differs. The gzip and brotli sizes depend on the
       # zlib and brotli inside Node, so the file is generated on this Node version.
       - run: npm run bench:deterministic -- --check
+      # Every library on every cell and in every cold-start scenario, one process
+      # each, several at a time. Each process's token count and output size must
+      # agree with the deterministic file. It runs after the check above, so the
+      # bundles its cold-start processes import are already built.
+      - run: npm run bench:smoke

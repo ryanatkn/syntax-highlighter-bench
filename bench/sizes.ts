@@ -44,9 +44,9 @@
  * @module
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import { map_concurrent } from '@fuzdev/fuz_util/async.js';
@@ -127,9 +127,28 @@ export const find_missing_langs = (
 	set: Pick<FeatureSet, 'langs'>
 ): Array<Lang> => set.langs.filter((lang) => !Object.hasOwn(adapter.langs, lang));
 
-/** The file a set's bundle is written to: the set's id, made safe as a file name. */
+/**
+ * The file a set's bundle is written to: the set's id, made safe as a file name.
+ * It is `.mjs` because nothing above the directory says what a `.js` file there
+ * is, and Node would have to detect its format by compiling it, which a
+ * cold-start process importing the bundle would pay for.
+ */
 export const to_bundle_file_name = (set_id: string): string =>
-	`${set_id.replace(/[^A-Za-z0-9_-]/g, '_')}.js`;
+	`${set_id.replace(/[^A-Za-z0-9_-]/g, '_')}.mjs`;
+
+/**
+ * Writes a file unless it already holds the content, and whole or not at all.
+ * A timed run's cold-start processes import the bundles and the modules beside
+ * them, and one of them reading a file while it is written again must never
+ * see half of it.
+ */
+export const write_if_changed = (path: string, content: string): void => {
+	if (existsSync(path) && readFileSync(path, 'utf8') === content) return;
+	mkdirSync(dirname(path), { recursive: true });
+	const temp_path = `${path}.${process.pid}.tmp`;
+	writeFileSync(temp_path, content);
+	renameSync(temp_path, path);
+};
 
 /**
  * Runs something with `NODE_ENV` set to `production`, and puts it back. Vite
@@ -306,7 +325,6 @@ export const measure_bundles = async (
 		const wasm = measure_wasm(adapter);
 		const external = (adapter.wasm ?? []).map((w) => w.import);
 		const dir = join(out_dir, adapter.id);
-		mkdirSync(dir, { recursive: true });
 		const by_set: BenchResults['bundle'][string] = {};
 		for (const set of sets) {
 			const unsupported = find_missing_langs(adapter, set);
@@ -316,7 +334,7 @@ export const measure_bundles = async (
 			}
 			const code = await build_bundle(adapter.bundle_entry(set.langs), external);
 			const path = join(dir, to_bundle_file_name(set.id));
-			writeFileSync(path, code);
+			write_if_changed(path, code);
 			checks.push({ library: adapter.id, langs: [...set.langs], path });
 			by_set[set.id] = BenchBundleEntry.parse({ ...measure_compressed(code), wasm, css });
 		}

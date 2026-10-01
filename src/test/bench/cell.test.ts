@@ -26,7 +26,13 @@ const SNIPPET = 'harness/json/snippet.json';
 const INPUT = manifest.inputs.find((i) => i.lang === 'json' && i.source === 'neutral')!.file;
 const snippet_src = read_corpus_input(manifest.inputs.find((i) => i.file === SNIPPET)!);
 
-const { passes: _, retries: _retries, ...SMOKE_MEASURE } = SMOKE_PARAMS;
+const {
+	passes: _,
+	retries: _retries,
+	startup_samples: _samples,
+	startup_discard: _discard,
+	...SMOKE_MEASURE
+} = SMOKE_PARAMS;
 
 const create_spec = (overrides: Partial<CellSpec> = {}): CellSpec => ({
 	file: SNIPPET,
@@ -71,7 +77,8 @@ const create_stub = (
 			return overrides.html ? overrides.html(src, lang) : HIGHLIGHTED;
 		},
 		bundle_entry: () => '',
-		bundle_html: () => HIGHLIGHTED
+		bundle_html: () => HIGHLIGHTED,
+		bundle_html_source: () => 'null'
 	};
 	return { load: () => Promise.resolve(adapter), log };
 };

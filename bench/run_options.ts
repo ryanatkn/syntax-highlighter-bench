@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
 	BenchMode,
+	BenchRunMetric,
 	BenchSize,
 	BenchSource,
 	bench_run_is_complete,
@@ -39,6 +40,10 @@ export interface RunParams extends MeasureOptions {
 	passes: number;
 	/** How many times a library whose rounds on a cell disagreed is measured again there. */
 	retries: number;
+	/** How many samples each cold-start scenario keeps, each a fresh process. */
+	startup_samples: number;
+	/** How many rounds of cold-start processes run first and are thrown away. */
+	startup_discard: number;
 }
 
 /**
@@ -57,6 +62,11 @@ export interface RunParams extends MeasureOptions {
  *
  * The retries are few: a library-cell that stays disturbed after them says the
  * machine is busy, and measuring it again and again would only hide that.
+ *
+ * A cold-start scenario keeps enough samples for a median and a 10th and 90th
+ * percentile that one slow process can't move. The rounds discarded before them
+ * bring every file a scenario reads into the OS page cache, which a machine
+ * pays once and not at every start.
  */
 export const FULL_PARAMS: Readonly<RunParams> = {
 	passes: 3,
@@ -64,7 +74,9 @@ export const FULL_PARAMS: Readonly<RunParams> = {
 	rounds: 4,
 	target_ms: 20,
 	warmup_ms: 100,
-	rewarm_ms: 300
+	rewarm_ms: 300,
+	startup_samples: 20,
+	startup_discard: 3
 };
 
 /**
@@ -77,7 +89,9 @@ export const SMOKE_PARAMS: Readonly<RunParams> = {
 	rounds: 1,
 	target_ms: 1,
 	warmup_ms: 1,
-	rewarm_ms: 1
+	rewarm_ms: 1,
+	startup_samples: 1,
+	startup_discard: 0
 };
 
 /** Every flag `bench/run.ts` takes, as its help prints them. */
@@ -113,6 +127,11 @@ export const RUN_FLAGS: ReadonlyArray<{ flag: string; value: string | null; desc
 			description: `measure only inputs from these sources (${BenchSource.options.join(', ')})`
 		},
 		{
+			flag: '--metrics',
+			value: '<metrics>',
+			description: `measure only these (${BenchRunMetric.options.join(', ')}): the timed cells, cold start, or by default both`
+		},
+		{
 			flag: '--passes',
 			value: '<n>',
 			description: `how many processes measure each library in a cell (default ${FULL_PARAMS.passes})`
@@ -131,6 +150,11 @@ export const RUN_FLAGS: ReadonlyArray<{ flag: string; value: string | null; desc
 			flag: '--retries',
 			value: '<n>',
 			description: `how many times a library whose rounds on a cell disagreed is measured again there; 0 is never (default ${FULL_PARAMS.retries})`
+		},
+		{
+			flag: '--startup-samples',
+			value: '<n>',
+			description: `how many fresh processes sample each cold-start scenario, after ${FULL_PARAMS.startup_discard} discarded rounds (default ${FULL_PARAMS.startup_samples})`
 		},
 		{
 			flag: '--resume',
@@ -159,7 +183,8 @@ export const format_run_help = (): string =>
 	[
 		'usage: node bench/run.ts [flags]',
 		'',
-		'Measures every cell of the corpus and writes one results file.',
+		'Measures every cell of the corpus and every cold-start scenario, and writes',
+		'one results file.',
 		'Lists are comma-separated ids.',
 		'',
 		...RUN_FLAGS.map(
@@ -189,10 +214,13 @@ export type ParsedRunArgs =
 	| { ok: false; message: string };
 
 /** The flags that take a positive whole number, and the parameter each sets. */
-const NUMERIC_FLAGS: ReadonlyArray<[flag: string, key: 'passes' | 'rounds' | 'target_ms']> = [
+const NUMERIC_FLAGS: ReadonlyArray<
+	[flag: string, key: 'passes' | 'rounds' | 'target_ms' | 'startup_samples']
+> = [
 	['--passes', 'passes'],
 	['--rounds', 'rounds'],
-	['--target-ms', 'target_ms']
+	['--target-ms', 'target_ms'],
+	['--startup-samples', 'startup_samples']
 ];
 
 /** A machine name is part of a file name. */
@@ -231,7 +259,7 @@ export const parse_run_args = (
 		return error('--smoke and --calibrate are different kinds of run: give one');
 	}
 	if (smoke && [...NUMERIC_FLAGS.map(([flag]) => flag), '--retries'].some((f) => values.has(f))) {
-		return error('--smoke sets its own passes, rounds, durations, and retries');
+		return error('--smoke sets its own passes, rounds, durations, retries, and samples');
 	}
 	if (smoke && values.has('--resume')) {
 		return error('--smoke keeps no journal, so there is nothing to resume');
@@ -273,6 +301,18 @@ export const parse_run_args = (
 	if (typeof modes === 'string') return error(modes);
 	const sources = parse_list('--sources', BenchSource.options);
 	if (typeof sources === 'string') return error(sources);
+	const metrics = parse_list('--metrics', BenchRunMetric.options);
+	if (typeof metrics === 'string') return error(metrics);
+	if (kind === 'calibrate' && (metrics?.includes('startup') || values.has('--startup-samples'))) {
+		return error(
+			'--calibrate measures the noise floor of the timed cells, and no cold start: --metrics startup and --startup-samples do not apply'
+		);
+	}
+	if (metrics && !metrics.includes('throughput') && (sizes || modes || sources)) {
+		return error(
+			'--sizes, --modes, and --sources select inputs, and cold start has none: with --metrics startup they select nothing'
+		);
+	}
 
 	const params = { ...(smoke ? SMOKE_PARAMS : FULL_PARAMS) };
 	for (const [flag, key] of NUMERIC_FLAGS) {
@@ -301,7 +341,15 @@ export const parse_run_args = (
 		help: false,
 		options: {
 			kind,
-			filters: { libraries, langs, sizes, modes, sources },
+			filters: {
+				libraries,
+				langs,
+				sizes,
+				modes,
+				sources,
+				// naming every metric restricts nothing, so it is no filter
+				metrics: metrics?.length === BenchRunMetric.options.length ? null : metrics
+			},
 			...params,
 			machine,
 			out: values.get('--out') ?? null,
@@ -310,6 +358,18 @@ export const parse_run_args = (
 		}
 	};
 };
+
+/**
+ * Whether a run measures a metric. A filter can leave either out, and a
+ * calibration measures the timed cells only: its two arms are a property of the
+ * cell method, and cold start has no arms.
+ */
+export const run_measures = (
+	run: { kind: BenchRunKind; filters: Pick<BenchRunFilters, 'metrics'> },
+	metric: BenchRunMetric
+): boolean =>
+	(metric === 'throughput' || run.kind !== 'calibrate') &&
+	(run.filters.metrics?.includes(metric) ?? true);
 
 /** Makes a hostname usable as a machine name. */
 export const to_machine_name = (hostname: string): string => {
@@ -526,3 +586,20 @@ export const estimate_run_ms = (
 			params.warmup_ms +
 			params.rounds * (params.rewarm_ms + params.target_ms))) /
 	concurrency;
+
+/**
+ * What a cold-start process is taken to cost, in milliseconds: starting Node
+ * and loading a library once. A rough figure, for `estimate_startup_ms` only.
+ */
+export const STARTUP_PROCESS_MS = 100;
+
+/**
+ * Estimates how long a run's cold-start processes take. As rough as
+ * `estimate_run_ms`: a library that loads slowly takes several times the figure.
+ *
+ * @param processes - how many cold-start processes the run plans
+ * @param concurrency - how many run at once
+ * @returns milliseconds
+ */
+export const estimate_startup_ms = (processes: number, concurrency: number = 1): number =>
+	(processes * STARTUP_PROCESS_MS) / concurrency;

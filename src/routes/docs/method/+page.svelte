@@ -13,6 +13,7 @@
 npm run bench:calibrate -- --machine <name>  # the noise floor: results/calibration_<name>.json
 npm run bench:smoke                          # everything once, briefly and in parallel
 node bench/run.ts --langs ts --sizes small   # part of a run, to results/scratch/
+node bench/run.ts --metrics startup          # cold start alone, to results/scratch/
 npm run bench -- --machine <name> --plan     # what a run would do, measuring nothing
 npm run bench -- --machine <name> --resume   # continue a run that was stopped
 node bench/run.ts --help`;
@@ -22,14 +23,16 @@ node bench/run.ts --help`;
 	<section>
 		<p>
 			The timed harness measures throughput: how long each library takes to tokenize an input, and
-			to render it as HTML. <code>bench/run.ts</code> runs it and writes one
+			to render it as HTML. It then measures cold start: what a library costs a process before it
+			has highlighted anything. <code>bench/run.ts</code> runs both and writes one
 			<TomeLink slug="results" />. No run has been published, so there are no numbers yet.
 		</p>
 		<p>
 			The method builds on the comparison harness of
 			<a href="https://github.com/pngwn/twinkleplop">twinkleplop</a> (MIT), and the anchor workload
 			is ported from it. It differs in giving each library a process of its own, where twinkleplop
-			measures a cell's libraries together in one.
+			measures a cell's libraries together in one. The cold-start scenarios generalise twinkleplop's
+			cold-start harness across libraries.
 		</p>
 	</section>
 	<TomeSection>
@@ -196,7 +199,182 @@ node bench/run.ts --help`;
 			<code>rss_peak_bytes</code> is a whole process: Node itself, the library as its adapter
 			imports it, with one language set up, and the input. It is not what the library adds to a
 			page, and most of it is the same for every library. Compare it between libraries on the same
-			cell.
+			cell. On a small input it says little about footprint: a process warms up and is timed for a
+			fixed duration, so its peak follows how much the library allocated in that time more than what
+			it holds. The cold-start scenarios below are where memory is compared.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Cold start" />
+		<p>
+			A timed cell measures a library that is already loaded and warm. Cold start measures the other
+			end: a fresh Node process that loads the library and does one thing, once. Each sample is one
+			process, and each <DeclarationLink name="BenchStartup" /> entry is a scenario:
+		</p>
+		<table>
+			<thead>
+				<tr>
+					<th>scenario</th>
+					<th>what the process does</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>bare</code></td>
+					<td>nothing: the Node baseline, with no library, which every other time includes</td>
+				</tr>
+				<tr>
+					<td><code>core</code></td>
+					<td>imports the library with no language</td>
+				</tr>
+				<tr>
+					<td><code>lang</code></td>
+					<td>imports the library with one language, for each timed language it claims</td>
+				</tr>
+				<tr>
+					<td><code>set</code></td>
+					<td>
+						imports the library with the languages of the <code>docs</code> feature set: what a
+						documentation site loads
+					</td>
+				</tr>
+				<tr>
+					<td><code>first_highlight</code></td>
+					<td>
+						imports the library with one language and highlights that language's harness snippet
+						once, to HTML: the time to a first highlight, for each timed language it claims
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			<strong>What is imported</strong> is the module the adapter's <code>bundle_entry</code> writes
+			for a feature set (<code>core</code>, <code>single:&lt;lang&gt;</code>, <code>docs</code>):
+			the same module bundle size is measured over, so a time and a size describe one thing. The
+			adapter modules themselves are never loaded here. Some of them import every language, which
+			would charge a library for languages the scenario doesn't load. A first highlight makes the
+			call the adapter documents for that module (<code>bundle_html_source</code>), and the check of
+			every built bundle proves it is the call <code>bundle_html</code> makes.
+		</p>
+		<p><strong>Two forms</strong> of every scenario, apart from <code>bare</code>:</p>
+		<ul>
+			<li>
+				<code>bundled</code> — the built chunk whose size <TomeLink slug="deterministic" /> reports,
+				imported as one file. A library's wasm import stays outside its bundle, as it does for the
+				size, so that one module still loads from the package.
+			</li>
+			<li>
+				unbundled — the same module's source, written to a file under
+				<code>node_modules/.cache/</code> in the checkout and imported from there. Node resolves
+				each package from the checkout's <code>node_modules</code> and loads every file the library
+				reaches, as a consumer without a bundler does.
+			</li>
+		</ul>
+		<p>
+			The gap between the two is mostly Node finding, reading, and compiling many files in place of
+			one, which a browser or a bundled server never pays. Read the form that matches how the
+			library would be shipped.
+		</p>
+		<p>
+			<strong>Start is the start of the process, by its own clock.</strong> The process reads
+			<code>performance.now()</code> once, when its work is done, and Node counts that from the
+			moment the process began. So a time includes Node itself starting up, and leaves out what
+			happens outside the process: the parent creating it, the OS loading the Node binary, and the
+			exit. A clock in the parent would add those, with their own variance. The <code>bare</code>
+			scenario is the same process with nothing imported, so a scenario's time less
+			<code>bare</code>'s is what the library added.
+		</p>
+		<p>
+			<strong>The process is a consumer's.</strong> It runs a generated module holding the import,
+			the one call of a first highlight, and a few lines that report, with no harness code and no
+			flags: no <code>--expose-gc</code>, which only the timed cells use. The source a first
+			highlight is given is a literal in that module, so no file is read inside the clock, and one
+			character of the HTML is read before the clock stops, as the timed cells do, so a string the
+			engine hasn't joined up is paid for.
+		</p>
+		<p>
+			<strong>The compile cache is off.</strong> V8 can keep compiled code on disk between
+			processes, and Node uses that only when asked. A second process would then skip compiling what
+			it loads, and would not be cold. Every cold-start process runs with
+			<code>NODE_DISABLE_COMPILE_CACHE=1</code> and without <code>NODE_COMPILE_CACHE</code>, each
+			sample reports that no cache directory is in use, and <code>startup_compile_cache</code> in
+			<DeclarationLink name="BenchRun" /> records it.
+		</p>
+		<p>
+			<strong>Interleaved rounds.</strong> A round runs every scenario once, one process at a time,
+			with the parent blocked on each. The scenarios that differ only in the library run one after
+			another, and the library that goes first rotates from round to round and from scenario to
+			scenario. Because every round holds every scenario, a machine that slows down partway slows a
+			sample of each of them, and not the scenarios that happened to come last.
+		</p>
+		<p>
+			<strong>The first rounds are discarded.</strong> They bring every file a scenario reads into
+			the OS page cache, which a machine pays once and not at every start. A full run keeps 20
+			samples of each scenario, after 3 discarded rounds.
+		</p>
+		<p>
+			<strong>Each scenario is checked by its first process.</strong> The import has to work and the
+			module has to export something, and a first highlight's HTML has to pass the same check on the
+			harness snippet that a timed cell applies. A library that fails is recorded in
+			<code>startup_excluded</code> with the reason, and has no number there: this is how a library
+			that can't be imported outside a bundler would show. A process that was ended, by a signal or
+			an abort, did not fail on its own: that fails the run, which can be resumed, and excludes
+			nothing. A scenario over languages a library doesn't claim is unsupported, and is never run.
+			Every later sample must agree with the first, and a first highlight's HTML must be the size
+			the deterministic results have for that library on that snippet.
+		</p>
+		<table>
+			<thead>
+				<tr>
+					<th>number</th>
+					<th>meaning</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>samples</code></td>
+					<td>how many processes were kept</td>
+				</tr>
+				<tr>
+					<td><code>median_ms</code></td>
+					<td>the median across them, in milliseconds since the process started</td>
+				</tr>
+				<tr>
+					<td><code>p10_ms</code>, <code>p90_ms</code></td>
+					<td>the 10th and 90th percentile</td>
+				</tr>
+				<tr>
+					<td><code>spread</code></td>
+					<td>
+						the slowest sample over the fastest. A process start has a long slow tail, so this is
+						wider than a cell's, and the percentiles say more
+					</td>
+				</tr>
+				<tr>
+					<td><code>rss_peak_bytes</code></td>
+					<td>the median peak resident size of those processes, read when the clock stopped</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			<strong>Memory.</strong> A cold-start process has loaded the library and done nothing else, so
+			its peak resident size is closer to a footprint than a timed cell's. It is still a whole
+			process, most of it Node: subtract the <code>bare</code> entry's. What is left is the code and
+			data the library loaded, and for a first highlight what one call allocated, at the sizes the
+			engine chose for a process of that age.
+		</p>
+		<p>
+			<strong>Nothing is retried.</strong> A disturbance lands on one sample of every scenario, not
+			on one scenario, and the median over many processes sets a slow one aside. Sampling one
+			scenario again later would also take it out of the rounds that make the scenarios comparable.
+			There is no noise floor for cold start either: a calibration measures the timed cells only.
+			Until one exists, treat a difference between two scenarios that is inside either one's
+			<code>p10_ms</code> to <code>p90_ms</code> band as no difference.
+		</p>
+		<p>
+			<strong>Part of the run.</strong> The cold-start processes follow the cells in the same run:
+			under the same machine lock, between the same anchor readings, in the same journal, and
+			written to the same results file. A smoke run takes one sample of every scenario.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -209,14 +387,18 @@ node bench/run.ts --help`;
 			<li>
 				<code>full</code> — the real measurement. Only a full run with no filters is publishable,
 				and such a file must be whole: every library has a number or an exclusion in every cell
-				whose language it claims.
+				whose language it claims, and in every cold-start scenario it supports, in both forms.
 			</li>
 			<li>
 				<code>smoke</code> — every library on every cell, in one process each, for one round of the
-				shortest batches, with several processes running at a time. It proves the harness and every
-				adapter work, and its numbers mean nothing.
+				shortest batches, then one sample of every cold-start scenario, with several processes
+				running at a time. It proves the harness and every adapter work, and its numbers mean
+				nothing.
 			</li>
-			<li><code>calibrate</code> — measures the machine's noise floor, described below.</li>
+			<li>
+				<code>calibrate</code> — measures the machine's noise floor, described below. It measures
+				the cells only, and no cold start.
+			</li>
 		</ul>
 		<Code lang="bash" content={commands} />
 		<table>
@@ -241,7 +423,16 @@ node bench/run.ts --help`;
 						<code>--modes</code>, <code>--sources</code>
 					</td>
 					<td>
-						measure only these, as comma-separated ids. An unknown id is an error, not an empty run
+						measure only these, as comma-separated ids. An unknown id is an error, not an empty run.
+						<code>--libraries</code> and <code>--langs</code> narrow the cold-start scenarios too;
+						the other three select inputs, which cold start has none of
+					</td>
+				</tr>
+				<tr>
+					<td><code>--metrics</code></td>
+					<td>
+						measure only <code>throughput</code> (the timed cells) or only <code>startup</code>
+						(cold start). Both by default
 					</td>
 				</tr>
 				<tr>
@@ -256,6 +447,12 @@ node bench/run.ts --help`;
 					<td>
 						how many times a library whose rounds on a cell disagreed is measured again there. 0
 						turns it off
+					</td>
+				</tr>
+				<tr>
+					<td><code>--startup-samples</code></td>
+					<td>
+						how many fresh processes sample each cold-start scenario, after the discarded rounds
 					</td>
 				</tr>
 				<tr>
@@ -294,7 +491,8 @@ node bench/run.ts --help`;
 		</p>
 		<p>
 			<code>--plan</code> makes every check a run makes before it measures, then prints the cells,
-			libraries, and processes, the parameters, where the results and the journal would go, and an
+			libraries, and processes, the cold-start scenarios with the processes they add and any a
+			library is unsupported for, the parameters, where the results and the journal would go, and an
 			estimate of the time, worked out from the parameters and not measured. It is refused where the
 			run would be.
 		</p>
@@ -302,18 +500,18 @@ node bench/run.ts --help`;
 	<TomeSection>
 		<TomeSectionHeader text="Stopping and resuming" />
 		<p>
-			A full run is one process for each library, pass, and cell, one at a time, so it is long, and
-			a calibration is twice as long. A timed run keeps a journal beside its results file: each
-			process's result is appended and synced to disk before the next process starts. The parent
-			writes only between processes, never while one is measuring. When a run stops, whether by a
-			signal, a failed process, or a crash, the journal stays, and <code>--resume</code> continues
-			the run from it.
+			A full run is one process for each library, pass, and cell, then one for each sample of each
+			cold-start scenario, one at a time, so it is long, and a calibration's cells take twice as
+			long. A timed run keeps a journal beside its results file: each process's result is appended
+			and synced to disk before the next process starts. The parent writes only between processes,
+			never while one is measuring. When a run stops, whether by a signal, a failed process, or a
+			crash, the journal stays, and <code>--resume</code> continues the run from it.
 		</p>
 		<ul>
 			<li>
 				<strong>What is recorded.</strong> A first line describing the run, then for each stretch of
-				measuring, a segment, its opening anchor reading, one line for every process result, and its
-				closing anchor reading.
+				measuring, a segment, its opening anchor reading, one line for every process result, a
+				cell's or a cold-start sample's, and its closing anchor reading.
 			</li>
 			<li>
 				<strong>What must match.</strong> The kind of run, its parameters and filters, the corpus
@@ -380,7 +578,7 @@ node bench/run.ts --help`;
 			whether the library passed the check, must agree across attempts as it must across passes, or
 			the run fails at that cell.
 		</p>
-		<p>A smoke run doesn't retry.</p>
+		<p>A smoke run doesn't retry, and cold-start scenarios are never retried.</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="The noise floor" />
@@ -469,8 +667,19 @@ node bench/run.ts --help`;
 				timed through its synchronous core.
 			</li>
 			<li>
-				<strong>Steady state.</strong> Every library is warm when it is timed. What a first call
-				costs is cold start, which is a separate measurement and not built.
+				<strong>Steady state.</strong> In a cell, every library is warm when it is timed. What a
+				first call costs is in the cold-start scenarios.
+			</li>
+			<li>
+				<strong>Cold start is Node's.</strong> A cold-start time is a Node process on one machine,
+				with the files already in the page cache. A browser parses and compiles differently, and
+				fetches over a network, where the bundle sizes matter instead.
+			</li>
+			<li>
+				<strong>Unbundled depends on the install.</strong> The unbundled form loads the files a
+				package manager laid out, so its time moves with the number of files a library ships and how
+				deep they sit. It says what that library costs a Node process without a bundler, and nothing
+				about a page.
 			</li>
 			<li>
 				<strong>Forced collections.</strong> Every batch follows a forced collection and a rewarm,
@@ -491,16 +700,17 @@ node bench/run.ts --help`;
 			versions, and the command for the kind of run measures it again. The deterministic numbers
 			come out the same anywhere, and a run stops if one of its processes disagrees with the
 			committed <TomeLink slug="deterministic" />. A full run with no filters is refused unless that
-			file describes it, so run the smoke run first: it checks every cell against the file in about
-			a minute, before a long run can stop on a disagreement. The timed ones depend on the machine,
-			so compare the ratios between libraries rather than the times.
+			file describes it, so run the smoke run first: it checks every cell and every first highlight
+			against the file in a minute or two, before a long run can stop on a disagreement. The timed
+			ones depend on the machine, so compare the ratios between libraries rather than the times.
 		</p>
 		<p>
 			A quiet machine matters more than a fast one: close other programs, and prefer a fixed CPU
 			frequency governor. Before trusting a run, check that its anchor is stable, that
 			<code>spread</code> is near 1 for every library in every cell, and that nothing unexpected is
-			excluded. <code>bench/run.ts</code> prints all three when it finishes, with how many
-			library-cells were retried and whether the run was resumed.
+			excluded, from a cell or from a cold-start scenario. <code>bench/run.ts</code> prints all
+			three when it finishes, with how many library-cells were retried and whether the run was
+			resumed.
 		</p>
 	</TomeSection>
 </TomeContent>

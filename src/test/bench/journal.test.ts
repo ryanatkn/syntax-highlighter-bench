@@ -12,6 +12,7 @@ import {
 	parse_journal,
 	read_journal,
 	to_journal_key,
+	to_startup_journal_key,
 	type JournalEntry
 } from '../../../bench/journal.ts';
 
@@ -38,7 +39,16 @@ const HEADER: JournalHeader = {
 	warmup_ms: 100,
 	rewarm_ms: 100,
 	retries: 2,
-	filters: { libraries: null, langs: ['ts'], sizes: null, modes: null, sources: null },
+	startup_samples: 20,
+	startup_discard: 3,
+	filters: {
+		libraries: null,
+		langs: ['ts'],
+		sizes: null,
+		modes: null,
+		sources: null,
+		metrics: null
+	},
 	corpus_hash: 'a'.repeat(64),
 	libraries: [
 		{ id: 'fuz_code', version: '1.0.0' },
@@ -85,7 +95,57 @@ const read_ok = () => {
 	return journal;
 };
 
+const startup_entry = (at_ms: number, key: string, round: number): JournalEntry => ({
+	type: 'startup',
+	at_ms,
+	round,
+	result: {
+		key,
+		sample: { ms: 30 + round, rss_peak_bytes: 50_000_000, output: null },
+		excluded: null
+	}
+});
+
 describe('a journal', () => {
+	test('keeps the cold-start samples beside the cells’ results, by scenario and round', () => {
+		const excluded: JournalEntry = {
+			type: 'startup',
+			at_ms: 2600,
+			round: 0,
+			result: { key: 'prism:set:docs:unbundled', sample: null, excluded: 'the process failed' }
+		};
+		write_journal([
+			{ type: 'segment', at_ms: 300, anchor_ns: 1000 },
+			result_entry(900, 'fuz_code', 0),
+			startup_entry(2000, 'bare', 0),
+			startup_entry(2100, 'fuz_code:core:bundled', 0),
+			excluded,
+			startup_entry(2900, 'bare', 1)
+		]);
+		const journal = read_ok();
+		assert.strictEqual(journal.results.size, 1);
+		assert.deepStrictEqual(
+			[...journal.startup.keys()],
+			[
+				to_startup_journal_key('bare', 0),
+				to_startup_journal_key('fuz_code:core:bundled', 0),
+				to_startup_journal_key('prism:set:docs:unbundled', 0),
+				to_startup_journal_key('bare', 1)
+			]
+		);
+		assert.deepStrictEqual(
+			journal.startup.get(to_startup_journal_key('prism:set:docs:unbundled', 0)),
+			excluded.type === 'startup' ? excluded.result : null
+		);
+		assert.strictEqual(journal.startup.get(to_startup_journal_key('bare', 1))!.sample!.ms, 31);
+		assert.strictEqual(journal.duration_ms, 2900);
+		// a scenario's sample of a round is there once
+		appendFileSync(path, JSON.stringify(startup_entry(3000, 'bare', 1)) + '\n');
+		const repeated = read_journal(path);
+		assert.ok(!repeated.ok);
+		assert.match(repeated.message, /line 8 repeats a result/);
+	});
+
 	test('round-trips its header, results, readings, segments, and duration', () => {
 		const excluded: CellResult = {
 			...create_result('prism'),
@@ -250,6 +310,9 @@ describe('diff_journal_header', () => {
 			['machine.name', { ...HEADER, machine: { ...HEADER.machine, name: 'other' } }],
 			['machine.cpu', { ...HEADER, machine: { ...HEADER.machine, cpu: 'Other CPU' } }],
 			['machine.governor', { ...HEADER, machine: { ...HEADER.machine, governor: null } }],
+			['startup_samples', { ...HEADER, startup_samples: 30 }],
+			['startup_discard', { ...HEADER, startup_discard: 0 }],
+			['filters.metrics', { ...HEADER, filters: { ...HEADER.filters, metrics: ['startup'] } }],
 			['os_release', { ...HEADER, os_release: '6.2.0' }],
 			['node', { ...HEADER, node: 'v26.0.0' }],
 			['node_options', { ...HEADER, node_options: '--max-old-space-size=4096' }],

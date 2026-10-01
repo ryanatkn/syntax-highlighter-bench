@@ -22,11 +22,12 @@ gro sync      # regenerate files and run svelte-kit sync
 gro format 'bench/**/*' # format the harness (plain `gro format` covers `src/`)
 npm run corpus:check    # the corpus manifest matches the files and their pins
 npm run corpus:manifest # regenerate the manifest and the inputs table
-npm run bench:smoke     # every library on every cell once, in parallel
+npm run bench:smoke     # every library on every cell and cold-start scenario once, in parallel
 npm run bench -- --machine <name>           # a full timed run, written to results/
 npm run bench:calibrate -- --machine <name> # the machine's noise floor
 node bench/run.ts --machine <name> --plan   # what a run would do, measuring nothing
 node bench/run.ts --machine <name> --resume # continue a timed run that was stopped
+node bench/run.ts --metrics startup --libraries prism --langs json --startup-samples 2 # a small cold-start run, to results/scratch/
 npm run bench:deterministic             # regenerate results/deterministic.json
 npm run bench:deterministic -- --check  # fail if the committed file differs from what regenerates
 ```
@@ -38,9 +39,9 @@ dev server.
 
 Built: the adapter contract and the adapters, the roster, the output check,
 the corpus and its manifest, the language ids, the feature sets, the results
-schema, the timed harness, the deterministic metrics (bundle size, token
-counts, output sizes, coverage) with their committed results file, and the docs
-that describe them. Everything under "Planned" below is design, not code. No
+schema, the timed harness with its cold-start scenarios, the deterministic
+metrics (bundle size, token counts, output sizes, coverage) with their
+committed results file, and the docs that describe them. Everything under "Planned" below is design, not code. No
 timed run is committed and no timed numbers are published. The committed
 `results/deterministic.json` is data: never put a measured number in the docs.
 
@@ -62,6 +63,7 @@ bench/                       the Node harness; never imported by the site
   run.ts                     CLI: a timed run — spawns the processes, assembles and writes the results file
   run_options.ts             a run's flags, parameters, cell and process plan, and output path (pure)
   cell.ts                    one library on one cell, in a process of its own: setup, output check, measurement
+  coldstart.ts               cold start: the scenarios, the generated process of one sample, its check, the stats
   journal.ts                 the journal of a timed run: header, entries, read, append, header diff
   measure.ts                 the timing engine: calibration, collections, timed batches, pooled stats
   anchor.ts                  the reference workload that detects machine drift
@@ -81,8 +83,8 @@ src/test/                    vitest tests; `bench/` mirrors the harness
   fixtures/results/          a fixture results file with invented numbers
 ```
 
-Planned additions: the cold-start measurement, committed timed runs in
-`results/`, and the results pages under `src/routes/`.
+Planned additions: committed timed runs in `results/`, and the results pages
+under `src/routes/`.
 
 ## The harness runs on Node directly
 
@@ -120,7 +122,10 @@ Adding a language is one line there.
 - **Timed** ids are the ones every library in the starting roster supports, so
   a timed cell is never missing a library by design.
 - **Untimed** ids (`xml`) are named by the coverage matrix and feature sets
-  only. twinkleplop has no XML language; the other adapters claim it.
+  only. twinkleplop has no XML language; the other adapters claim it. A
+  cold-start `lang` or `first_highlight` entry names a timed language (the
+  schema rejects an untimed one); a `set` entry names a feature set, which may
+  hold an untimed language.
 
 **One source of truth.** The results schema does not enumerate language ids.
 A results file carries its own `langs` roster, the schema checks every language
@@ -141,6 +146,12 @@ end:
 Neither is ever a zero or a geomean input. The schema rejects numbers for an
 unclaimed language, numbers for an excluded library, an excluded entry for
 an unclaimed language, and a cell for an untimed language.
+
+Cold start keeps the same two apart. **Unsupported**: the library doesn't claim
+a language of the scenario, so the scenario is never planned and has no entry
+anywhere (`plan_startup_scenarios` names it, and `--plan` prints it).
+**Excluded**: the scenario's first process failed its check, so it has an entry
+in `meta.startup_excluded` with the reason and none in `startup`.
 
 Library and language ids are lowercase names (`[a-z][a-z0-9_]*`), enforced by
 the schema, so they are safe as record keys and path segments.
@@ -171,7 +182,7 @@ Two classes of number, kept apart:
 
 | class             | where                                                       |
 | ----------------- | ----------------------------------------------------------- |
-| machine-dependent | each cell's `values` (timing, memory); the `startup` section |
+| machine-dependent | each cell's `values` (timing, memory); the `startup` section (cold start: time and memory) |
 | deterministic     | each cell's `tokens` and `output`; `bundle`; `coverage`     |
 
 A cell states each deterministic number once for its input, on the cell whose
@@ -191,15 +202,18 @@ exactly when `bundle` is not empty.
 `startup`, `bundle`, and `cells` may be empty, `meta.noise_floor` is null
 until the machine is calibrated, and `meta.anchor` may be null only when the run
 timed nothing (no cell `values`, no `startup`). `meta.run` (`BenchRun`) says
-how the timed cells were measured — the kind of run (`full`, `smoke`,
+how the timed numbers were measured — the kind of run (`full`, `smoke`,
 `calibrate`), passes, rounds and durations, the retries allowed, the
-loaded-language rule, the filters, how many segments it was measured in, and
-the duration — and may be null only when no cell has `values`.
-`bench_run_is_complete` is a run that isn't smoke and has no filter: what it
-set out to cover. `bench_results_find_gaps` lists what a file lacks to have
-covered it, and `BenchResults` rejects a complete run with timed cells that has
-a gap. `bench_results_is_publishable` adds that it is `full`, has no gap, its
-anchor is stable, and its commit isn't dirty. The site should use the latter
+loaded-language rule, how cold start was sampled (`startup_samples`,
+`startup_discard`, `startup_compile_cache`), the filters, how many segments
+it was measured in, and the duration — and may be null only when nothing was
+timed. `bench_run_is_complete` is a run that isn't smoke and has no filter:
+what it set out to cover. `bench_results_find_gaps` lists what a file's cells
+lack to have covered it, and `bench_results_find_startup_gaps` what its cold
+start lacks; `BenchResults` rejects a complete run with a cell gap, and a
+complete `full` run with a cold-start gap. `bench_results_is_publishable` adds
+that it is `full`, has neither gap, its anchor is stable, and its commit isn't
+dirty. The site should use the latter
 and never restate it. `meta.commit` is a full hash, with `-dirty` appended when
 the working tree had uncommitted changes.
 
@@ -211,6 +225,23 @@ harness doesn't make earlier files unparseable. What the file can't show is an
 input missing altogether, or a whole mode: `inputs` lists what was measured,
 and only `corpus_hash` names the corpus. The harness plans from the manifest,
 so its own runs have neither.
+
+A cold-start gap, also from the file alone: the `bare` baseline, and for each
+roster library in each form `core`, `lang` and `first_highlight` for every
+timed language it claims, and `set` for every feature set the file's cold start
+names whose languages it all claims, each with an entry in `startup` or in
+`meta.startup_excluded`. The sets come from the file, as the modes do, which is
+its limit: a file with every `set` entry removed names no set and still reads
+as complete. A calibration measures no cold start, and the schema rejects one
+that has any. `startup_samples`, `startup_discard`, and `startup_compile_cache`
+are null exactly when the run measured no cold start (a calibration, or
+`--metrics throughput`).
+
+`filters.metrics` (`BenchRunMetric`: `throughput`, `startup`) is a filter like
+the others (naming both parses to null, so it is no filter): a run that left one out is not complete, is written to
+`results/scratch/`, and must hold nothing of what it left out. `libraries` and
+`langs` narrow the cold-start scenarios too; `sizes`, `modes`, and `sources`
+select inputs, which cold start has none of.
 
 A cell value's `attempts` is how many times the library was measured there (1
 unless retried), and is at most `meta.run.retries + 1`. The value's spread and
@@ -249,7 +280,11 @@ the sections agree with each other:
   exactly a drift under `BENCH_ANCHOR_STABLE_BELOW`, which lives in the schema
   so the harness and the check can't disagree
 - each `startup` entry carries the fields its scenario needs and no others, for
-  languages the library claims, and appears once
+  languages the library claims, and appears once, as a number or as a
+  `meta.startup_excluded` entry and never both (one key set covers the two
+  lists); a scenario of one language names a timed one; every entry keeps
+  exactly `meta.run.startup_samples` samples; `median_ms` lies between `p10_ms`
+  and `p90_ms`
 
 `BenchBundleEntry` is a union with an error of its own: an entry with an
 `unsupported` key is reported against that shape and anything else against the
@@ -280,6 +315,7 @@ a library is a devDependency, a directory, and one roster line.
 | `html(src, lang)` | the timed HTML-out call |
 | `bundle_entry(langs)` | source of a module importing exactly these languages |
 | `bundle_html(exports, src, lang)` | highlights through the exports of a module built from `bundle_entry`; never timed |
+| `bundle_html_source(lang)` | the call `bundle_html` makes, as an expression over `exports` and `src`: what a cold-start process runs, since it can't load the adapter |
 
 The rules, stated in the module's doc comment and enforced by
 `src/test/bench/adapters.test.ts`:
@@ -423,10 +459,13 @@ each set of `FEATURE_SETS`:
   default theme covers. A stylesheet with a light and a dark palette is larger
   than one with one, so the site must show it beside the stylesheet sizes.
 - Each bundle is written to
-  `node_modules/.cache/syntax-highlighter-bench/bundles/<library>/<set>.js` and
+  `node_modules/.cache/syntax-highlighter-bench/bundles/<library>/<set>.mjs`
+  (`.mjs`, since nothing above that directory says what a `.js` file is, and
+  Node would have to detect the format by compiling it) and
   `bench/bundle_check.ts` imports it in a process of its own and calls
   `adapter.bundle_html` for each language of the set on its harness snippet,
-  requiring `MIN_SNIPPET_SPAN_KINDS`. For a `single:<lang>` bundle it then
+  requiring `MIN_SNIPPET_SPAN_KINDS`, and that evaluating
+  `adapter.bundle_html_source` returns the same HTML. For a `single:<lang>` bundle it then
   calls `adapter.setup([lang])` and requires the bundle's HTML to equal
   `adapter.html`: the floor alone passes a language that lost what it embeds
   (HTML with the markup lexer only), which is a much smaller bundle. Sets of
@@ -488,11 +527,13 @@ committed file against every real process.
 
 Tests use a results directory of their own. `src/test/bench/run.spawn.test.ts`
 runs its small smoke run against the committed file, and
-`src/test/bench/sizes.test.ts` holds the only tests that run a real build.
+`src/test/bench/sizes.test.ts` and the `prepare_startup` tests in
+`src/test/bench/coldstart.test.ts` hold the only tests that run a real build.
 
 **CI** (`.github/workflows/check.yml`): one job on the pinned Node version runs
-`gro check`, `npm run bench:smoke`, and `npm run bench:deterministic --
---check`. Nothing after `npm ci` needs the network or a checkout of the corpus
+`gro check`, `npm run bench:deterministic -- --check`, and `npm run
+bench:smoke`, in that order so the smoke run's cold start finds the bundles
+built. Nothing after `npm ci` needs the network or a checkout of the corpus
 sources.
 
 ## Timed harness
@@ -537,6 +578,9 @@ memory is that library's too. Never import `bench/libraries.ts` from
 4. One `CellResult` printed as JSON on stdout, and nothing else: the rounds'
    times, the iterations, the token count and output size, and the process's
    peak resident size (`process.resourceUsage().maxRSS`, which is in kilobytes).
+   On a small input that peak follows what the warmup and the batches allocated
+   more than what the library holds, so the docs point readers at the
+   cold-start entries for memory.
 
 **The timed call** (`create_timed_call`) is the same for every library. In
 `html` mode it reads one character of the returned string. fuz_code,
@@ -621,9 +665,10 @@ the engine is tested with a fake clock; `create_measure_deps` throws without
   nothing), the signal's code when interrupted (`SIGNAL_EXIT`), and 1
   otherwise.
 - `RunBenchOptions` lets tests pass a lock path, a results directory, a logger,
-  and for a timed run `spawn_cell` and `measure_anchor`, so the journal, resume,
-  and retry paths are tested end to end with invented process results
-  (`src/test/bench/run.journal.test.ts`).
+  `prepare_startup`, and for a timed run `spawn_cell`, `spawn_startup`, and
+  `measure_anchor`, so the journal, resume, and retry paths are tested end to
+  end with invented process results (`src/test/bench/run.journal.test.ts`, and
+  `src/test/bench/run.startup.test.ts` for cold start).
 
 **The journal and `--resume`** (`bench/journal.ts`, `measure_segment` in
 `bench/run.ts`). A timed run appends each process's result to a JSON-lines file
@@ -631,8 +676,8 @@ beside its output (`to_journal_path`: `<out>.journal.jsonl`, or
 `<kind>_<machine>.journal.jsonl` in the results directory, which carries no
 date so a run resumed on a later day finds it). Smoke runs keep none.
 
-- The first line is a `JournalHeader`: the kind, the parameters with retries,
-  the filters, the corpus hash, each library's id, version, and extra packages,
+- The first line is a `JournalHeader`: the kind, the parameters with retries
+  and the cold-start samples and discarded rounds, the filters, the corpus hash, each library's id, version, and extra packages,
   the machine's name, CPU, and governor, the OS release, the Node version, the
   `NODE_OPTIONS` the processes inherit, the commit with its dirty marker, and
   `generated_at`. Two dirty trees at one commit look the same to it, so a resume
@@ -641,8 +686,9 @@ date so a run resumed on a later day finds it). Smoke runs keep none.
   field there whenever something new can change what is measured; a test fails
   if a header field goes uncompared.
 - Then, for each segment (one stretch of measuring): a `segment` line with the
-  opening anchor reading, a `result` line per process (pass, attempt, the
-  `CellResult`), and an `anchor` line with the closing reading. Every line
+  opening anchor reading, a `result` line per cell process (pass, attempt, the
+  `CellResult`), a `startup` line per cold-start process (round, the
+  `StartupResult`), and an `anchor` line with the closing reading. Every line
   carries milliseconds since its segment started, so duration survives a stop.
 - A line is one `appendFileSync` plus `fsyncSync`, between processes only. A result
   is journaled after it passes the agreement check, so a disagreeing result is
@@ -676,6 +722,76 @@ retried numbers toward fast and favour whichever library is noisier. `attempts`
 on the value says how many there were, and the summary counts them for each
 library. Retries are journaled like any result, with their attempt number.
 Smoke runs don't retry.
+
+**Cold start** (`bench/coldstart.ts`, with the processes run by `bench/run.ts`).
+The scenario set and method generalise twinkleplop's cold-start harness (MIT,
+credited in the README and the module's doc comment).
+
+- **A sample is one fresh Node process**, and a scenario is what it does:
+  `bare` (nothing), `core` (import the `core` set's entry), `lang` (import
+  `single:<lang>`, per timed language claimed), `set` (import `docs`,
+  `STARTUP_SET_ID`), `first_highlight` (import `single:<lang>` and highlight
+  the language's harness snippet once). `plan_startup_scenarios` lists them
+  with what each library doesn't support.
+- **Through `bundle_entry`, never the adapter modules**: the fuz_code and
+  twinkleplop adapters import every language statically, which would charge a
+  library for languages the scenario doesn't load. So a first highlight can't
+  call `adapter.bundle_html`; it runs `adapter.bundle_html_source(lang)`, which
+  the bundle check ties to `bundle_html`.
+- **Two forms.** `bundled` imports the chunk in the bundles cache, the one whose
+  size the deterministic file reports. Unbundled imports
+  `adapter.bundle_entry(langs)` written verbatim to
+  `node_modules/.cache/syntax-highlighter-bench/startup/<library>/<set>.entry.mjs`,
+  so its bare specifiers resolve from this repo's `node_modules`.
+- **`prepare_startup`** writes everything before any process starts, under the
+  machine lock: each scenario's module (`to_startup_child_source`), the
+  unbundled entries, and any bundle that is missing or isn't the size the
+  carried deterministic file reports (raw and gzip), built with the same
+  `build_bundle`. A bundle that still differs after building stops the run with
+  exit 2. Without a carried file every bundle is rebuilt, since nothing says a
+  cached one is this tree's. Files are written only when their content changes,
+  and by rename, so a run in progress never reads half a file.
+- **The process** is the generated module, run with no flags
+  (`spawn_startup_sync`): a static import of the entry, for a first highlight
+  the call on a source embedded as a literal and one character of the HTML
+  read, then `performance.now()`, which counts from the process's start. After
+  the clock it reads `maxRSS` (before touching stdout, which loads stream
+  modules) and prints one `StartupChildOutput`. Never add harness imports,
+  flags, or work before the clock to it: `bare` is that module with no import,
+  and is what a reader subtracts.
+- **Compile cache off**: `to_startup_env` sets `NODE_DISABLE_COMPILE_CACHE=1`
+  and drops `NODE_COMPILE_CACHE`. Node enables the cache only when asked, and
+  the variable refuses `module.enableCompileCache()` too. Every sample reports
+  `getCompileCacheDir()`, and a non-null one is a `RunError`.
+- **Rounds** (`plan_startup_round`, `run_startup_in_turn`): every scenario once
+  a round, slot by slot (a slot is the libraries of one scenario and form), the
+  library a slot starts with rotating by round and by slot; `startup_discard`
+  rounds thrown away, then `startup_samples` kept (`FULL_PARAMS`; a smoke run
+  takes one sample and discards none, several processes at a time).
+- **The check** (`read_startup_result`, `check_startup_output`,
+  `create_startup_check`): a scenario's first process decides. A process that
+  fails on its own, an entry with no exports, or a first highlight under
+  `MIN_SNIPPET_SPAN_KINDS` excludes the library from the scenario, which is
+  then not run again; `bare` failing is a `RunError`, and so is any process
+  ended by a signal or an exit code past 128 (killed, crashed, the heap limit's
+  abort): the machine ended it, so the run fails and stays resumable, and the
+  scenario is never dropped. A first highlight's HTML
+  size must equal the deterministic file's for the library on that snippet
+  (exit 2 otherwise), and every later sample must be a sample of the same HTML.
+- **No retries**, deliberately: a disturbance lands on one sample of every
+  scenario, the median sets it aside, and re-sampling one scenario later would
+  take it out of the interleaving. **No noise floor** either: a calibration
+  plans no cold start (`run_measures`).
+- **In the run**: after the cells, in the same segment — same lock, same anchor
+  bracket, journaled as `startup` lines keyed by scenario and round, replayed
+  on `--resume` like cell results, and assembled by `to_startup_entries` into
+  `startup` and `meta.startup_excluded`. `--metrics` leaves either part out,
+  and `--plan` prints the scenarios, the processes they add, and the estimate
+  (`estimate_startup_ms`).
+- **Numbers** (`summarize_startup`): `median_ms`, `p10_ms`, `p90_ms`, `spread`
+  (slowest over fastest, wide by nature here), `samples`, and `rss_peak_bytes`
+  as the median of the processes' peaks. `maxRSS` is kilobytes on Linux, which
+  is the only platform checked.
 
 **Kinds of run and where they are written** (`to_results_path`):
 
@@ -734,9 +850,8 @@ run through the `spawn_cell` seam.
 ## Planned
 
 Timed numbers are published from one named machine; deterministic numbers
-regenerate anywhere.
-
-**Cold start**, from a bare import through to the first highlight.
+regenerate anywhere. The results pages render a results file, cold start
+included.
 
 ## Neutrality
 
@@ -763,5 +878,5 @@ the committed sizes.
 - tsv (`gro format`) with tabs, 100 char width
 - Node >= 24.14
 - Tests in `src/test/`, vitest with `assert`; `src/test/bench/run.spawn.test.ts`
-  holds the tests that start real processes
+  holds the tests that start real processes, the cold-start ones included
 - Private package (not published to npm)

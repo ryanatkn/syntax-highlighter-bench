@@ -94,6 +94,7 @@ export const build_deterministic_results = async (
 			anchor: null,
 			libraries: to_bench_libraries(adapters),
 			excluded,
+			startup_excluded: [],
 			noise_floor: null,
 			bundler: await read_bundler()
 		},

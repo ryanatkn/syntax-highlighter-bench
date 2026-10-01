@@ -5,9 +5,10 @@
  * The file is JSON lines. The first is a header recording everything that must
  * be the same for the rest to belong to one run. Each stretch of measuring, a
  * segment, then adds a line with its opening anchor reading, a line for every
- * process result, and a line with its closing anchor reading when the harness
- * got to take one. Every line after the header carries the milliseconds since
- * its segment started, which is how a run's duration survives a stop.
+ * process result, a cell's or a cold-start sample's, and a line with its
+ * closing anchor reading when the harness got to take one. Every line after the
+ * header carries the milliseconds since its segment started, which is how a
+ * run's duration survives a stop.
  *
  * A line is written and synced in one call, between processes, so a crash can
  * only cut the last line short. A last line with no newline is dropped when the
@@ -31,9 +32,10 @@ import { z } from 'zod';
 
 import { BenchRunFilters } from '../src/lib/results_schema.ts';
 import { CellResult } from './cell.ts';
+import { StartupResult } from './coldstart.ts';
 
 /** The version of the journal's format. A journal of another version is refused. */
-export const JOURNAL_VERSION = 1;
+export const JOURNAL_VERSION = 2;
 
 /**
  * What a journal says about the run it belongs to. A run resumes a journal only
@@ -50,6 +52,8 @@ export const JournalHeader = z.strictObject({
 	warmup_ms: z.number().nonnegative(),
 	rewarm_ms: z.number().nonnegative(),
 	retries: z.number().int().nonnegative(),
+	startup_samples: z.number().int().positive(),
+	startup_discard: z.number().int().nonnegative(),
 	filters: BenchRunFilters,
 	corpus_hash: z.string().min(1),
 	libraries: z.array(
@@ -94,6 +98,12 @@ export const JournalEntry = z.discriminatedUnion('type', [
 		result: CellResult
 	}),
 	z.strictObject({
+		type: z.literal('startup'),
+		at_ms,
+		round: z.number().int().nonnegative(),
+		result: StartupResult
+	}),
+	z.strictObject({
 		type: z.literal('anchor'),
 		at_ms,
 		anchor_ns: z.number().positive().meta({ description: "The segment's closing anchor reading." })
@@ -109,11 +119,17 @@ export const to_journal_key = (
 	attempt: number
 ): string => JSON.stringify([cell, library, pass, attempt]);
 
+/** Identifies one cold-start process of a run: a scenario's sample in one round. */
+export const to_startup_journal_key = (key: string, round: number): string =>
+	JSON.stringify([key, round]);
+
 /** What a journal holds. */
 export interface Journal {
 	header: JournalHeader;
-	/** Every process result, by `to_journal_key`. */
+	/** Every cell process's result, by `to_journal_key`. */
 	results: Map<string, CellResult>;
+	/** Every cold-start process's result, by `to_startup_journal_key`. */
+	startup: Map<string, StartupResult>;
 	/** Every anchor reading, in the order taken. */
 	readings_ns: Array<number>;
 	/** How many segments the journal records. */
@@ -147,6 +163,7 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 	const header = JournalHeader.safeParse(parse_line(lines[0] ?? ''));
 	if (!header.success) return { ok: false, message: 'it has no header this harness can read' };
 	const results: Map<string, CellResult> = new Map();
+	const startup: Map<string, StartupResult> = new Map();
 	const readings_ns: Array<number> = [];
 	let segments = 0;
 	let duration_ms = 0;
@@ -168,6 +185,10 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 			const key = to_journal_key(cell, library, entry.pass, entry.attempt);
 			if (results.has(key)) return { ok: false, message: `line ${i + 1} repeats a result` };
 			results.set(key, entry.result);
+		} else if (entry.type === 'startup') {
+			const key = to_startup_journal_key(entry.result.key, entry.round);
+			if (startup.has(key)) return { ok: false, message: `line ${i + 1} repeats a result` };
+			startup.set(key, entry.result);
 		} else {
 			readings_ns.push(entry.anchor_ns);
 		}
@@ -176,6 +197,7 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 		ok: true,
 		header: header.data,
 		results,
+		startup,
 		readings_ns,
 		segments,
 		duration_ms: duration_ms + segment_ms,

@@ -58,7 +58,13 @@ export const tomes: Array<Tome> = [
 		Component: MethodPage,
 		related_tomes: ['adapters', 'corpus', 'deterministic', 'results', 'design'],
 		related_modules: [],
-		related_declarations: ['BenchCellValue', 'BenchRun', 'BenchNoiseFloor', 'BenchAnchor']
+		related_declarations: [
+			'BenchCellValue',
+			'BenchStartup',
+			'BenchRun',
+			'BenchNoiseFloor',
+			'BenchAnchor'
+		]
 	},
 	{
 		slug: 'deterministic',
@@ -83,7 +89,13 @@ export const tomes: Array<Tome> = [
 		Component: ResultsPage,
 		related_tomes: ['languages', 'corpus', 'method', 'deterministic', 'design'],
 		related_modules: ['results_schema.ts'],
-		related_declarations: ['BenchResults', 'parse_bench_results', 'bench_results_is_publishable']
+		related_declarations: [
+			'BenchResults',
+			'BenchStartup',
+			'BenchStartupExcluded',
+			'parse_bench_results',
+			'bench_results_is_publishable'
+		]
 	},
 	{
 		slug: 'design',

@@ -54,9 +54,27 @@ export const BundleCheckResult = z.strictObject({
 export type BundleCheckResult = z.infer<typeof BundleCheckResult>;
 
 /**
+ * Evaluates what an adapter's `bundle_html_source` returns, the way a cold-start
+ * process runs it: as an expression over the names `exports` and `src`.
+ *
+ * @param source - the expression
+ * @param exports - the namespace of a module built from the adapter's `bundle_entry`
+ * @param src - the source to highlight
+ * @returns what the expression evaluates to, which should be the HTML
+ */
+export const evaluate_bundle_html_source = (
+	source: string,
+	exports: Record<string, unknown>,
+	src: string
+): unknown =>
+	// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+	new Function('exports', 'src', `return (${source});`)(exports, src);
+
+/**
  * Imports a bundle and highlights with it.
  *
- * @throws if the bundle exports nothing, a language's snippet comes out with
+ * @throws if the bundle exports nothing, the adapter's `bundle_html_source`
+ * returns other HTML than its `bundle_html`, a language's snippet comes out with
  * fewer kinds of span than `MIN_SNIPPET_SPAN_KINDS`, or a bundle of one language
  * renders its snippet differently from the adapter with that language set up
  */
@@ -71,7 +89,13 @@ export const check_bundle = async (spec: BundleCheckSpec): Promise<BundleCheckRe
 		if (!is_lang(lang)) throw new Error(`unknown lang "${lang}"`);
 		const snippet = inputs.find((input) => input.source === 'harness' && input.lang === lang);
 		if (!snippet) throw new Error(`lang "${lang}" has no harness snippet to check a bundle on`);
-		const html = adapter.bundle_html(exports, read_corpus_input(snippet), lang);
+		const src = read_corpus_input(snippet);
+		const html = adapter.bundle_html(exports, src, lang);
+		if (evaluate_bundle_html_source(adapter.bundle_html_source(lang), exports, src) !== html) {
+			throw new Error(
+				`${adapter.id}'s bundle_html_source for ${lang} doesn't make the call its bundle_html makes: the two return different HTML for the snippet`
+			);
+		}
 		const kinds = typeof html === 'string' ? analyze_html(html).span_kinds : 0;
 		if (kinds < MIN_SNIPPET_SPAN_KINDS) {
 			throw new Error(

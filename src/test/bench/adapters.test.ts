@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 import { BenchCoverageEntry, BenchLibrary } from '$lib/results_schema.ts';
 import { LangNotSetUpError, type HighlighterAdapter } from '../../../bench/adapter.ts';
+import { evaluate_bundle_html_source } from '../../../bench/bundle_check.ts';
 import { MIN_SNIPPET_SPAN_KINDS, analyze_html, check_output } from '../../../bench/check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from '../../../bench/corpus.ts';
 import { LANGS, TIMED_LANGS, is_lang, type Lang } from '../../../bench/langs.ts';
@@ -262,6 +263,7 @@ describe.each(ADAPTERS.map((adapter) => ({ id: adapter.id, adapter })))('$id', (
 		assert.ok(error instanceof Error);
 		assert.match(error.message, /doesn't claim lang "nope"/);
 		assert.throws(() => adapter.bundle_entry(['nope' as Lang]), /doesn't claim lang "nope"/);
+		assert.throws(() => adapter.bundle_html_source('nope' as Lang), /doesn't claim lang "nope"/);
 		// the failed setup left the language already set up in place
 		const last = langs.at(-1)!;
 		assert.ok(check_output(adapter, last, read_snippet(last)).ok);
@@ -297,6 +299,13 @@ describe.each(ADAPTERS.map((adapter) => ({ id: adapter.id, adapter })))('$id', (
 			// and `bundle_html` highlights through those exports, as the size build's check does
 			const { span_kinds } = analyze_html(adapter.bundle_html(exports, read_snippet(lang), lang));
 			assert.ok(span_kinds >= MIN_SNIPPET_SPAN_KINDS, `${span_kinds} kinds of span`);
+			// `bundle_html_source` is that same call as text, for a process that can't load the adapter
+			const call = adapter.bundle_html_source(lang);
+			assert.match(call, /^exports\.[^;\n]*\bsrc\b[^;\n]*$/);
+			assert.strictEqual(
+				evaluate_bundle_html_source(call, exports, read_snippet(lang)),
+				adapter.bundle_html(exports, read_snippet(lang), lang)
+			);
 			// a language changes the floor, and imports nothing every language together doesn't
 			const specifiers = to_specifiers(source);
 			assert.notStrictEqual(source, adapter.bundle_entry([]));

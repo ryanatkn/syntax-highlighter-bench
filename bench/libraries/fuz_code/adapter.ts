@@ -145,5 +145,7 @@ export const fuz_code_adapter: HighlighterAdapter<LexedSyntax> = {
 		(exports.syntax_styler as SyntaxStyler).stylize(
 			src,
 			resolve_claimed_langs(ID, LANGS, [lang])[0]![1]
-		)
+		),
+	bundle_html_source: (lang) =>
+		`exports.syntax_styler.stylize(src, ${JSON.stringify(resolve_claimed_langs(ID, LANGS, [lang])[0]![1])})`
 };

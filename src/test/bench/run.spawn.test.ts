@@ -10,19 +10,35 @@ import {
 	writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { BenchResults, parse_bench_results } from '$lib/results_schema.ts';
+import {
+	STARTUP_DIR,
+	plan_startup_scenarios,
+	prepare_startup,
+	to_startup_child_path,
+	to_startup_env
+} from '../../../bench/coldstart.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import { to_deterministic_path } from '../../../bench/deterministic.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { read_journal } from '../../../bench/journal.ts';
-import { RunError, run_bench, spawn_cell_sync } from '../../../bench/run.ts';
+import {
+	RunError,
+	read_startup_result,
+	run_bench,
+	spawn_cell_sync,
+	spawn_startup_sync,
+	to_startup_entries,
+	type StartupProcessResult
+} from '../../../bench/run.ts';
 import { parse_run_args, type RunOptions } from '../../../bench/run_options.ts';
 
 // The tests that start real processes: one small smoke run through real cell
-// processes, and the commands' exit codes. Keep them few: each costs a process.
+// processes, a few real cold starts, and the commands' exit codes. Keep them
+// few: each costs a process.
 
 const REPO_DIR = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -58,6 +74,8 @@ describe('run_bench', () => {
 				'micro',
 				'--libraries',
 				'fuz_code,prism',
+				'--metrics',
+				'throughput',
 				'--out',
 				out
 			);
@@ -153,7 +171,7 @@ describe('run_bench', () => {
 			const args = [
 				...['--langs', 'json', '--sizes', 'micro', '--modes', 'tokenize'],
 				...['--libraries', 'fuz_code', '--passes', '1', '--rounds', '1', '--target-ms', '1'],
-				...['--retries', '0', '--out', out]
+				...['--retries', '0', '--metrics', 'throughput', '--out', out]
 			];
 			let spawned = 0;
 			let stop_after = 1;
@@ -286,6 +304,108 @@ describe('run_bench', () => {
 	});
 });
 
+describe('cold start', () => {
+	// under the repo, as the real directory is, so the entry's imports resolve
+	let startup_dir: string;
+
+	beforeAll(() => {
+		mkdirSync(dirname(STARTUP_DIR), { recursive: true });
+		startup_dir = mkdtempSync(join(dirname(STARTUP_DIR), 'startup_spawn_test_'));
+	});
+
+	afterAll(() => {
+		rmSync(startup_dir, { recursive: true, force: true });
+	});
+
+	test(
+		'a fresh process per sample: the bare baseline, and a library imported unbundled',
+		{ timeout: 60_000 },
+		async () => {
+			const adapters = ADAPTERS.filter((a) => a.id === 'fuz_code');
+			const scenarios = plan_startup_scenarios(
+				adapters,
+				{ libraries: null, langs: [] },
+				load_corpus_manifest().inputs
+			).scenarios.filter((s) => s.key === 'bare' || s.key === 'fuz_code:core:unbundled');
+			assert.strictEqual(scenarios.length, 2);
+			// nothing bundled, so nothing is built
+			const prepared = await prepare_startup(scenarios, adapters, { dir: startup_dir });
+			assert.deepStrictEqual(prepared, { built: [], mismatched: [] });
+
+			const params = { startup_discard: 0, startup_samples: 2 };
+			const processes: Array<StartupProcessResult> = [];
+			for (let round = 0; round < params.startup_samples; round++) {
+				for (const scenario of scenarios) {
+					const planned = { scenario, round };
+					const outcome = spawn_startup_sync(to_startup_child_path(scenario, startup_dir));
+					assert.strictEqual(outcome.stderr, '');
+					processes.push({ planned, result: read_startup_result(planned, outcome) });
+				}
+			}
+			const { startup, excluded } = to_startup_entries(scenarios, processes, params);
+			assert.deepStrictEqual(excluded, []);
+			assert.deepStrictEqual(
+				startup.map((entry) => [entry.scenario, entry.library, entry.samples]),
+				[
+					['bare', null, 2],
+					['core', 'fuz_code', 2]
+				]
+			);
+			for (const entry of startup) {
+				// the process's own clock, from its start: Node has to have started
+				assert.ok(entry.median_ms > 1);
+				// a whole process, in bytes
+				assert.ok(entry.rss_peak_bytes > 10_000_000);
+			}
+
+			// a load trace: the library's process loads the scenario's module, its entry, and
+			// the library, and neither the harness nor another library
+			const trace_path = join(startup_dir, 'trace.mjs');
+			writeFileSync(
+				trace_path,
+				[
+					`import { registerHooks } from 'node:module';`,
+					'const loaded = [];',
+					'registerHooks({ load: (url, context, next) => (loaded.push(url), next(url, context)) });',
+					`process.on('exit', () => process.stderr.write(JSON.stringify(loaded)));`
+				].join('\n')
+			);
+			const core_path = to_startup_child_path(scenarios[1]!, startup_dir);
+			const traced = spawnSync(
+				process.execPath,
+				['--import', pathToFileURL(trace_path).href, core_path],
+				{ cwd: REPO_DIR, encoding: 'utf8', env: to_startup_env(process.env) }
+			);
+			assert.strictEqual(traced.status, 0, traced.stderr);
+			const loaded: Array<string> = JSON.parse(traced.stderr);
+			const files = loaded.filter((url) => url.startsWith('file:'));
+			const library_dir = pathToFileURL(join(REPO_DIR, 'node_modules/@fuzdev/fuz_code/')).href;
+			assert.deepStrictEqual(files.slice(0, 2), [
+				pathToFileURL(core_path).href,
+				pathToFileURL(join(startup_dir, 'fuz_code/core.entry.mjs')).href
+			]);
+			assert.ok(files.length > 2);
+			for (const url of files.slice(2)) assert.ok(url.startsWith(library_dir), url);
+			// and no language: the core scenario loads the styler alone
+			assert.ok(!files.some((url) => url.includes('lexer_')), files.join('\n'));
+
+			// the compile cache is refused in such a process, even when something asks for it
+			const cache_dir = join(startup_dir, 'compile_cache');
+			const asked = spawnSync(
+				process.execPath,
+				[
+					'-e',
+					`const m = require('node:module'); console.log(JSON.stringify([m.enableCompileCache(${JSON.stringify(cache_dir)}).status === m.constants.compileCacheStatus.DISABLED, m.getCompileCacheDir() ?? null]))`
+				],
+				{ encoding: 'utf8', env: to_startup_env({ ...process.env, NODE_COMPILE_CACHE: cache_dir }) }
+			);
+			assert.strictEqual(asked.status, 0, asked.stderr);
+			assert.deepStrictEqual(JSON.parse(asked.stdout), [true, null]);
+			assert.ok(!existsSync(cache_dir));
+		}
+	);
+});
+
 const run_node = (
 	...args: Array<string>
 ): { status: number | null; stdout: string; stderr: string } =>
@@ -304,7 +424,10 @@ describe('the commands', { timeout: 30_000 }, () => {
 	test('bench/run.ts --help prints the flags and exits 0', () => {
 		const run = run_node('bench/run.ts', '--help');
 		assert.strictEqual(run.status, 0);
-		for (const flag of ['--smoke', '--calibrate', '--libraries', '--machine', '--resume']) {
+		for (const flag of [
+			...['--smoke', '--calibrate', '--libraries', '--machine', '--resume'],
+			...['--metrics', '--startup-samples']
+		]) {
 			assert.ok(run.stdout.includes(flag), flag);
 		}
 	});

@@ -31,9 +31,11 @@
 			<li>
 				<DeclarationLink name="BenchMeta" /> — the machine, Node version, commit, and corpus hash;
 				what kind of run it was and how it measured, in <DeclarationLink name="BenchRun" />, with
-				the retries it allowed and how many segments it was measured in; the roster of libraries
-				with their versions and the color schemes their default themes cover; the excluded list; the
-				anchor's drift; the machine's noise floor; what the bundle sizes were built with, in
+				the retries it allowed, how cold start was sampled, and how many segments it was measured
+				in; the roster of libraries with their versions and the color schemes their default themes
+				cover; the excluded list for cells, and <code>startup_excluded</code> for cold-start
+				scenarios, in <DeclarationLink name="BenchStartupExcluded" />; the anchor's drift; the
+				machine's noise floor; what the bundle sizes were built with, in
 				<DeclarationLink name="BenchBundler" />
 			</li>
 			<li>
@@ -54,7 +56,13 @@
 				spread and percentiles are those of the attempt that was kept
 			</li>
 			<li>
-				<DeclarationLink name="BenchStartup" /> — cold-start measurements, which no run fills yet
+				<DeclarationLink name="BenchStartup" /> — one cold-start scenario: what a fresh process
+				loaded (<code>bare</code>, <code>core</code>, <code>lang</code>, <code>set</code>, or
+				<code>first_highlight</code>), for which library, with which language or feature set, and
+				whether as one bundled chunk. Its numbers are the median time since the process started, the
+				10th and 90th percentile, the spread, how many samples were kept, and the processes' median
+				peak resident size. The one <code>bare</code> entry, with no library, is the Node baseline
+				every other entry includes
 			</li>
 			<li>
 				<DeclarationLink name="BenchBundleEntry" /> — for each library over each feature set, its
@@ -97,12 +105,14 @@
 		<p>
 			<code>meta.run</code> tells a publishable run from the rest. Its <code>kind</code> is
 			<code>full</code>, <code>smoke</code>, or <code>calibrate</code>, and its <code>filters</code>
-			are null unless the run was restricted to some libraries, languages, sizes, modes, or sources.
-			A smoke run's numbers mean nothing, and a calibration exists for its noise floor.
+			are null unless the run was restricted to some libraries, languages, sizes, modes, sources, or
+			metrics (the timed cells, or cold start). A smoke run's numbers mean nothing, and a
+			calibration exists for its noise floor.
 		</p>
 		<p>
 			<DeclarationLink name="bench_results_is_publishable" /> is the test for a result: a full run
-			with no filters and no gap, a stable anchor, and a commit that records everything that ran.
+			with no filters and no gap in its cells or its cold start, a stable anchor, and a commit that
+			records everything that ran.
 		</p>
 		<p>
 			No filters is what a run set out to cover. Whether the file then holds all of it is checked by
@@ -116,11 +126,27 @@
 			<li>every listed input of a timed language has a cell in each mode the file's cells use</li>
 		</ul>
 		<p>
+			A full run's cold start is checked the same way, by
+			<DeclarationLink name="bench_results_find_startup_gaps" />. Each of these has an entry or an
+			exclusion:
+		</p>
+		<ul>
+			<li>the <code>bare</code> baseline</li>
+			<li>
+				for each library of the roster, unbundled and bundled: <code>core</code>; <code>lang</code>
+				and <code>first_highlight</code> for every timed language it claims; and <code>set</code>
+				for every feature set the file's cold start names whose languages it all claims
+			</li>
+		</ul>
+		<p>
 			A file with no filters and a gap doesn't parse, whether it is a full run or a calibration, so
-			a run that silently lost a library can't pass as complete. A filtered or smoke run lists what
-			it has and may have gaps. Two things the file can't show are an input missing altogether and a
-			whole mode missing: its inputs and modes are the ones that were measured, and only the corpus
-			hash names the corpus they came from.
+			a run that silently lost a library can't pass as complete. A calibration measures no cold
+			start, so only its cells are checked. A filtered or smoke run lists what it has and may have
+			gaps. Two things the file can't show are an input missing altogether and a whole mode missing:
+			its inputs and modes are the ones that were measured, and only the corpus hash names the
+			corpus they came from. A third is a cold-start set missing altogether: the sets a
+			<code>set</code> scenario covers are read from the file too, so a file with every
+			<code>set</code> entry removed still reads as complete.
 		</p>
 		<p>
 			A run that was stopped and resumed is a result like any other. <code>meta.run.segments</code>
@@ -153,7 +179,7 @@
 			</li>
 			<li>
 				a run with timed numbers records its anchor, when it started, and its machine, Node version,
-				and commit, and one with timed cells records how they were measured
+				and commit, and how its numbers were measured
 			</li>
 			<li>
 				token counts are on <code>tokenize</code> cells only and output sizes on <code>html</code>
@@ -164,15 +190,27 @@
 				drift is under the threshold
 			</li>
 			<li>
-				a run's filters describe the file: every cell is inside them, the libraries listed are
-				exactly the ones filtered to, and no id repeats
+				a run's filters describe the file: every cell and cold-start entry is inside them, the
+				libraries listed are exactly the ones filtered to, and no id repeats
 			</li>
 			<li>a smoke run carries no noise floor, allows no retries, and is one segment</li>
 			<li>no value has more attempts than the run's retries allow</li>
 			<li>a run with no filters has no gap, as above</li>
 			<li>
 				each startup entry carries the fields its scenario needs and no others, for languages the
-				library claims, and appears once
+				library claims, and appears once, as a number or as an exclusion and never both
+			</li>
+			<li>
+				a <code>lang</code> or <code>first_highlight</code> entry names a timed language. A
+				<code>set</code> entry names a feature set, which may hold an untimed one
+			</li>
+			<li>
+				every startup entry keeps the samples the run says, its median lies between its 10th and
+				90th percentile, and a calibration has none
+			</li>
+			<li>
+				how cold start was sampled is recorded exactly when the run measured any, and is null for a
+				calibration and for a run whose metrics filter leaves it out
 			</li>
 			<li>a library has no numbers for a language its coverage doesn't claim</li>
 			<li>

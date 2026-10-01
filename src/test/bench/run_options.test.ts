@@ -16,6 +16,7 @@ import {
 	parse_run_args,
 	plan_cells,
 	plan_processes,
+	run_measures,
 	plan_retry,
 	to_arm_count,
 	to_calibration_path,
@@ -30,7 +31,8 @@ const NO_FILTERS: BenchRunFilters = {
 	langs: null,
 	sizes: null,
 	modes: null,
-	sources: null
+	sources: null,
+	metrics: null
 };
 
 const parse = (...args: Array<string>): RunOptions => {
@@ -107,7 +109,8 @@ describe('parse_run_args', () => {
 			langs: ['ts', 'rust'],
 			sizes: ['micro', 'large'],
 			modes: ['html'],
-			sources: ['neutral', 'home']
+			sources: ['neutral', 'home'],
+			metrics: null
 		});
 		BenchRunFilters.parse(options.filters);
 	});
@@ -184,6 +187,85 @@ describe('parse_run_args', () => {
 		assert.strictEqual(parse('--calibrate', '--retries', '5').retries, 5);
 		for (const value of ['-1', '1.5', 'many', '']) {
 			assert_usage_error(['--retries', value], /--retries: .* is not a whole number/);
+		}
+	});
+
+	test('--metrics chooses the timed cells, cold start, or both', () => {
+		assert.strictEqual(parse().filters.metrics, null);
+		assert.deepStrictEqual(parse('--metrics', 'startup').filters.metrics, ['startup']);
+		assert.deepStrictEqual(parse('--metrics', 'throughput').filters.metrics, ['throughput']);
+		// naming both restricts nothing: it is no filter, and the run is still a complete one
+		for (const both of ['startup,throughput', 'throughput,startup']) {
+			const options = parse('--metrics', both);
+			assert.strictEqual(options.filters.metrics, null);
+			assert.deepStrictEqual(options, parse());
+			assert.ok(bench_run_is_complete(options));
+		}
+		assert.deepStrictEqual(parse('--smoke', '--metrics', 'startup').filters.metrics, ['startup']);
+		assert_usage_error(['--metrics', 'memory'], /--metrics: unknown "memory"/);
+		// a filter like any other: such a run is not complete
+		for (const metrics of [['startup'], ['throughput'], ['throughput', 'startup']] as const) {
+			assert.ok(
+				!bench_run_is_complete({ kind: 'full', filters: { ...NO_FILTERS, metrics: [...metrics] } })
+			);
+		}
+	});
+
+	test('the filters that select inputs select nothing of cold start', () => {
+		for (const flag of [
+			['--sizes', 'micro'],
+			['--modes', 'html'],
+			['--sources', 'neutral']
+		]) {
+			assert_usage_error(
+				['--metrics', 'startup', ...flag],
+				/select inputs, and cold start has none/
+			);
+			parse('--metrics', 'throughput,startup', ...flag);
+		}
+		// the two that narrow cold start are fine with it
+		parse('--metrics', 'startup', '--libraries', 'prism', '--langs', 'ts');
+	});
+
+	test('--startup-samples is a positive whole number, and a smoke run takes one sample', () => {
+		assert.strictEqual(parse().startup_samples, FULL_PARAMS.startup_samples);
+		assert.strictEqual(parse().startup_discard, FULL_PARAMS.startup_discard);
+		assert.ok(FULL_PARAMS.startup_discard > 0);
+		const options = parse('--startup-samples', '7');
+		assert.strictEqual(options.startup_samples, 7);
+		// the discarded rounds are fixed
+		assert.strictEqual(options.startup_discard, FULL_PARAMS.startup_discard);
+		for (const value of ['0', '-1', '2.5', 'many']) {
+			assert_usage_error(
+				['--startup-samples', value],
+				/--startup-samples: .* is not a positive whole number/
+			);
+		}
+		assert.deepStrictEqual(
+			[parse('--smoke').startup_samples, parse('--smoke').startup_discard],
+			[1, 0]
+		);
+		assert_usage_error(['--smoke', '--startup-samples', '3'], /--smoke sets its own/);
+	});
+
+	test('a calibration measures the timed cells only', () => {
+		assert.ok(run_measures(parse('--calibrate'), 'throughput'));
+		assert.ok(!run_measures(parse('--calibrate'), 'startup'));
+		// saying so is fine, and asking for cold start is not
+		assert.ok(!run_measures(parse('--calibrate', '--metrics', 'throughput'), 'startup'));
+		for (const args of [
+			['--metrics', 'startup'],
+			['--metrics', 'throughput,startup'],
+			['--startup-samples', '5']
+		]) {
+			assert_usage_error(['--calibrate', ...args], /--calibrate measures the noise floor/);
+		}
+		for (const kind of ['full', 'smoke'] as const) {
+			assert.ok(run_measures({ kind, filters: NO_FILTERS }, 'throughput'));
+			assert.ok(run_measures({ kind, filters: NO_FILTERS }, 'startup'));
+			const filters = { ...NO_FILTERS, metrics: ['startup' as const] };
+			assert.ok(!run_measures({ kind, filters }, 'throughput'));
+			assert.ok(run_measures({ kind, filters }, 'startup'));
 		}
 	});
 
@@ -356,7 +438,8 @@ describe('plan_cells', () => {
 				langs: ['ts', 'rust'],
 				sizes: ['small'],
 				modes: ['html'],
-				sources: ['neutral']
+				sources: ['neutral'],
+				metrics: null
 			},
 			ADAPTERS
 		);

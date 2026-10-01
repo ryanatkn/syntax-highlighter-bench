@@ -120,5 +120,9 @@ export const twinkleplop_adapter: HighlighterAdapter<TokenizeResult> = {
 			to_export_names(name).language
 		] as (typeof PACKAGES)[PackageName]['language'];
 		return language()(src);
+	},
+	bundle_html_source: (lang) => {
+		const [[, name]] = resolve_claimed_langs(ID, LANGS, [lang]) as [[Lang, PackageName]];
+		return `exports.${to_export_names(name).language}()(src)`;
 	}
 };

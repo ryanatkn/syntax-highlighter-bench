@@ -32,6 +32,7 @@ const create_adapter = (
 		html: () => HIGHLIGHTED,
 		bundle_entry: () => '',
 		bundle_html: () => HIGHLIGHTED,
+		bundle_html_source: () => 'null',
 		...overrides
 	};
 	return adapter;

@@ -92,6 +92,7 @@
 			}
 		],
 		"excluded": [],
+		"startup_excluded": [],
 		"noise_floor": null,
 		"bundler": {
 			"vite": "7.3.6",
