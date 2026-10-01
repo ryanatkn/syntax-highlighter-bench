@@ -1,21 +1,16 @@
 {
   "name": "@ryanatkn/syntax-highlighter-bench",
   "version": "0.0.1",
-  "description": "a web app template with TypeScript + SvelteKit + optional Rust for the fuz-stack",
-  "glyph": "❄",
-  "logo": "logo.svg",
-  "logo_alt": "a friendly pixelated spider facing you",
+  "description": "neutral benchmark suite and results site for JavaScript syntax highlighters",
   "license": "MIT",
   "private": true,
-  "homepage": "https://template.fuz.dev/",
-  "repository": "https://github.com/fuzdev/fuz_template",
+  "repository": "https://github.com/ryanatkn/syntax-highlighter-bench",
   "scripts": {
     "start": "gro dev",
     "dev": "gro dev",
     "build": "gro build",
     "check": "gro check",
     "test": "gro test",
-    "molt": "node src/lib/molt.ts",
     "preview": "vite preview",
     "deploy": "gro deploy"
   },
@@ -36,13 +31,28 @@
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.69.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@twinkleplop/bash": "^0.1.5",
+    "@twinkleplop/core": "^0.2.2",
+    "@twinkleplop/css": "^0.1.5",
+    "@twinkleplop/html": "^0.1.5",
+    "@twinkleplop/javascript": "^0.1.5",
+    "@twinkleplop/json": "^0.1.5",
+    "@twinkleplop/markdown": "^0.1.5",
+    "@twinkleplop/rust": "^0.1.5",
+    "@twinkleplop/svelte": "^0.1.5",
+    "@twinkleplop/theme-github": "^0.2.2",
+    "@twinkleplop/typescript": "^0.1.5",
     "@types/estree": "^1.0.8",
     "@types/node": "^24.12.4",
+    "@types/prismjs": "^1.26.6",
     "@webref/css": "^8.2.0",
     "eslint": "^9.39.1",
     "eslint-plugin-svelte": "^3.13.1",
     "esm-env": "^1.2.2",
     "magic-string": "^0.30.21",
+    "prism-svelte": "^0.5.0",
+    "prismjs": "^1.30.0",
+    "shiki": "^4.4.3",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.2",
     "svelte-docinfo": "^0.7.0",
@@ -57,8 +67,5 @@
   },
   "sideEffects": [
     "**/*.css"
-  ],
-  "files": [
-    "dist"
   ]
 }

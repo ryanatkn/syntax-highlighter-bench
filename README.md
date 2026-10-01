@@ -1,208 +1,100 @@
-# @fuzdev/fuz_template ❄
+# syntax-highlighter-bench
 
-[<img src="/static/logo.svg" alt="a friendly pixelated spider facing you" align="right" width="192" height="192">](https://template.fuz.dev/)
+> neutral benchmark suite and results site for JavaScript syntax highlighters
 
-> a web app template with TypeScript + SvelteKit + optional Rust for the fuz-stack
+Compares [fuz_code](https://github.com/fuzdev/fuz_code),
+[twinkleplop](https://github.com/pngwn/twinkleplop),
+[Prism](https://github.com/PrismJS/prism), and
+[Shiki](https://github.com/shikijs/shiki) on the same inputs. Shiki's
+JavaScript engine and its Oniguruma wasm engine are counted as two libraries.
+A run produces one results file holding many metrics, and the site is a view
+over that file where a reader picks the subset to compare.
 
-[**template.fuz.dev**](https://template.fuz.dev/)
+**Status: early.** The language ids, the feature sets, and the schema of the
+results file exist. The adapters, the corpus, the harness that measures them,
+and the results pages are designed but not built, and no numbers are published.
 
-## contents
+## Layout
 
-- [SvelteKit](https://github.com/sveltejs/kit) with [Svelte](https://github.com/sveltejs/svelte) and
-  [Vite](https://github.com/vitejs/vite) and optional [Rust](https://rust-lang.org/)
-- [fuz_css](https://github.com/fuzdev/fuz_css): semantic-first CSS framework and design system
-- [fuz_ui](https://github.com/fuzdev/fuz_ui):
-  - Svelte UI library - [ui.fuz.dev](https://ui.fuz.dev/)
-  - is optional, to remove, `npm uninstall @fuzdev/fuz_ui` and delete the imports
-- [Gro](https://github.com/fuzdev/gro):
-  - extends [SvelteKit](https://github.com/sveltejs/kit) and
-    [Vite](https://github.com/vitejs/vite)
-  - integrated [TypeScript](https://github.com/microsoft/TypeScript)
-    with [Svelte](https://github.com/sveltejs/svelte) and
-    [svelte-check](https://github.com/sveltejs/language-tools/tree/master/packages/svelte-check)
-  - testing with [Vitest](https://github.com/vitest-dev/vitest)
-  - formatting with [tsv](https://github.com/fuzdev/tsv)
-  - linting with [ESLint](https://github.com/eslint/eslint)
-    and [`@ryanatkn/eslint-config`](https://github.com/ryanatkn/eslint-config)
-  - also has [a task system](https://github.com/fuzdev/gro/blob/main/src/docs/task.md)
-    with a bunch of [builtins](https://github.com/fuzdev/gro/blob/main/src/docs/tasks.md),
-    [codegen](https://github.com/fuzdev/gro/blob/main/src/docs/gen.md),
-    and [other things](https://github.com/fuzdev/gro/tree/main/src/lib/docs)
-- optional [utilities library `@fuzdev/fuz_util`](https://github.com/fuzdev/fuz_util)
+- `bench/` — the harness. It runs on Node directly, through type stripping,
+  and is never imported by the site.
+  - `bench/langs.ts` — the language ids every adapter maps onto
+  - `bench/sets.ts` — the feature sets bundle size is measured over
+- `results/` — the committed runs, once there are any
+- `src/lib/results_schema.ts` — the schema of a results file, written by the
+  harness and parsed by the site
+- `src/routes/` — the site, static SvelteKit, with the docs under `/docs`
 
-## usage
+## What is measured
 
-This project uses [SvelteKit](https://kit.svelte.dev/) with the static adapter
-and [Vite](https://vitejs.dev/),
-so the normal commands like `vite dev` work as expected.
-It also uses [Gro](https://github.com/fuzdev/gro)
-for tasks like deploying and more.
+Two classes of number, kept apart in the results file:
 
-If you're logged into GitHub, click "Use this template" above, or clone directly:
+- **Machine-dependent**, published only from one named machine: throughput
+  for each language, input size, and mode (`tokenize` and `html`); cold start;
+  memory.
+- **Deterministic**, the same anywhere: bundle size for each feature set, with
+  wasm and theme CSS reported separately; output size; token counts; the
+  coverage matrix.
+
+**Language ids.** The harness owns them. The timed ids are the ones every
+library in the roster supports: `ts`, `js`, `css`, `html`, `json`, `svelte`,
+`md`, `bash`, `rust`. `xml` is also an id but untimed, named by the coverage
+matrix and the feature sets. A language a library doesn't claim is
+_unsupported_; a claimed one whose output fails the pre-measurement check is
+_excluded_. The two are recorded differently and neither is ever a zero.
+
+**Feature sets.** A named list of language ids, declared before any numbers
+exist so a set can't be chosen to flatter a result: `core` (no languages),
+`single:<lang>` for each id, `docs` (what a documentation site imports),
+`web_rust` (footnoted as fuz_code's full set), and `all`.
+
+## Adding a library
+
+Planned: each library is measured through one adapter, a directory under
+`bench/libraries/` that maps the language ids onto the library's own, exposes
+its tokens-out and HTML-out entry points, and says how to bundle it. An adapter
+exposes the narrowest entry doing the same work as the others, declares its
+languages explicitly, never falls back to plain text, and times only synchronous
+paths. The results file carries the roster of libraries, so the site needs no
+change.
+
+## Neutrality
+
+The maintainer of this benchmark also maintains fuz_code, so fairness has to be
+structural. By design:
+
+- the maintainer's library is flagged in the results file and on the site
+- every input is labelled by its source — real code no measured library
+  authored, Shiki's own benchmark samples, or a library's own samples — and
+  the first is the primary set
+- each adapter documents the entry points it uses, so a library's maintainers
+  can review or replace it
+- the method and the commands to reproduce a run are published with the numbers
+
+## Credit
+
+The measurement method follows the comparison harness of
+[twinkleplop](https://github.com/pngwn/twinkleplop) (MIT): a process per cell,
+libraries rotated within rounds, iterations calibrated per library, token
+counts recorded, and machine drift detected.
+
+## Develop
+
+Requires Node >= 24.14.
 
 ```bash
-git clone https://github.com/fuzdev/fuz_template.git cooltoy
-cd cooltoy
 npm i
-# then
-vite dev
-# or
-npm run dev
-# or
-gro dev # npm i -g @fuzdev/gro
-gro sync # called by `gro dev`, refreshes generated files and calls `svelte-kit sync`
+npm run dev # or `gro dev`
+gro check   # typecheck, test, lint, format check
+gro build   # build the static site
 ```
 
-> learn more about [SvelteKit](https://github.com/sveltejs/kit),
-> [Vite](https://github.com/vitejs/vite), [Gro](https://github.com/fuzdev/gro),
-> and [fuz_ui](https://github.com/fuzdev/fuz_ui)
+Built with [SvelteKit](https://github.com/sveltejs/kit),
+[Svelte](https://github.com/sveltejs/svelte),
+[fuz_ui](https://github.com/fuzdev/fuz_ui),
+[fuz_css](https://github.com/fuzdev/fuz_css), and
+[Gro](https://github.com/fuzdev/gro).
 
-> [Windows will not be supported](https://github.com/fuzdev/fuz_template/issues/4) because
-> it depends on sh, [WSL](https://docs.microsoft.com/en-us/windows/wsl/about) is recommended
+## License
 
-The template includes
-[`@sveltejs/adapter-static`](https://github.com/sveltejs/kit/tree/master/packages/adapter-static)
-so it can [deploy](https://github.com/fuzdev/gro/blob/main/src/docs/deploy.md)
-with no further configuration.
-To learn how to swap it out for another deployment target, see
-[the SvelteKit adapter docs](https://svelte.dev/docs/kit/adapters).
-
-To make it your own, run the molt wizard (requires a clean git tree — commit
-or stash first):
-
-```bash
-npm run molt # or `cargo molt` — twin implementations, identical results
-```
-
-It renames the project, strips the demo components, and deletes itself — see
-[molt](#molt) below.
-
-Prefer to do it by hand? Change `@fuzdev/fuz_template`
-and `template.fuz.dev` to your project name in the following files:
-
-- [`package.json`](package.json) — also remove or replace the `glyph`,
-  `logo`, and `logo_alt` fields
-- [`src/routes/+layout.svelte`](src/routes/+layout.svelte)
-- [`src/routes/+page.svelte`](src/routes/+page.svelte)
-- [`src/routes/about/+page.svelte`](src/routes/about/+page.svelte)
-- update or delete [`static/CNAME`](static/CNAME),
-  ./.github/FUNDING.yml, and ./.github/ISSUE_TEMPLATE/
-
-And to remove the Rust workspace, delete `Cargo.toml`, `Cargo.lock`, `crates/`,
-`.cargo/`, `rust-toolchain.toml`, `clippy.toml`, and the `rust` job in
-[`.github/workflows/check.yml`](.github/workflows/check.yml).
-
-To remove the docs system, delete `src/routes/docs/` and
-[`src/routes/library.ts`](src/routes/library.ts), remove the docs link in
-[`src/routes/+page.svelte`](src/routes/+page.svelte), and drop the
-`svelte-docinfo` devDependency along with its wiring in
-[`vite.config.ts`](vite.config.ts) and [`src/app.d.ts`](src/app.d.ts).
-
-Then run `npm i` to update `package-lock.json`.
-
-The template is MIT-licensed ([`LICENSE`](LICENSE), plus `license` fields in
-`package.json` and `Cargo.toml`), copyright fuz.dev — to keep MIT for your
-project, replace the copyright holder with your own; or swap in
-[another license](https://choosealicense.com/).
-
-## molt
-
-molt is a simple wizard that transforms this clone into your own project,
-then deletes itself. It ships as twin implementations at full behavior
-parity — same flags, same prompts, byte-identical results — so you pick by
-toolchain: `src/lib/molt.ts` runs on the Node you already have, and the
-`molt` crate comes with the template's Rust workspace.
-
-```bash
-npm run molt          # interactive wizard: prompts, prints the full plan, confirms
-npm run molt -- check # verify molt's file anchors still match the template
-cargo molt            # the Rust twin — same flags and behavior
-cargo molt check
-```
-
-What it does, driven by your answers:
-
-- renames the project everywhere (`package.json`, page titles, headings)
-- updates or removes `static/CNAME`, `homepage`, and `repository`
-- deletes the demo components and writes a minimal starting page (plus a
-  starter `src/lib/example.ts` when docs are kept — the API docs need a
-  module to document)
-- regenerates `README.md` and `CLAUDE.md` for your project
-- deletes the template's MIT `LICENSE` and `license` fields — your project
-  chooses its own license
-- keeps or strips each optional feature — `rust` (the whole workspace),
-  `cli` (the starter crate at [`crates/app_cli`](crates/app_cli), renamed to
-  your project name), `docs` (the docs system), and `github-extras`
-  (funding + issue templates, personalized when kept) — via prompts or
-  `--keep`/`--strip` lists (e.g. `--strip rust` or `--keep github-extras --strip docs`);
-  stripping `cli` alone is rejected — a kept workspace needs a crate, and
-  keeping `docs` needs a repository url (the API docs link to source), from
-  `--repo` or a git origin that isn't the template's — the wizard asks when
-  there's none; `--repo` takes an https, http, or ssh git url (normalized to its
-  web url, with any credentials stripped) and refuses anything else with
-  exit 2
-- deletes both of its own implementations (the crate, the script, and its tests)
-
-It refuses to run without a clean git tree, so an applied plan can be undone
-with `git reset --hard && git clean -fd` (the tree was clean, so `git clean`
-removes only files molt created). `--force` lets a dirty tree through for _planning_,
-but applying to a dirty tree always requires an interactive confirmation —
-without a terminal it refuses (exit 2), because there'd be no clean undo
-point. Run with flags instead of prompts for non-interactive use
-(`npm run molt -- --help` or `cargo molt --help`); in that mode nothing is
-written without `--wetrun`. A terminal always confirms before applying, so
-the only ungated write path is `--wetrun` on a clean tree without a terminal.
-
-## build
-
-```bash
-npm run build
-# or
-gro build
-```
-
-See [Gro's build docs](https://github.com/fuzdev/gro/blob/main/src/docs/build.md) for more.
-
-## test
-
-```bash
-npm test
-# or
-gro test
-gro test filepattern1 filepatternB
-gro test -- --forwarded-args 'to vitest'
-```
-
-See [Vitest](https://github.com/vitest-dev/vitest),
-[`src/test/example.test.ts`](src/test/example.test.ts),
-and [Gro's test docs](https://github.com/fuzdev/gro/blob/main/src/docs/test.md) for more.
-
-## deploy
-
-[Deploy](https://github.com/fuzdev/gro/blob/main/src/docs/deploy.md)
-(build, commit, and push) to the `deploy` branch, e.g. for GitHub Pages:
-
-```bash
-npm run deploy
-# or
-gro deploy
-```
-
-## credits 🐢<sub>🐢</sub><sub><sub>🐢</sub></sub>
-
-[Svelte](https://github.com/sveltejs/svelte) ∙
-[SvelteKit](https://github.com/sveltejs/kit) ∙
-[Vite](https://github.com/vitejs/vite) ∙
-[esbuild](https://github.com/evanw/esbuild) ∙
-[Vitest](https://github.com/vitest-dev/vitest) ∙
-[TypeScript](https://github.com/microsoft/TypeScript) ∙
-[ESLint](https://github.com/eslint/eslint) ∙
-[tsv](https://github.com/fuzdev/tsv) ∙
-[fuz_css](https://github.com/fuzdev/fuz_css) ∙
-[Fuz](https://github.com/fuzdev/fuz_ui) ∙
-[Gro](https://github.com/fuzdev/gro) ∙
-[@fuzdev/fuz_util](https://github.com/fuzdev/fuz_util) ∙
-[Zod](https://github.com/colinhacks/zod) ∙
-& [more](package.json)
-
-## [🐦](https://wikipedia.org/wiki/Free_and_open-source_software)
+[MIT](LICENSE)

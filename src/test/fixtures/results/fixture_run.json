@@ -1,0 +1,1035 @@
+{
+	"meta": {
+		"generated_at": "2026-01-01T00:00:00.000Z",
+		"machine": {
+			"name": "fixture (invented numbers)",
+			"cpu": "Fixture CPU",
+			"governor": "performance",
+			"memory_gb": 64
+		},
+		"node": "v24.14.1",
+		"commit": "0000000000000000000000000000000000000000",
+		"corpus_hash": "0000000000000000",
+		"anchor": {
+			"drift": 0.002,
+			"stable": true
+		},
+		"libraries": [
+			{
+				"id": "fuz_code",
+				"label": "fuz_code",
+				"package": "@fuzdev/fuz_code",
+				"version": "0.48.0",
+				"output": "classes",
+				"engine": "scanner",
+				"by_maintainer": true,
+				"note": null
+			},
+			{
+				"id": "twinkleplop",
+				"label": "twinkleplop",
+				"package": "@twinkleplop/core",
+				"version": "0.2.2",
+				"output": "classes",
+				"engine": "grammar_vm",
+				"by_maintainer": false,
+				"note": "Full pipeline: the grammar plus the language's reclassifier stack, as shipped."
+			},
+			{
+				"id": "prism",
+				"label": "Prism",
+				"package": "prismjs",
+				"version": "1.30.0",
+				"output": "classes",
+				"engine": "regex",
+				"by_maintainer": false,
+				"note": null
+			},
+			{
+				"id": "shiki_js",
+				"label": "Shiki (JS engine)",
+				"package": "shiki",
+				"version": "4.4.3",
+				"output": "inline_styles",
+				"engine": "textmate",
+				"by_maintainer": false,
+				"note": "The JavaScript RegExp engine. The HTML carries inline styles rather than classes."
+			},
+			{
+				"id": "shiki_wasm",
+				"label": "Shiki (wasm)",
+				"package": "shiki",
+				"version": "4.4.3",
+				"output": "inline_styles",
+				"engine": "textmate",
+				"by_maintainer": false,
+				"note": "The Oniguruma wasm engine. The HTML carries inline styles rather than classes."
+			}
+		],
+		"excluded": [
+			{
+				"cell": "rust/small/tokenize/shiki/rust.sample.rs",
+				"library": "prism",
+				"reason": "produced no tokens"
+			}
+		],
+		"noise_floor": {
+			"per_cell": 0.033,
+			"geomean": 0.006
+		}
+	},
+	"langs": [
+		{
+			"id": "ts",
+			"label": "TypeScript",
+			"timed": true
+		},
+		{
+			"id": "js",
+			"label": "JavaScript",
+			"timed": true
+		},
+		{
+			"id": "css",
+			"label": "CSS",
+			"timed": true
+		},
+		{
+			"id": "html",
+			"label": "HTML",
+			"timed": true
+		},
+		{
+			"id": "xml",
+			"label": "XML",
+			"timed": false
+		},
+		{
+			"id": "json",
+			"label": "JSON",
+			"timed": true
+		},
+		{
+			"id": "svelte",
+			"label": "Svelte",
+			"timed": true
+		},
+		{
+			"id": "md",
+			"label": "Markdown",
+			"timed": true
+		},
+		{
+			"id": "bash",
+			"label": "Bash",
+			"timed": true
+		},
+		{
+			"id": "rust",
+			"label": "Rust",
+			"timed": true
+		}
+	],
+	"sets": [
+		{
+			"id": "core",
+			"label": "core",
+			"langs": [],
+			"footnote": null
+		},
+		{
+			"id": "single:ts",
+			"label": "TypeScript",
+			"langs": [
+				"ts"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:js",
+			"label": "JavaScript",
+			"langs": [
+				"js"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:css",
+			"label": "CSS",
+			"langs": [
+				"css"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:html",
+			"label": "HTML",
+			"langs": [
+				"html"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:xml",
+			"label": "XML",
+			"langs": [
+				"xml"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:json",
+			"label": "JSON",
+			"langs": [
+				"json"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:svelte",
+			"label": "Svelte",
+			"langs": [
+				"svelte"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:md",
+			"label": "Markdown",
+			"langs": [
+				"md"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:bash",
+			"label": "Bash",
+			"langs": [
+				"bash"
+			],
+			"footnote": null
+		},
+		{
+			"id": "single:rust",
+			"label": "Rust",
+			"langs": [
+				"rust"
+			],
+			"footnote": null
+		},
+		{
+			"id": "docs",
+			"label": "docs",
+			"langs": [
+				"js",
+				"ts",
+				"css",
+				"html",
+				"md",
+				"bash",
+				"json"
+			],
+			"footnote": null
+		},
+		{
+			"id": "web_rust",
+			"label": "web + rust",
+			"langs": [
+				"ts",
+				"js",
+				"css",
+				"html",
+				"xml",
+				"json",
+				"svelte",
+				"md",
+				"bash",
+				"rust"
+			],
+			"footnote": "fuz_code's full set (home turf)"
+		},
+		{
+			"id": "all",
+			"label": "all",
+			"langs": [
+				"ts",
+				"js",
+				"css",
+				"html",
+				"xml",
+				"json",
+				"svelte",
+				"md",
+				"bash",
+				"rust"
+			],
+			"footnote": null
+		}
+	],
+	"cells": [
+		{
+			"id": "ts/medium/tokenize/neutral/checker_excerpt.ts",
+			"metric": "throughput",
+			"lang": "ts",
+			"size": "medium",
+			"mode": "tokenize",
+			"source": "neutral",
+			"home": null,
+			"file": "neutral/ts/checker_excerpt.ts",
+			"bytes": 10240,
+			"lines": 312,
+			"synthetic": false,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 184320,
+					"ops_per_sec": 5425.347,
+					"mb_per_sec": 55.556,
+					"p10_ns": 182477,
+					"p90_ns": 188006,
+					"spread": 1.03,
+					"iterations": 109,
+					"heap_delta_bytes": 122880,
+					"rss_peak_bytes": 90409600
+				},
+				"twinkleplop": {
+					"ns_per_op": 239616,
+					"ops_per_sec": 4173.344,
+					"mb_per_sec": 42.735,
+					"p10_ns": 237220,
+					"p90_ns": 244408,
+					"spread": 1.03,
+					"iterations": 83,
+					"heap_delta_bytes": 159744,
+					"rss_peak_bytes": 90532480
+				},
+				"prism": {
+					"ns_per_op": 571392,
+					"ops_per_sec": 1750.112,
+					"mb_per_sec": 17.921,
+					"p10_ns": 565678,
+					"p90_ns": 582820,
+					"spread": 1.03,
+					"iterations": 35,
+					"heap_delta_bytes": 380928,
+					"rss_peak_bytes": 91269760
+				},
+				"shiki_js": {
+					"ns_per_op": 2580480,
+					"ops_per_sec": 387.525,
+					"mb_per_sec": 3.968,
+					"p10_ns": 2554675,
+					"p90_ns": 2632090,
+					"spread": 1.03,
+					"iterations": 8,
+					"heap_delta_bytes": 1720320,
+					"rss_peak_bytes": 95734400
+				},
+				"shiki_wasm": {
+					"ns_per_op": 2027520,
+					"ops_per_sec": 493.213,
+					"mb_per_sec": 5.051,
+					"p10_ns": 2007245,
+					"p90_ns": 2068070,
+					"spread": 1.03,
+					"iterations": 10,
+					"heap_delta_bytes": 1351680,
+					"rss_peak_bytes": 94505600
+				}
+			},
+			"tokens": {
+				"fuz_code": 1707,
+				"twinkleplop": 2389,
+				"prism": 1365,
+				"shiki_js": 1024,
+				"shiki_wasm": 1024
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 32768,
+					"spans": 1463
+				},
+				"twinkleplop": {
+					"html_bytes": 32768,
+					"spans": 2048
+				},
+				"prism": {
+					"html_bytes": 32768,
+					"spans": 1170
+				},
+				"shiki_js": {
+					"html_bytes": 52224,
+					"spans": 878
+				},
+				"shiki_wasm": {
+					"html_bytes": 52224,
+					"spans": 878
+				}
+			}
+		},
+		{
+			"id": "ts/medium/html/neutral/checker_excerpt.ts",
+			"metric": "throughput",
+			"lang": "ts",
+			"size": "medium",
+			"mode": "html",
+			"source": "neutral",
+			"home": null,
+			"file": "neutral/ts/checker_excerpt.ts",
+			"bytes": 10240,
+			"lines": 312,
+			"synthetic": false,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 276480,
+					"ops_per_sec": 3616.898,
+					"mb_per_sec": 37.037,
+					"p10_ns": 273715,
+					"p90_ns": 282010,
+					"spread": 1.03,
+					"iterations": 72,
+					"heap_delta_bytes": 122880,
+					"rss_peak_bytes": 90409600
+				},
+				"twinkleplop": {
+					"ns_per_op": 359424,
+					"ops_per_sec": 2782.229,
+					"mb_per_sec": 28.49,
+					"p10_ns": 355830,
+					"p90_ns": 366612,
+					"spread": 1.03,
+					"iterations": 56,
+					"heap_delta_bytes": 159744,
+					"rss_peak_bytes": 90532480
+				},
+				"prism": {
+					"ns_per_op": 857088,
+					"ops_per_sec": 1166.741,
+					"mb_per_sec": 11.947,
+					"p10_ns": 848517,
+					"p90_ns": 874230,
+					"spread": 1.03,
+					"iterations": 23,
+					"heap_delta_bytes": 380928,
+					"rss_peak_bytes": 91269760
+				},
+				"shiki_js": {
+					"ns_per_op": 3870720,
+					"ops_per_sec": 258.35,
+					"mb_per_sec": 2.646,
+					"p10_ns": 3832013,
+					"p90_ns": 3948134,
+					"spread": 1.03,
+					"iterations": 5,
+					"heap_delta_bytes": 1720320,
+					"rss_peak_bytes": 95734400
+				},
+				"shiki_wasm": {
+					"ns_per_op": 3041280,
+					"ops_per_sec": 328.809,
+					"mb_per_sec": 3.367,
+					"p10_ns": 3010867,
+					"p90_ns": 3102106,
+					"spread": 1.03,
+					"iterations": 7,
+					"heap_delta_bytes": 1351680,
+					"rss_peak_bytes": 94505600
+				}
+			},
+			"tokens": {
+				"fuz_code": 1707,
+				"twinkleplop": 2389,
+				"prism": 1365,
+				"shiki_js": 1024,
+				"shiki_wasm": 1024
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 32768,
+					"spans": 1463
+				},
+				"twinkleplop": {
+					"html_bytes": 32768,
+					"spans": 2048
+				},
+				"prism": {
+					"html_bytes": 32768,
+					"spans": 1170
+				},
+				"shiki_js": {
+					"html_bytes": 52224,
+					"spans": 878
+				},
+				"shiki_wasm": {
+					"html_bytes": 52224,
+					"spans": 878
+				}
+			}
+		},
+		{
+			"id": "rust/small/tokenize/shiki/rust.sample.rs",
+			"metric": "throughput",
+			"lang": "rust",
+			"size": "small",
+			"mode": "tokenize",
+			"source": "shiki",
+			"home": null,
+			"file": "shiki/rust/rust.sample.rs",
+			"bytes": 1180,
+			"lines": 44,
+			"synthetic": false,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 21240,
+					"ops_per_sec": 47080.979,
+					"mb_per_sec": 55.556,
+					"p10_ns": 21028,
+					"p90_ns": 21665,
+					"spread": 1.03,
+					"iterations": 942,
+					"heap_delta_bytes": 14160,
+					"rss_peak_bytes": 90047200
+				},
+				"twinkleplop": {
+					"ns_per_op": 27612,
+					"ops_per_sec": 36216.138,
+					"mb_per_sec": 42.735,
+					"p10_ns": 27336,
+					"p90_ns": 28164,
+					"spread": 1.03,
+					"iterations": 724,
+					"heap_delta_bytes": 18408,
+					"rss_peak_bytes": 90061360
+				},
+				"shiki_js": {
+					"ns_per_op": 297360,
+					"ops_per_sec": 3362.927,
+					"mb_per_sec": 3.968,
+					"p10_ns": 294386,
+					"p90_ns": 303307,
+					"spread": 1.03,
+					"iterations": 67,
+					"heap_delta_bytes": 198240,
+					"rss_peak_bytes": 90660800
+				},
+				"shiki_wasm": {
+					"ns_per_op": 233640,
+					"ops_per_sec": 4280.089,
+					"mb_per_sec": 5.051,
+					"p10_ns": 231304,
+					"p90_ns": 238313,
+					"spread": 1.03,
+					"iterations": 86,
+					"heap_delta_bytes": 155760,
+					"rss_peak_bytes": 90519200
+				}
+			},
+			"tokens": {
+				"fuz_code": 197,
+				"twinkleplop": 275,
+				"shiki_js": 118,
+				"shiki_wasm": 118
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 3776,
+					"spans": 169
+				},
+				"twinkleplop": {
+					"html_bytes": 3776,
+					"spans": 236
+				},
+				"shiki_js": {
+					"html_bytes": 6018,
+					"spans": 101
+				},
+				"shiki_wasm": {
+					"html_bytes": 6018,
+					"spans": 101
+				}
+			}
+		},
+		{
+			"id": "svelte/micro/html/home/fuz_code/sample.svelte",
+			"metric": "throughput",
+			"lang": "svelte",
+			"size": "micro",
+			"mode": "html",
+			"source": "home",
+			"home": "fuz_code",
+			"file": "home/fuz_code/svelte/sample.svelte",
+			"bytes": 212,
+			"lines": 9,
+			"synthetic": false,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 5724,
+					"ops_per_sec": 174703.005,
+					"mb_per_sec": 37.037,
+					"p10_ns": 5667,
+					"p90_ns": 5838,
+					"spread": 1.03,
+					"iterations": 3494,
+					"heap_delta_bytes": 2544,
+					"rss_peak_bytes": 90008480
+				},
+				"twinkleplop": {
+					"ns_per_op": 7441,
+					"ops_per_sec": 134390.539,
+					"mb_per_sec": 28.491,
+					"p10_ns": 7367,
+					"p90_ns": 7590,
+					"spread": 1.03,
+					"iterations": 2688,
+					"heap_delta_bytes": 3307,
+					"rss_peak_bytes": 90011024
+				},
+				"prism": {
+					"ns_per_op": 17744,
+					"ops_per_sec": 56357.078,
+					"mb_per_sec": 11.948,
+					"p10_ns": 17567,
+					"p90_ns": 18099,
+					"spread": 1.03,
+					"iterations": 1127,
+					"heap_delta_bytes": 7886,
+					"rss_peak_bytes": 90026288
+				},
+				"shiki_js": {
+					"ns_per_op": 80136,
+					"ops_per_sec": 12478.786,
+					"mb_per_sec": 2.646,
+					"p10_ns": 79335,
+					"p90_ns": 81739,
+					"spread": 1.03,
+					"iterations": 250,
+					"heap_delta_bytes": 35616,
+					"rss_peak_bytes": 90118720
+				},
+				"shiki_wasm": {
+					"ns_per_op": 62964,
+					"ops_per_sec": 15882.091,
+					"mb_per_sec": 3.367,
+					"p10_ns": 62334,
+					"p90_ns": 64223,
+					"spread": 1.03,
+					"iterations": 318,
+					"heap_delta_bytes": 27984,
+					"rss_peak_bytes": 90093280
+				}
+			},
+			"tokens": {
+				"fuz_code": 35,
+				"twinkleplop": 49,
+				"prism": 28,
+				"shiki_js": 21,
+				"shiki_wasm": 21
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 678,
+					"spans": 30
+				},
+				"twinkleplop": {
+					"html_bytes": 678,
+					"spans": 42
+				},
+				"prism": {
+					"html_bytes": 678,
+					"spans": 24
+				},
+				"shiki_js": {
+					"html_bytes": 1081,
+					"spans": 18
+				},
+				"shiki_wasm": {
+					"html_bytes": 1081,
+					"spans": 18
+				}
+			}
+		},
+		{
+			"id": "json/large/tokenize/neutral/package_lock.json",
+			"metric": "throughput",
+			"lang": "json",
+			"size": "large",
+			"mode": "tokenize",
+			"source": "neutral",
+			"home": null,
+			"file": "neutral/json/package_lock.json",
+			"bytes": 102400,
+			"lines": 2980,
+			"synthetic": true,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 1843200,
+					"ops_per_sec": 542.535,
+					"mb_per_sec": 55.556,
+					"p10_ns": 1824768,
+					"p90_ns": 1880064,
+					"spread": 1.03,
+					"iterations": 11,
+					"heap_delta_bytes": 1228800,
+					"rss_peak_bytes": 94096000
+				},
+				"twinkleplop": {
+					"ns_per_op": 2396160,
+					"ops_per_sec": 417.334,
+					"mb_per_sec": 42.735,
+					"p10_ns": 2372198,
+					"p90_ns": 2444083,
+					"spread": 1.03,
+					"iterations": 8,
+					"heap_delta_bytes": 1597440,
+					"rss_peak_bytes": 95324800
+				},
+				"prism": {
+					"ns_per_op": 5713920,
+					"ops_per_sec": 175.011,
+					"mb_per_sec": 17.921,
+					"p10_ns": 5656781,
+					"p90_ns": 5828198,
+					"spread": 1.03,
+					"iterations": 4,
+					"heap_delta_bytes": 3809280,
+					"rss_peak_bytes": 102697600
+				},
+				"shiki_js": {
+					"ns_per_op": 25804800,
+					"ops_per_sec": 38.752,
+					"mb_per_sec": 3.968,
+					"p10_ns": 25546752,
+					"p90_ns": 26320896,
+					"spread": 1.03,
+					"iterations": 1,
+					"heap_delta_bytes": 17203200,
+					"rss_peak_bytes": 147344000
+				},
+				"shiki_wasm": {
+					"ns_per_op": 20275200,
+					"ops_per_sec": 49.321,
+					"mb_per_sec": 5.051,
+					"p10_ns": 20072448,
+					"p90_ns": 20680704,
+					"spread": 1.03,
+					"iterations": 1,
+					"heap_delta_bytes": 13516800,
+					"rss_peak_bytes": 135056000
+				}
+			},
+			"tokens": {
+				"fuz_code": 17067,
+				"twinkleplop": 23893,
+				"prism": 13653,
+				"shiki_js": 10240,
+				"shiki_wasm": 10240
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 327680,
+					"spans": 14629
+				},
+				"twinkleplop": {
+					"html_bytes": 327680,
+					"spans": 20480
+				},
+				"prism": {
+					"html_bytes": 327680,
+					"spans": 11703
+				},
+				"shiki_js": {
+					"html_bytes": 522240,
+					"spans": 8777
+				},
+				"shiki_wasm": {
+					"html_bytes": 522240,
+					"spans": 8777
+				}
+			}
+		}
+	],
+	"startup": [
+		{
+			"scenario": "bare",
+			"library": null,
+			"lang": null,
+			"set": null,
+			"bundled": false,
+			"samples": 30,
+			"median_ms": 21.4,
+			"spread": 1.05
+		},
+		{
+			"scenario": "core",
+			"library": "fuz_code",
+			"lang": null,
+			"set": null,
+			"bundled": false,
+			"samples": 30,
+			"median_ms": 23.1,
+			"spread": 1.06
+		},
+		{
+			"scenario": "lang",
+			"library": "twinkleplop",
+			"lang": "ts",
+			"set": null,
+			"bundled": true,
+			"samples": 30,
+			"median_ms": 24.9,
+			"spread": 1.04
+		},
+		{
+			"scenario": "set",
+			"library": "shiki_wasm",
+			"lang": null,
+			"set": "docs",
+			"bundled": false,
+			"samples": 30,
+			"median_ms": 88.2,
+			"spread": 1.09
+		},
+		{
+			"scenario": "first_highlight",
+			"library": "prism",
+			"lang": "ts",
+			"set": null,
+			"bundled": true,
+			"samples": 30,
+			"median_ms": 27.3,
+			"spread": 1.05
+		}
+	],
+	"bundle": {
+		"fuz_code": {
+			"core": {
+				"raw": 5200,
+				"gzip": 1872,
+				"brotli": 1612,
+				"wasm": 0,
+				"css": 1840
+			},
+			"single:ts": {
+				"raw": 9300,
+				"gzip": 3348,
+				"brotli": 2883,
+				"wasm": 0,
+				"css": 1840
+			},
+			"single:xml": {
+				"raw": 9300,
+				"gzip": 3348,
+				"brotli": 2883,
+				"wasm": 0,
+				"css": 1840
+			},
+			"docs": {
+				"raw": 33900,
+				"gzip": 12204,
+				"brotli": 10509,
+				"wasm": 0,
+				"css": 1840
+			},
+			"web_rust": {
+				"raw": 46200,
+				"gzip": 16632,
+				"brotli": 14322,
+				"wasm": 0,
+				"css": 1840
+			}
+		},
+		"twinkleplop": {
+			"core": {
+				"raw": 7400,
+				"gzip": 2664,
+				"brotli": 2294,
+				"wasm": 0,
+				"css": 1840
+			},
+			"single:ts": {
+				"raw": 11500,
+				"gzip": 4140,
+				"brotli": 3565,
+				"wasm": 0,
+				"css": 1840
+			},
+			"single:xml": {
+				"unsupported": [
+					"xml"
+				]
+			},
+			"docs": {
+				"raw": 36100,
+				"gzip": 12996,
+				"brotli": 11191,
+				"wasm": 0,
+				"css": 1840
+			},
+			"web_rust": {
+				"unsupported": [
+					"xml"
+				]
+			}
+		},
+		"prism": {
+			"core": {
+				"raw": 6900,
+				"gzip": 2484,
+				"brotli": 2139,
+				"wasm": 0,
+				"css": 1840
+			},
+			"single:ts": {
+				"raw": 11000,
+				"gzip": 3960,
+				"brotli": 3410,
+				"wasm": 0,
+				"css": 1840
+			},
+			"single:xml": {
+				"unsupported": [
+					"xml"
+				]
+			},
+			"docs": {
+				"raw": 35600,
+				"gzip": 12816,
+				"brotli": 11036,
+				"wasm": 0,
+				"css": 1840
+			},
+			"web_rust": {
+				"unsupported": [
+					"xml"
+				]
+			}
+		},
+		"shiki_js": {
+			"core": {
+				"raw": 61000,
+				"gzip": 21960,
+				"brotli": 18910,
+				"wasm": 0,
+				"css": null
+			},
+			"single:ts": {
+				"raw": 99000,
+				"gzip": 35640,
+				"brotli": 30690,
+				"wasm": 0,
+				"css": null
+			},
+			"single:xml": {
+				"unsupported": [
+					"xml"
+				]
+			},
+			"docs": {
+				"raw": 327000,
+				"gzip": 117720,
+				"brotli": 101370,
+				"wasm": 0,
+				"css": null
+			},
+			"web_rust": {
+				"unsupported": [
+					"xml"
+				]
+			}
+		},
+		"shiki_wasm": {
+			"core": {
+				"raw": 48000,
+				"gzip": 17280,
+				"brotli": 14880,
+				"wasm": 622336,
+				"css": null
+			},
+			"single:ts": {
+				"raw": 86000,
+				"gzip": 30960,
+				"brotli": 26660,
+				"wasm": 622336,
+				"css": null
+			},
+			"single:xml": {
+				"unsupported": [
+					"xml"
+				]
+			},
+			"docs": {
+				"raw": 314000,
+				"gzip": 113040,
+				"brotli": 97340,
+				"wasm": 622336,
+				"css": null
+			},
+			"web_rust": {
+				"unsupported": [
+					"xml"
+				]
+			}
+		}
+	},
+	"coverage": {
+		"fuz_code": {
+			"ts": true,
+			"js": {
+				"via": "the TypeScript lexer"
+			},
+			"css": true,
+			"html": true,
+			"json": true,
+			"svelte": true,
+			"md": true,
+			"bash": true,
+			"rust": true,
+			"xml": true
+		},
+		"twinkleplop": {
+			"ts": true,
+			"js": true,
+			"css": true,
+			"html": true,
+			"json": true,
+			"svelte": true,
+			"md": true,
+			"bash": true,
+			"rust": true
+		},
+		"prism": {
+			"ts": true,
+			"js": true,
+			"css": true,
+			"html": true,
+			"json": true,
+			"svelte": {
+				"via": "the third-party prism-svelte grammar"
+			},
+			"md": true,
+			"bash": true,
+			"rust": true
+		},
+		"shiki_js": {
+			"ts": true,
+			"js": true,
+			"css": true,
+			"html": true,
+			"json": true,
+			"svelte": true,
+			"md": true,
+			"bash": true,
+			"rust": true
+		},
+		"shiki_wasm": {
+			"ts": true,
+			"js": true,
+			"css": true,
+			"html": true,
+			"json": true,
+			"svelte": true,
+			"md": true,
+			"bash": true,
+			"rust": true
+		}
+	}
+}
