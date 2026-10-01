@@ -354,7 +354,9 @@ memory is that library's too. Never import `bench/libraries.ts` from
 `html` mode it reads one character of the returned string. fuz_code,
 twinkleplop, and Prism return a rope (an unflattened concatenation), which is
 cheap to build and which a consumer pays to flatten on first use; Shiki's is
-already flat. Reading a character flattens it inside the clock, and the
+already flat. Reading a character flattens it inside the clock (a cost
+set by the size of the output, not by the library, so it weighs most on the
+fastest one), and the
 character is added to a module-level sink: a read whose result is unused is
 dropped once V8 optimises the call, and the string then stays a rope. A test
 asks V8 (`%StringIsFlat`) that the call's result is flat for every adapter, cold

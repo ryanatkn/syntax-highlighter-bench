@@ -108,9 +108,10 @@ node bench/run.ts --help`;
 				<strong>The HTML is read.</strong> Some libraries return a string the engine hasn't joined
 				up yet, which costs little to build, and every consumer then pays to flatten it on first
 				use. In <code>html</code> mode the timed call reads one character of the string, for every
-				library, so that cost is inside the clock. It is free for a library whose string is already
-				flat. In <code>tokenize</code> mode every library returns finished arrays, so there is
-				nothing to force.
+				library, so that cost is inside the clock. It depends on the size of the output, not on the
+				library, so it weighs most on the fastest one, and it is free for a library whose string is
+				already flat. In <code>tokenize</code> mode every library returns finished arrays, so there
+				is nothing to force.
 			</li>
 		</ul>
 		<p>

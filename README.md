@@ -169,7 +169,8 @@ language. The method, and why each part is there:
 - **The HTML is read.** Some libraries return a string the engine hasn't joined
   up yet, which is cheap to build and which every consumer pays to flatten on
   first use. The timed call reads one character of the string, for every
-  library, so that cost is inside the clock.
+  library, so that cost is inside the clock. The cost depends on the size of
+  the output, not on the library, so it weighs most on the fastest one.
 
 A full run measures each library in 3 processes per cell, each timing 4 rounds
 of 20ms batches, after a 100ms warmup, with a 100ms rewarm before each batch.
