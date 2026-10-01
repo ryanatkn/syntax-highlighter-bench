@@ -18,9 +18,21 @@ import {
 	create_lang_map,
 	resolve_claimed_langs,
 	LangNotSetUpError,
+	type AdapterWasm,
 	type HighlighterAdapter
 } from '../adapter.ts';
 import type { Lang } from '../langs.ts';
+
+/**
+ * Shiki stops tokenizing a line after this many milliseconds and returns the
+ * rest of it as one token, 500 by default. With the default, what a call
+ * returns depends on how fast the machine is at that moment: a cold first call
+ * on a loaded machine comes back with fewer tokens than the next one. The
+ * benchmark needs the same work from every call, so the limit is put out of
+ * reach. It is not turned off with 0: Shiki reads the clock before every match
+ * only while a limit is set, so 0 would skip work its default does.
+ */
+const TOKENIZE_TIME_LIMIT = 2 ** 31 - 1;
 
 /** The one bundled theme both adapters render with. */
 const THEME = { name: 'github-light', module: 'shiki/themes/github-light.mjs' };
@@ -84,6 +96,8 @@ export interface ShikiAdapterOptions {
 	note: string;
 	/** Creates the regex engine. The only async step, done in `setup`. */
 	create_engine: () => RegexEngine | Promise<RegexEngine>;
+	/** The WebAssembly binaries the engine loads, if it loads any. */
+	wasm?: ReadonlyArray<AdapterWasm>;
 	/** The engine's part of the bundle entry, in Shiki's documented shape. */
 	entry: {
 		/** The import line for the engine factory. */
@@ -123,6 +137,8 @@ export const create_shiki_adapter = (
 		output: 'inline_styles',
 		engine: 'textmate',
 		theme_css: null,
+		theme_schemes: ['light'],
+		...(options.wasm && { wasm: options.wasm }),
 		setup: async (langs) => {
 			const claimed = resolve_claimed_langs(id, LANGS, langs);
 			const grammars = await Promise.all(
@@ -139,7 +155,11 @@ export const create_shiki_adapter = (
 		},
 		tokenize: (src, lang) => {
 			const library_lang = to_ready_lang(lang);
-			return highlighter!.codeToTokensBase(src, { lang: library_lang, theme: THEME.name });
+			return highlighter!.codeToTokensBase(src, {
+				lang: library_lang,
+				theme: THEME.name,
+				tokenizeTimeLimit: TOKENIZE_TIME_LIMIT
+			});
 		},
 		count_tokens: (lines) => {
 			let count = 0;
@@ -148,7 +168,11 @@ export const create_shiki_adapter = (
 		},
 		html: (src, lang) => {
 			const library_lang = to_ready_lang(lang);
-			return highlighter!.codeToHtml(src, { lang: library_lang, theme: THEME.name });
+			return highlighter!.codeToHtml(src, {
+				lang: library_lang,
+				theme: THEME.name,
+				tokenizeTimeLimit: TOKENIZE_TIME_LIMIT
+			});
 		},
 		bundle_entry: (langs) => {
 			const names = resolve_claimed_langs(id, LANGS, langs).map(([, name]) => name);
@@ -166,6 +190,14 @@ export const create_shiki_adapter = (
 				'});',
 				''
 			].join('\n');
+		},
+		bundle_html: (exports, src, lang) => {
+			const [[, name]] = resolve_claimed_langs(id, LANGS, [lang]) as [[Lang, GrammarName]];
+			return (exports.highlighter as HighlighterCore).codeToHtml(src, {
+				lang: name,
+				theme: THEME.name,
+				tokenizeTimeLimit: TOKENIZE_TIME_LIMIT
+			});
 		}
 	};
 };

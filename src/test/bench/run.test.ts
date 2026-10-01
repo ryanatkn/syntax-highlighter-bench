@@ -7,6 +7,7 @@ import {
 	BenchMachine,
 	BenchResults,
 	bench_results_is_publishable,
+	type BenchCell,
 	type BenchRunFilters
 } from '$lib/results_schema.ts';
 import type { CellResult } from '../../../bench/cell.ts';
@@ -17,6 +18,7 @@ import {
 	RunError,
 	SIGNAL_EXIT,
 	assemble_results,
+	assert_matches_deterministic,
 	assert_passes_agree,
 	carry_noise_floor,
 	combine_passes,
@@ -93,6 +95,10 @@ const create_cell_result = (
 	excluded: options.excluded ?? null
 });
 
+/** The deterministic section a cell states: its token counts, or its output sizes. */
+const to_stated = (cell: BenchCell): BenchCell['tokens'] | BenchCell['output'] =>
+	cell.mode === 'tokenize' ? cell.tokens : cell.output;
+
 const SMALL_TS: BenchRunFilters = { ...NO_FILTERS, langs: ['ts'], sizes: ['small'] };
 
 /** The processes of a run over `filters`, each answered by `answer`. */
@@ -120,6 +126,7 @@ const create_record = (overrides: Partial<RunRecord> = {}): RunRecord => {
 		processes: create_processes(options),
 		anchor: { drift: 0.001, stable: true },
 		noise_floor: null,
+		deterministic: null,
 		...overrides
 	};
 };
@@ -584,18 +591,21 @@ describe('assemble_results', () => {
 		// the rosters come from the harness, whatever the filters
 		assert.ok(results.langs.some((l) => l.id === 'xml' && !l.timed));
 		assert.ok(results.sets.some((s) => s.id === 'docs'));
-		// not built yet
+		// cold start is not built, and this record carries no deterministic file
 		assert.deepStrictEqual(results.startup, []);
 		assert.deepStrictEqual(results.bundle, {});
+		assert.strictEqual(results.meta.bundler, null);
 		for (const cell of results.cells) {
 			assert.strictEqual(cell.metric, 'throughput');
 			// roster order, though each pass started with a different library
-			for (const section of [cell.values, cell.tokens, cell.output]) {
+			for (const section of [cell.values, to_stated(cell)]) {
 				assert.deepStrictEqual(
 					Object.keys(section),
 					ADAPTERS.map((a) => a.id)
 				);
 			}
+			// each deterministic number is stated on the cell whose call returns it
+			assert.deepStrictEqual(cell.mode === 'tokenize' ? cell.output : cell.tokens, {});
 			assert.strictEqual(cell.values.fuz_code!.rss_peak_bytes, 50_000_000);
 			assert.strictEqual(cell.values.fuz_code!.attempts, 1);
 		}
@@ -673,7 +683,7 @@ describe('assemble_results', () => {
 			cells.map((cell) => ({ cell: cell.id, library: 'prism', reason }))
 		);
 		for (const cell of results.cells) {
-			for (const section of [cell.values, cell.tokens, cell.output]) {
+			for (const section of [cell.values, to_stated(cell)]) {
 				assert.ok(!Object.hasOwn(section, 'prism'));
 				// unsupported: no numbers and no excluded entry either
 				assert.ok(!Object.hasOwn(section, 'shiki_wasm'));
@@ -773,6 +783,46 @@ describe('assemble_results', () => {
 			() => assemble_results(create_record({ commit: 'not a commit' })),
 			/invalid bench results/
 		);
+	});
+});
+
+describe('assert_matches_deterministic', () => {
+	const PROCESS = plan_processes(plan_cells(manifest.inputs, SMALL_TS, ADAPTERS), 1)[0]!;
+	const measured = create_cell_result(PROCESS);
+	const numbers = { tokens: 10, output: { html_bytes: 100, spans: 10 } };
+
+	test('accepts a result that is what the file has', () => {
+		assert_matches_deterministic('label', numbers, measured);
+		const excluded = create_cell_result(PROCESS, { excluded: 'produced no HTML' });
+		assert_matches_deterministic('label', { excluded: 'produced no HTML' }, excluded);
+	});
+
+	test('refuses any difference, with exit code 2 and how to regenerate the file', () => {
+		const excluded = create_cell_result(PROCESS, { excluded: 'produced no HTML' });
+		for (const [expected, result] of [
+			[{ ...numbers, tokens: 11 }, measured],
+			[{ ...numbers, output: { html_bytes: 101, spans: 10 } }, measured],
+			[{ ...numbers, output: { html_bytes: 100, spans: 9 } }, measured],
+			[{ excluded: 'produced no HTML' }, measured],
+			[numbers, excluded],
+			[{ excluded: 'another reason' }, excluded],
+			// the file has nothing for the input and library
+			[undefined, measured]
+		] as const) {
+			let error: unknown;
+			try {
+				assert_matches_deterministic('cell a (prism)', expected, result);
+			} catch (caught) {
+				error = caught;
+			}
+			assert.ok(error instanceof RunError);
+			assert.strictEqual(error.exit_code, 2);
+			assert.match(
+				error.message,
+				/^cell a \(prism\) disagrees with the deterministic results file/
+			);
+			assert.match(error.message, /npm run bench:deterministic/);
+		}
 	});
 });
 

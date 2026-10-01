@@ -6,7 +6,9 @@
  * The file separates two classes of number. **Machine-dependent** numbers come
  * from the timed harness on a named machine: each cell's `values` and the
  * `startup` section. **Deterministic** numbers regenerate identically anywhere:
- * each cell's `tokens` and `output`, plus `bundle` and `coverage`.
+ * each cell's `tokens` and `output`, plus `bundle` and `coverage`. A file may
+ * hold only the deterministic ones: it then records no machine, time, or commit,
+ * since none of them shaped its numbers.
  *
  * A library missing from a cell is in one of two states, and the file keeps them
  * apart. **Unsupported** means the library doesn't claim the language — it has
@@ -69,22 +71,40 @@ export const BenchMachine = z.strictObject({
 export type BenchMachine = z.infer<typeof BenchMachine>;
 
 /**
+ * The anchor drift under which a run counts as stable; 0.03 is 3%. Past it the
+ * machine changed state during the run, and the ratios between libraries in a
+ * cell are more trustworthy than any absolute time.
+ */
+export const BENCH_ANCHOR_STABLE_BELOW = 0.03;
+
+/**
  * The reference workload measured at the start and end of a run, and of every
  * segment of a run that was stopped and resumed. Its drift says whether the
  * machine changed state while the run was in progress.
  */
-export const BenchAnchor = z.strictObject({
-	drift: z.number().meta({
-		description:
-			'Relative change between the two readings that differ most, from the earlier to the later; 0.01 is 1%. An uninterrupted run has two readings.'
-	}),
-	stable: z.boolean().meta({ description: 'Whether the drift stayed inside the threshold.' })
-});
+export const BenchAnchor = z
+	.strictObject({
+		drift: z.number().meta({
+			description:
+				'Relative change between the two readings that differ most, from the earlier to the later; 0.01 is 1%. An uninterrupted run has two readings.'
+		}),
+		stable: z.boolean().meta({
+			description: 'Whether the drift stayed under `BENCH_ANCHOR_STABLE_BELOW`, either way.'
+		})
+	})
+	.refine((anchor) => anchor.stable === Math.abs(anchor.drift) < BENCH_ANCHOR_STABLE_BELOW, {
+		path: ['stable'],
+		message: `stable is exactly a drift under ${BENCH_ANCHOR_STABLE_BELOW}, either way`
+	});
 export type BenchAnchor = z.infer<typeof BenchAnchor>;
 
 /** What a library's `html` output carries its colors in. */
 export const BenchOutputKind = z.enum(['classes', 'inline_styles']);
 export type BenchOutputKind = z.infer<typeof BenchOutputKind>;
+
+/** A color scheme a theme covers. */
+export const BenchColorScheme = z.enum(['light', 'dark']);
+export type BenchColorScheme = z.infer<typeof BenchColorScheme>;
 
 /** How a library lexes. A filterable tag, not a ranking. */
 export const BenchEngineKind = z.enum(['scanner', 'grammar_vm', 'regex', 'textmate']);
@@ -114,6 +134,10 @@ export const BenchLibrary = z.strictObject({
 	extra_packages: z.record(z.string().min(1), z.string().min(1)).optional().meta({
 		description:
 			'The installed versions of packages the library was measured with that are versioned apart from `package`, by name.'
+	}),
+	theme_schemes: z.array(BenchColorScheme).min(1).meta({
+		description:
+			'The color schemes the measured default theme covers: its stylesheets for class-based output, and the theme bundled in the JS for inline styles. A theme with two schemes is larger than one with one, which the theme CSS sizes should be read beside.'
 	})
 });
 export type BenchLibrary = z.infer<typeof BenchLibrary>;
@@ -232,22 +256,46 @@ export type BenchRun = z.infer<typeof BenchRun>;
 export const bench_run_is_complete = (run: Pick<BenchRun, 'kind' | 'filters'>): boolean =>
 	run.kind !== 'smoke' && Object.values(run.filters).every((filter) => filter === null);
 
-/** Where, when, and from what a run was produced. */
-export const BenchMeta = z.strictObject({
-	generated_at: z.iso.datetime().meta({
-		description: 'When the run started: its first segment, for a run that was resumed.'
-	}),
-	machine: BenchMachine,
-	node: z
+/**
+ * What the bundle sizes were built and compressed with. Together with the
+ * libraries' versions it is what the sizes depend on, apart from the zlib and
+ * brotli inside the Node that compressed them.
+ */
+export const BenchBundler = z.strictObject({
+	vite: z.string().min(1).meta({ description: 'The version of Vite that bundled.' }),
+	rollup: z.string().min(1).meta({ description: 'The version of Rollup inside that Vite.' }),
+	esbuild: z
 		.string()
 		.min(1)
-		.meta({ description: 'The Node version, as `process.version` prints it.' }),
+		.meta({ description: 'The version of esbuild inside that Vite, which minified.' }),
+	gzip_level: z.number().int().min(1).max(9),
+	brotli_quality: z.number().int().min(0).max(11)
+});
+export type BenchBundler = z.infer<typeof BenchBundler>;
+
+/**
+ * Where, when, and from what a run was produced. `generated_at`, `machine`,
+ * `node`, and `commit` say where timed numbers came from, and are null only in
+ * a file that has none: its numbers are the same on any machine, at any time,
+ * and a commit can't name the tree it is itself committed in.
+ */
+export const BenchMeta = z.strictObject({
+	generated_at: z.iso.datetime().nullable().meta({
+		description:
+			'When the run started: its first segment, for a run that was resumed. Null only when nothing was timed.'
+	}),
+	machine: BenchMachine.nullable().meta({ description: 'Null only when nothing was timed.' }),
+	node: z.string().min(1).nullable().meta({
+		description:
+			'The Node version, as `process.version` prints it. Null only when nothing was timed.'
+	}),
 	commit: z
 		.string()
 		.regex(/^[0-9a-f]{40}(-dirty)?$/)
+		.nullable()
 		.meta({
 			description:
-				'The harness commit that ran, with `-dirty` appended when the working tree had changes it does not record.'
+				'The harness commit that ran, with `-dirty` appended when the working tree had changes it does not record. Null only when nothing was timed.'
 		}),
 	corpus_hash: Sha256.meta({
 		description: 'A hash over the corpus manifest. Runs with different hashes are not comparable.'
@@ -259,6 +307,9 @@ export const BenchMeta = z.strictObject({
 	noise_floor: BenchNoiseFloor.nullable().meta({
 		description:
 			'Null until the machine has been calibrated with the parameters of this run. A calibration run carries the floor it measured.'
+	}),
+	bundler: BenchBundler.nullable().meta({
+		description: 'Null exactly when `bundle` is empty: no sizes were measured.'
 	})
 });
 export type BenchMeta = z.infer<typeof BenchMeta>;
@@ -386,29 +437,34 @@ export const BenchInput = z
 export type BenchInput = z.infer<typeof BenchInput>;
 
 /** One library's timing and memory in one cell. Machine-dependent. */
-export const BenchCellValue = z.strictObject({
-	ns_per_op: z.number().positive().meta({ description: 'Median nanoseconds per call.' }),
-	ops_per_sec: z.number().positive(),
-	mb_per_sec: z.number().positive().meta({ description: 'Input megabytes per second.' }),
-	p10_ns: z.number().positive().meta({ description: '10th percentile across rounds.' }),
-	p90_ns: z.number().positive().meta({ description: '90th percentile across rounds.' }),
-	spread: z
-		.number()
-		.min(1)
-		.meta({ description: 'Slowest round over fastest. Near 1 means the rounds agreed.' }),
-	iterations: z.number().int().positive().meta({
-		description:
-			'Calls per timed batch, calibrated for this library. Each process calibrates for itself, and this is the median across them.'
-	}),
-	rss_peak_bytes: z.number().int().positive().meta({
-		description:
-			"The peak resident set size of the library's process, the largest across its passes. The process holds this library alone, with Node itself and the input, so it is a whole-process peak and not what the library adds."
-	}),
-	attempts: z.number().int().positive().meta({
-		description:
-			'How many times the library was measured on this cell. 1 is once. More means its rounds disagreed and it was measured again: every other number here, the spread and the percentiles included, is from the attempt whose rounds agreed best, whichever was faster, so they describe its calmest attempt. In a calibration file it counts the attempts of the first arm, which the value is from.'
+export const BenchCellValue = z
+	.strictObject({
+		ns_per_op: z.number().positive().meta({ description: 'Median nanoseconds per call.' }),
+		ops_per_sec: z.number().positive(),
+		mb_per_sec: z.number().positive().meta({ description: 'Input megabytes per second.' }),
+		p10_ns: z.number().positive().meta({ description: '10th percentile across rounds.' }),
+		p90_ns: z.number().positive().meta({ description: '90th percentile across rounds.' }),
+		spread: z
+			.number()
+			.min(1)
+			.meta({ description: 'Slowest round over fastest. Near 1 means the rounds agreed.' }),
+		iterations: z.number().int().positive().meta({
+			description:
+				'Calls per timed batch, calibrated for this library. Each process calibrates for itself, and this is the median across them.'
+		}),
+		rss_peak_bytes: z.number().int().positive().meta({
+			description:
+				"The peak resident set size of the library's process, the largest across its passes. The process holds this library alone, with Node itself and the input, so it is a whole-process peak and not what the library adds."
+		}),
+		attempts: z.number().int().positive().meta({
+			description:
+				'How many times the library was measured on this cell. 1 is once. More means its rounds disagreed and it was measured again: every other number here, the spread and the percentiles included, is from the attempt whose rounds agreed best, whichever was faster, so they describe its calmest attempt. In a calibration file it counts the attempts of the first arm, which the value is from.'
+		})
 	})
-});
+	.refine((value) => value.p10_ns <= value.p90_ns, {
+		path: ['p10_ns'],
+		message: 'the 10th percentile is at most the 90th'
+	});
 export type BenchCellValue = z.infer<typeof BenchCellValue>;
 
 /** The size of one library's HTML for a cell's input. Deterministic. */
@@ -428,6 +484,10 @@ export const to_bench_cell_id = (file: string, mode: BenchMode): string => `${fi
  * One input measured in one mode, across libraries. A library absent from
  * `values`, `tokens`, and `output` was not measured here: it is unsupported,
  * excluded, or outside the run's filters.
+ *
+ * Each deterministic number is stated once for an input, on the cell whose call
+ * returns it: `tokens` on the `tokenize` cell, since it counts what `tokenize`
+ * returned, and `output` on the `html` cell. The other is empty there.
  */
 export const BenchCell = z.strictObject({
 	id: Id.meta({
@@ -454,10 +514,12 @@ export const BenchCell = z.strictObject({
 		description: 'Machine-dependent: timing and memory by library id.'
 	}),
 	tokens: strict_record(LibraryId, z.number().int().positive()).meta({
-		description: 'Deterministic: token count by library id.'
+		description:
+			"Deterministic: each library's own token count, by library id. Stated on the `tokenize` cell and empty on any other."
 	}),
 	output: strict_record(LibraryId, BenchCellOutput).meta({
-		description: 'Deterministic: HTML size by library id.'
+		description:
+			'Deterministic: HTML size by library id. Stated on the `html` cell and empty on any other.'
 	})
 });
 export type BenchCell = z.infer<typeof BenchCell>;
@@ -485,21 +547,58 @@ export const BenchStartup = z.strictObject({
 });
 export type BenchStartup = z.infer<typeof BenchStartup>;
 
-/** The bundled size of one library over one feature set. Deterministic. */
-export const BenchBundleSizes = z.strictObject({
-	raw: z.number().int().positive().meta({ description: 'Minified JS bytes.' }),
-	gzip: z.number().int().positive(),
-	brotli: z.number().int().positive(),
-	wasm: z
-		.number()
-		.int()
-		.nonnegative()
-		.meta({ description: 'WebAssembly bytes, kept out of the JS figures. 0 without wasm.' }),
-	css: z.number().int().positive().nullable().meta({
-		description:
-			'Bytes of the default theme stylesheet, kept out of the JS figures. Null when styles are inline.'
+/**
+ * The most a compressed size may exceed the raw one by: a compression format
+ * adds a header and a little framing, so a few bytes of input, or bytes that
+ * don't compress, come out slightly larger. Anything past that is a mistake.
+ */
+export const to_max_compressed_bytes = (raw: number): number => raw + 64 + Math.ceil(raw / 100);
+
+/** The shape of some bytes measured raw and compressed. */
+const byte_sizes_shape = {
+	raw: z.number().int().positive().meta({ description: 'The bytes as served uncompressed.' }),
+	gzip: z.number().int().positive().meta({ description: 'Those bytes, gzipped.' }),
+	brotli: z.number().int().positive().meta({ description: 'Those bytes, brotli-compressed.' })
+};
+
+/** Rejects a compressed size implausibly larger than the raw one. */
+const refine_byte_sizes = (
+	sizes: { raw: number; gzip: number; brotli: number },
+	ctx: z.RefinementCtx
+): void => {
+	for (const key of ['gzip', 'brotli'] as const) {
+		if (sizes[key] > to_max_compressed_bytes(sizes.raw)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: [key],
+				message: `${key} is larger than raw by more than a compression format's own overhead`
+			});
+		}
+	}
+};
+
+/** Some bytes a page loads, measured raw and compressed. Deterministic. */
+export const BenchByteSizes = z.strictObject(byte_sizes_shape).superRefine(refine_byte_sizes);
+export type BenchByteSizes = z.infer<typeof BenchByteSizes>;
+
+/**
+ * The bundled size of one library over one feature set: `raw`, `gzip`, and
+ * `brotli` are the minified JavaScript, and what else a page loads for the
+ * library has a section of its own. Deterministic.
+ */
+export const BenchBundleSizes = z
+	.strictObject({
+		...byte_sizes_shape,
+		wasm: BenchByteSizes.nullable().meta({
+			description:
+				'The WebAssembly binaries the library loads, kept out of the JS figures. Null when it loads none.'
+		}),
+		css: BenchByteSizes.nullable().meta({
+			description:
+				'The default theme stylesheets, minified, each compressed on its own and summed, kept out of the JS figures. Null exactly when the library writes its styles inline: its theme is then in the JS figures.'
+		})
 	})
-});
+	.superRefine(refine_byte_sizes);
 export type BenchBundleSizes = z.infer<typeof BenchBundleSizes>;
 
 /** A feature set a library can't be measured over, naming the languages it lacks. */
@@ -508,8 +607,24 @@ export const BenchBundleUnsupported = z.strictObject({
 });
 export type BenchBundleUnsupported = z.infer<typeof BenchBundleUnsupported>;
 
-/** One library's result for one feature set: its sizes, or why there are none. */
-export const BenchBundleEntry = z.union([BenchBundleSizes, BenchBundleUnsupported]);
+/**
+ * One library's result for one feature set: its sizes, or why there are none.
+ * An entry with an `unsupported` key is read as the latter and anything else as
+ * sizes, so a malformed entry is reported against the shape it was meant to be.
+ */
+export const BenchBundleEntry = z.union([BenchBundleSizes, BenchBundleUnsupported], {
+	error: (issue) => {
+		const { input } = issue;
+		const unsupported = typeof input === 'object' && input !== null && 'unsupported' in input;
+		const parsed = (unsupported ? BenchBundleUnsupported : BenchBundleSizes).safeParse(input);
+		const problems = parsed.success
+			? []
+			: parsed.error.issues.map((i) =>
+					i.path.length === 0 ? i.message : `${i.path.join('.')}: ${i.message}`
+				);
+		return `a bundle entry is sizes {raw, gzip, brotli, wasm, css} or {unsupported: [langs]}; read as ${unsupported ? 'unsupported' : 'sizes'}: ${problems.join('; ')}`;
+	}
+});
 export type BenchBundleEntry = z.infer<typeof BenchBundleEntry>;
 
 /**
@@ -551,7 +666,7 @@ export interface BenchResultsCoverage {
 	meta: { libraries: Array<{ id: string }>; excluded: Array<BenchExcluded> };
 	langs: Array<BenchLang>;
 	inputs: Array<{ file: string; lang: string }>;
-	cells: Array<Pick<BenchCell, 'id' | 'lang' | 'mode' | 'values'>>;
+	cells: Array<Pick<BenchCell, 'id' | 'lang' | 'mode' | 'values' | 'tokens' | 'output'>>;
 	coverage: Record<string, Record<string, unknown>>;
 }
 
@@ -559,7 +674,9 @@ export interface BenchResultsCoverage {
  * Lists what a results file lacks to be a complete run, from the file alone:
  *
  * - in every cell, every library of the roster that claims the cell's language
- *   has a value or an entry in `meta.excluded`
+ *   has a number or an entry in `meta.excluded`. The number is a timed value,
+ *   or for a deterministic-only file the one the cell states: its token count
+ *   on a `tokenize` cell, its output size on an `html` cell
  * - every listed input of a timed language that some library claims has a cell
  *   in every mode the file's cells use
  *
@@ -568,21 +685,29 @@ export interface BenchResultsCoverage {
  * corpus it came from, and the modes are taken from the cells so that a file
  * stays valid when the harness gains a mode.
  *
+ * @param results - the file, or the parts of it that say
+ * @param numbers - which numbers the file should be complete in: its timed
+ * `values`, or the `deterministic` number each cell states
  * @returns the gaps, none for a file that covers everything it lists
  */
-export const bench_results_find_gaps = (results: BenchResultsCoverage): Array<BenchResultsGap> => {
+export const bench_results_find_gaps = (
+	results: BenchResultsCoverage,
+	numbers: 'values' | 'deterministic' = 'values'
+): Array<BenchResultsGap> => {
 	const gaps: Array<BenchResultsGap> = [];
 	const excluded = new Set(results.meta.excluded.map((e) => JSON.stringify([e.cell, e.library])));
 	for (const [i, cell] of results.cells.entries()) {
+		const section =
+			numbers === 'values' ? 'values' : cell.mode === 'tokenize' ? 'tokens' : 'output';
 		for (const { id } of results.meta.libraries) {
 			if (
 				coverage_claims(results.coverage, id, cell.lang) &&
-				!Object.hasOwn(cell.values, id) &&
+				!Object.hasOwn(cell[section], id) &&
 				!excluded.has(JSON.stringify([cell.id, id]))
 			) {
 				gaps.push({
-					path: ['cells', i, 'values'],
-					message: `library "${id}" claims lang "${cell.lang}" and has neither a value nor an excluded entry here`
+					path: ['cells', i, section],
+					message: `library "${id}" claims lang "${cell.lang}" and has neither ${section === 'values' ? 'a value' : `its ${section}`} nor an excluded entry here`
 				});
 			}
 		}
@@ -610,8 +735,9 @@ export const bench_results_find_gaps = (results: BenchResultsCoverage): Array<Be
  * describes its input as the `inputs` roster does and is named after it, no
  * library has numbers for a language it doesn't claim or a cell it was excluded
  * from, no cell covers an untimed language, a run with timed numbers has an
- * anchor and its run parameters, and a run with no filters has no gap
- * (`bench_results_find_gaps`).
+ * anchor, its run parameters, and where it came from, a run with no filters has
+ * no gap (`bench_results_find_gaps`), each deterministic number of an input is
+ * stated on one cell, and bundle sizes cover every library and set or none.
  */
 export const BenchResults = z
 	.strictObject({
@@ -765,6 +891,20 @@ export const BenchResults = z
 					}
 				}
 			}
+			// each deterministic number is stated once for an input, on the cell whose call returns it
+			const stated = cell.mode === 'tokenize' ? 'tokens' : 'output';
+			const unstated = cell.mode === 'tokenize' ? 'output' : 'tokens';
+			if (Object.keys(cell[unstated]).length > 0) {
+				issue(
+					[...path, unstated],
+					`${unstated} is stated on the input's ${cell.mode === 'tokenize' ? 'html' : 'tokenize'} cell, and is empty here`
+				);
+			}
+			for (const library of Object.keys(cell.values)) {
+				if (!Object.hasOwn(cell[stated], library)) {
+					issue([...path, stated], `library "${library}" has a value here and no ${stated}`);
+				}
+			}
 			for (const section of ['values', 'tokens', 'output'] as const) {
 				for (const library of Object.keys(cell[section])) {
 					const at = [...path, section, library];
@@ -782,6 +922,11 @@ export const BenchResults = z
 
 		if (timed && results.meta.anchor === null) {
 			issue(['meta', 'anchor'], 'a run with timed numbers needs an anchor');
+		}
+		for (const key of ['generated_at', 'machine', 'node', 'commit'] as const) {
+			if (timed && results.meta[key] === null) {
+				issue(['meta', key], `a run with timed numbers records its ${key}`);
+			}
 		}
 		if (cells_timed && results.meta.run === null) {
 			issue(['meta', 'run'], 'a run with timed cells records how they were measured');
@@ -847,6 +992,11 @@ export const BenchResults = z
 			if (cells_timed && bench_run_is_complete(run)) {
 				for (const gap of bench_results_find_gaps(results)) issue(gap.path, gap.message);
 			}
+		} else if (!cells_timed) {
+			// a deterministic-only file has no filters, so it covers everything it lists
+			for (const gap of bench_results_find_gaps(results, 'deterministic')) {
+				issue(gap.path, gap.message);
+			}
 		}
 
 		// startup
@@ -895,12 +1045,30 @@ export const BenchResults = z
 			}
 		}
 
-		// bundle: sizes only where every language is claimed; otherwise the missing ones, exactly
+		// bundle: measured for every library over every set, or not at all
+		const bundle_measured = Object.keys(results.bundle).length > 0;
+		if (bundle_measured !== (results.meta.bundler !== null)) {
+			issue(['meta', 'bundler'], 'bundler is set exactly when bundle sizes were measured');
+		}
+		const libraries = new Map(results.meta.libraries.map((l) => [l.id, l]));
+		for (const id of bundle_measured ? library_ids : []) {
+			if (!Object.hasOwn(results.bundle, id)) {
+				issue(['bundle'], `library "${id}" has no bundle entry`);
+				continue;
+			}
+			for (const set of results.sets) {
+				if (!Object.hasOwn(results.bundle[id]!, set.id)) {
+					issue(['bundle', id], `library "${id}" has no entry for set "${set.id}"`);
+				}
+			}
+		}
+		// sizes only where every language is claimed; otherwise the missing ones, exactly
 		for (const [library, by_set] of Object.entries(results.bundle)) {
 			if (!library_ids.has(library)) {
 				issue(['bundle', library], `unknown library "${library}"`);
 				continue;
 			}
+			const inline = libraries.get(library)!.output === 'inline_styles';
 			for (const [set_id, entry] of Object.entries(by_set)) {
 				const path = ['bundle', library, set_id];
 				const set = sets.get(set_id);
@@ -919,8 +1087,18 @@ export const BenchResults = z
 							`expected the langs of set "${set_id}" that "${library}" doesn't claim: ${missing.join(', ') || 'none'}`
 						);
 					}
-				} else if (missing.length) {
-					issue(path, `library "${library}" has sizes but doesn't claim: ${missing.join(', ')}`);
+				} else {
+					if (missing.length) {
+						issue(path, `library "${library}" has sizes but doesn't claim: ${missing.join(', ')}`);
+					}
+					if ((entry.css === null) !== inline) {
+						issue(
+							[...path, 'css'],
+							inline
+								? `library "${library}" writes its styles inline, so it has no stylesheet to measure`
+								: `library "${library}" styles by class, so its stylesheet is measured`
+						);
+					}
 				}
 			}
 		}
@@ -942,6 +1120,7 @@ export const bench_results_is_publishable = (results: BenchResults): boolean => 
 		bench_run_is_complete(run) &&
 		anchor !== null &&
 		anchor.stable &&
+		commit !== null &&
 		!commit.endsWith('-dirty') &&
 		bench_results_find_gaps(results).length === 0
 	);

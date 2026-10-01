@@ -28,11 +28,14 @@ One package per language, and the two factories by name.
 export { language as typescript_language, tokenize as typescript_tokenize } from '@twinkleplop/typescript';
 ```
 
-`bundle_entry` returns one such line per language. With no languages it exports
-`create_language` and `to_html` from `@twinkleplop/core`: what a language
-package builds its two factories from. Every language package also imports
-`@twinkleplop/core/compile` and `@twinkleplop/core/tokens`, which this floor
-leaves out, so the first language carries them.
+`bundle_entry` returns one such line per language, and a built bundle is checked
+by highlighting through the `<name>_language` export (`bundle_html`). With no
+languages it exports what every language package is built from:
+`create_language` and `to_html` from `@twinkleplop/core`, and `compile` and
+`define_grammar` from `@twinkleplop/core/compile`. Every language package
+imports the compiler, so with it in the floor, a single language less the floor
+is that language's own cost. A maintainer who knows a leaner documented floor
+can propose it.
 
 A language package imports the packages it embeds, so `@twinkleplop/typescript`
 brings `@twinkleplop/javascript`, which brings HTML and CSS.
@@ -76,12 +79,16 @@ is measured without embedded-code highlighting in every library.
 
 `@twinkleplop/theme-github`, whose default export is one stylesheet holding the
 light and dark palettes. The package also exports `./light` and `./dark`
-separately, each smaller.
+separately, each smaller (one palette each; the default is what twinkleplop's
+docs import). The default export is what is measured, minified like every
+library's stylesheets, and the roster entry records that it covers both
+schemes.
 
 ## Version
 
-The version recorded is that of `@twinkleplop/core`. The language packages are
-versioned separately from it, and each one's version is recorded beside it.
+The version recorded is that of `@twinkleplop/core`. The language packages and
+the theme package are versioned separately from it, and each one's version is
+recorded beside it.
 
 ## Caveats
 

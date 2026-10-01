@@ -36,6 +36,11 @@ A component registers itself on the global `Prism` object when it is imported
 and reads the grammars it extends from there, so order matters. `bundle_entry`
 returns this shape. With no languages it is the core alone.
 
+Bundle size is measured over it, and a built bundle is checked by highlighting
+through its default export (`bundle_html`). The components find the core
+through the global `Prism` it sets, in a bundle as in the source files, so each
+bundle is checked in a process of its own.
+
 ## Token count
 
 Every `Token` object, at any depth: a token whose content holds other tokens
@@ -82,10 +87,22 @@ components with dynamic imports, which is the only async step.
 
 ## Theme CSS
 
-`prismjs/themes/prism.css`, the default theme.
+`prismjs/themes/prism.css`, the default theme. It ships unminified and is
+measured minified, like every library's stylesheets. It covers one scheme,
+light.
 
 ## Caveats
 
+- **`tokenize` and `highlight` can disagree on Markdown.** The Markdown
+  component highlights the inside of a fenced block in two hooks,
+  `after-tokenize` and `wrap`, and only `Prism.highlight` runs hooks:
+  `Prism.tokenize` returns the fence's content as one token. So for a fence
+  whose language is loaded, the HTML holds elements that the token count does
+  not include, and the two numbers of that input describe different amounts of
+  work. Under the one-language rule that is a fence tagged `html`, `xml`, `svg`,
+  `markup`, or as Markdown. The token count is stated on an input's `tokenize`
+  cell and the output size on its `html` cell, each beside the call it comes
+  from.
 - **The registry is global and only grows.** A second `setup` cannot unload a
   grammar, so languages loaded earlier in the process stay loaded and change
   Markdown's fenced blocks, and add a `title` attribute to every `entity` token

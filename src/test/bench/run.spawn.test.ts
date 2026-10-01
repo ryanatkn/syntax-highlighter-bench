@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { BenchResults, parse_bench_results } from '$lib/results_schema.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
+import { to_deterministic_path } from '../../../bench/deterministic.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { read_journal } from '../../../bench/journal.ts';
 import { RunError, run_bench, spawn_cell_sync } from '../../../bench/run.ts';
@@ -81,9 +82,12 @@ describe('run_bench', () => {
 			);
 			assert.deepStrictEqual(results.inputs, inputs);
 			for (const cell of results.cells) {
-				for (const section of [cell.values, cell.tokens, cell.output]) {
+				const [stated, unstated] =
+					cell.mode === 'tokenize' ? [cell.tokens, cell.output] : [cell.output, cell.tokens];
+				for (const section of [cell.values, stated]) {
 					assert.deepStrictEqual(Object.keys(section), ['fuz_code', 'prism']);
 				}
+				assert.deepStrictEqual(unstated, {});
 				for (const value of Object.values(cell.values)) {
 					assert.ok(value.ns_per_op > 0);
 					// a whole process of its own
@@ -105,11 +109,28 @@ describe('run_bench', () => {
 			assert.ok(meta.anchor !== null);
 			assert.strictEqual(meta.noise_floor, null);
 			assert.strictEqual(meta.node, process.version);
-			assert.match(meta.commit, /^[0-9a-f]{40}(-dirty)?$/);
+			assert.match(meta.commit!, /^[0-9a-f]{40}(-dirty)?$/);
 			assert.strictEqual(meta.corpus_hash, load_corpus_manifest().corpus_hash);
-			assert.ok(meta.machine.name.length > 0);
+			assert.ok(meta.machine!.name.length > 0);
 			assert.deepStrictEqual(results.startup, []);
-			assert.deepStrictEqual(results.bundle, {});
+			// the committed deterministic file describes this tree, so the run carries its
+			// sizes, and every real process agreed with its token counts and output sizes
+			const deterministic = parse_bench_results(
+				JSON.parse(readFileSync(to_deterministic_path(), 'utf8'))
+			);
+			assert.deepStrictEqual(results.bundle, {
+				fuz_code: deterministic.bundle.fuz_code!,
+				prism: deterministic.bundle.prism!
+			});
+			assert.deepStrictEqual(meta.bundler, deterministic.meta.bundler);
+			assert.ok(log.every((line) => !line.includes('no bundle sizes')));
+			for (const cell of results.cells) {
+				const from_file = deterministic.cells.find((c) => c.id === cell.id)!;
+				for (const id of ['fuz_code', 'prism']) {
+					assert.deepStrictEqual(cell.tokens[id], from_file.tokens[id]);
+					assert.deepStrictEqual(cell.output[id], from_file.output[id]);
+				}
+			}
 			assert.deepStrictEqual(pairs, []);
 
 			// the lock was held for the run and is free again, and no temp file is left

@@ -11,9 +11,11 @@ A run produces one results file holding many metrics, and the site is a view
 over that file where a reader picks the subset to compare.
 
 **Status: early.** The adapters, the corpus, the check that guards against a
-plain-text fallback, and the harness that times the libraries and writes a
-results file exist. The bundle and cold-start measurements and the results pages
-are designed but not built, and no numbers are published.
+plain-text fallback, the harness that times the libraries and writes a results
+file, and the deterministic measurements (bundle size, token counts, output
+sizes, coverage) exist. The deterministic numbers are committed as
+`results/deterministic.json`. The cold-start measurement and the results pages
+are designed but not built, and no timed numbers are published.
 
 ## Layout
 
@@ -26,10 +28,14 @@ are designed but not built, and no numbers are published.
   - `bench/run.ts` — the timed harness: a run, written as one results file
   - `bench/cell.ts` — one library on one cell, measured in a process of its own
   - `bench/journal.ts` — the journal a timed run keeps, so it can be resumed
+  - `bench/deterministic.ts` — the deterministic results file, from
+    `bench/sizes.ts` (bundle size) and `bench/outputs.ts` (token counts and
+    output sizes)
   - `bench/corpus/` — the inputs, with their manifest
   - `bench/langs.ts` — the language ids every adapter maps onto
   - `bench/sets.ts` — the feature sets bundle size is measured over
-- `results/` — where the harness writes runs; none is committed yet
+- `results/` — where the harness writes runs; `deterministic.json` is
+  committed, and no timed run is yet
 - `src/lib/results_schema.ts` — the schema of a results file, written by the
   harness and parsed by the site
 - `src/routes/` — the site, static SvelteKit, with the docs under `/docs`
@@ -45,8 +51,9 @@ Two classes of number, kept apart in the results file:
   wasm and theme CSS reported separately; output size; token counts; the
   coverage matrix.
 
-The timed harness measures throughput, memory, output size, and token counts,
-and records coverage. Bundle size and cold start are not built.
+The timed harness measures throughput and memory. The deterministic numbers
+have a command of their own, and a timed run carries them too. Cold start is
+not built.
 
 **Language ids.** The harness owns them. The timed ids are the ones every
 library in the roster supports: `ts`, `js`, `css`, `html`, `json`, `svelte`,
@@ -344,12 +351,160 @@ for as long as it measures.
   runs it.
 - A library is measured alone. A page that loads several highlighters, or a
   busy application, gives the engine a different history.
+- Shiki stops tokenizing a line after half a second and returns the rest of it
+  as one token, so what a call returns depends on how fast the machine is at
+  that moment. Both Shiki adapters raise that limit out of reach rather than
+  turning it off, so every call does the same work, and still reads the clock
+  as Shiki's default does, and a token count is the same anywhere.
 
 To reproduce a run, check out the commit its file records, `npm ci`, and run
 the same command. Close other programs first: before trusting a run, check that
 its anchor is stable, that `spread` is near 1 everywhere, and that nothing
 unexpected is excluded. `bench/run.ts` prints all three, with how many
 library-cells were retried and whether the run was resumed.
+
+Run `npm run bench:smoke` on the machine first. It checks every cell against
+the committed deterministic file in about a minute, before a long run can stop
+on a disagreement.
+
+## Deterministic metrics
+
+Bundle sizes, token counts, output sizes, and the coverage matrix are the same
+on any machine. One command measures them, with nothing timed, and writes
+`results/deterministic.json`, which is committed:
+
+```bash
+npm run bench:deterministic             # regenerate results/deterministic.json
+npm run bench:deterministic -- --check  # regenerate in memory, and fail if the committed file differs
+```
+
+### Bundle size
+
+For each library and each feature set, the adapter's `bundle_entry` writes the
+module a consumer would: the library with exactly the set's languages
+registered, in the shape the library documents. `bench/sizes.ts` builds it and
+reports:
+
+- `raw` — the minified JavaScript
+- `gzip` — those bytes gzipped at level 9
+- `brotli` — those bytes brotli-compressed at quality 11
+
+The build is Vite's, in library mode: one ES module, as a production build for
+the browser. Vite's library mode never removes the whitespace of an ES module,
+which suits a library and not a page, so the module is then minified once,
+whole, by the esbuild inside Vite (no bundle in the roster ends up carrying a
+license comment). Compression is Node's zlib and brotli.
+
+A set holding a language the library doesn't claim is not measured for it: the
+entry names the missing languages, and is never a zero.
+
+The shape each adapter writes is in its `notes.md`:
+
+| library | with languages | with none: `core` |
+| --- | --- | --- |
+| fuz_code | a `SyntaxStyler` with the needed `lexer_*` modules added | the styler alone |
+| twinkleplop | the two factories of each language's package | the runtime and the grammar compiler every language package is built from |
+| Prism | the core file and one component file for each grammar | the core file alone |
+| Shiki, both engines | `shiki/core`, one engine, the `github-light` theme, one module for each language | the core, the engine, and the theme |
+
+A library's maintainers may know a leaner documented shape. The entry is one
+function of the adapter, and a change to it is a small pull request.
+
+**Two things stay out of the JavaScript figures** and have a section each,
+because folding them in would hide a real difference. Both are reported as the
+JavaScript is, as `raw`, `gzip`, and `brotli`:
+
+- `wasm` — the WebAssembly binary a library loads, and null without one.
+  Shiki's Oniguruma engine documents an import that carries the binary inlined
+  in a JavaScript module as text. The build leaves that import out, and the
+  binary file itself is measured.
+- `css` — each library's documented default stylesheet, minified by the same
+  esbuild. Output that carries classes needs a stylesheet to show color. Output
+  that carries inline styles needs none, so the section is null for Shiki: its
+  theme is in the JavaScript figure, and its colors are in every page of HTML.
+  A theme of several stylesheets is measured file by file, each compressed on
+  its own, and summed.
+
+Default themes don't cover the same ground, and each library's roster entry
+says which color schemes its theme holds (`theme_schemes`): fuz_code's and
+twinkleplop's stylesheets hold a light and a dark palette, and Prism's holds
+one. Read the stylesheet sizes beside that.
+
+**Each bundle is checked.** A bundle that lost a language to tree shaking, or
+was written without one, would be reported as small. So every bundle is
+imported in a process of its own, and each language of its set is highlighted
+through the bundle's exports on that language's snippet. For a bundle of one
+language, the HTML has to equal what the library produces through its adapter
+with that language set up, which a language missing something it embeds, like
+HTML without its script and style languages, does not. A bundle of several
+languages has to clear the floor the output check uses: there a Markdown fence
+is highlighted that a process with one language loaded leaves plain, so the two
+differ by design. The check doesn't prove a bundle is the smallest that works.
+
+**What a language costs.** One set holds no languages and one holds each
+language alone, so the bytes a language adds are `single:<lang>` minus `core`,
+with no extra measurement. The results pages will derive that view from the
+sets; they are not built.
+
+### Token counts and output sizes
+
+For every input and every library that claims its language, `bench/outputs.ts`
+records what one `tokenize` call and one `html` call return: the library's own
+token count, and the HTML's size in UTF-8 bytes (`html_bytes`) with how many
+elements it has (`spans`). They are taken as a timed cell takes them: a process
+sets up exactly one language in one library, the snippet check runs, and each
+input is then checked.
+
+Each number is stated once for an input, on the cell whose call returns it: the
+token count on the `tokenize` cell and the output size on the `html` cell.
+
+What they don't say:
+
+- Token counts are not comparable as work. Shiki counts runs of whitespace and
+  unstyled text, the others count only typed tokens, and a container and what
+  it holds may each count.
+- Classes and inline styles are different HTML. A class name is short and needs
+  a stylesheet; an inline color is repeated on every token and needs none.
+  Compare `html_bytes` with the theme CSS column beside it.
+- Wrappers differ. twinkleplop and Shiki wrap the output in `<pre>` and a span
+  for each line; fuz_code and Prism return bare token spans. `spans` counts
+  every element.
+- Prism's two calls can disagree on Markdown. Prism highlights the inside of a
+  fenced block in hooks that only `highlight` runs, so for a fence whose
+  language is loaded the HTML holds elements the token count doesn't include.
+
+### Coverage
+
+The coverage matrix is each adapter's language map, with a footnote where the
+support is indirect: fuz_code's JavaScript, Prism's Svelte and XML, Shiki's
+XML. The footnotes are written once, in the adapters. Shiki's two engines are
+two libraries, each with a note saying which engine it is.
+
+### What the file records, and how it stays current
+
+The deterministic file goes through the same schema as a timed run. It holds no
+timed value, so it records no machine, time, Node version, or commit: none of
+them shaped its numbers. What they depend on is in it: each library's version,
+the corpus hash, and the versions of Vite and of the Rollup and esbuild inside
+it. Regenerating it on an unchanged tree changes nothing.
+
+One dependency is not in the file: the gzip and brotli sizes come from the zlib
+and brotli inside Node, and a Node with another version of either can compress
+to a few bytes more or less. Generate the file on the Node version the check
+workflow uses.
+
+A timed run takes its cells' token counts and output sizes from its own
+processes, by the same check. When the deterministic file describes the run
+(the same library versions, corpus, and sets), the run compares each library's
+first result on a cell with the file and stops at a difference, and it copies
+its libraries' bundle sizes from the file. Otherwise a smoke or filtered run
+says why and carries no bundle sizes, and a full run with no filters is refused
+before it measures anything: regenerating the file takes seconds, and the run
+is long.
+
+The check workflow (`.github/workflows/check.yml`) runs `gro check`, the smoke
+run, and `bench:deterministic -- --check` on every change. None of it measures
+speed.
 
 ## Neutrality
 
@@ -392,6 +547,7 @@ gro check   # typecheck, test, lint, format check
 gro build   # build the static site
 gro format 'bench/**/*' # format the harness, which `gro format` alone doesn't reach
 npm run bench:smoke     # run every library on every cell once
+npm run bench:deterministic -- --check  # the committed deterministic results still regenerate
 ```
 
 Built with [SvelteKit](https://github.com/sveltejs/kit),

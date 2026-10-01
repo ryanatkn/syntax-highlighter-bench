@@ -102,7 +102,8 @@
 		</table>
 		<p>
 			A set is measured for a library only when the library supports every language in it. Otherwise
-			the result names the languages it lacks.
+			the result names the languages it lacks. <TomeLink slug="deterministic" /> describes how a set
+			is built and measured.
 		</p>
 	</TomeSection>
 </TomeContent>

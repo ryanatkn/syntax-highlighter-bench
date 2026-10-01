@@ -73,6 +73,13 @@ import { measure_anchor, to_anchor_drift } from './anchor.ts';
 import { CellResult, type CellSpec } from './cell.ts';
 import { load_corpus_manifest } from './corpus.ts';
 import {
+	carry_deterministic,
+	serialize_results,
+	to_deterministic_path,
+	to_expected_key,
+	type CarriedDeterministic
+} from './deterministic.ts';
+import {
 	JOURNAL_VERSION,
 	diff_journal_header,
 	open_journal,
@@ -91,6 +98,7 @@ import {
 	type MachineLock
 } from './lock.ts';
 import { summarize_passes } from './measure.ts';
+import { to_bench_cell, type CellNumbers } from './outputs.ts';
 import {
 	estimate_run_ms,
 	format_run_help,
@@ -109,7 +117,7 @@ import {
 	type RunOptions,
 	type RunParams
 } from './run_options.ts';
-import { FEATURE_SETS } from './sets.ts';
+import { to_bench_sets } from './sets.ts';
 
 const REPO_DIR = fileURLToPath(new URL('../', import.meta.url));
 const CELL_PATH = fileURLToPath(new URL('./cell.ts', import.meta.url));
@@ -279,15 +287,31 @@ export interface ProcessResult {
 /**
  * Creates the check each result goes through as it arrives: a library's
  * processes on a cell must agree on what is deterministic, whichever pass, arm,
- * or attempt they are, so a disagreement stops the run at that cell.
+ * or attempt they are, and the first of them must agree with the deterministic
+ * results file when the run carries one. A disagreement stops the run at that
+ * cell.
+ *
+ * @param expected - what the deterministic file has for each input and library
  */
-const create_agreement_check = (): ((planned: PlannedProcess, result: CellResult) => void) => {
+const create_agreement_check = (
+	expected?: CarriedDeterministic['expected']
+): ((planned: PlannedProcess, result: CellResult) => void) => {
 	const firsts: Map<string, CellResult> = new Map();
 	return (planned, result) => {
 		const label = to_process_label(planned);
 		const first = firsts.get(label);
-		if (first) assert_passes_agree(label, first, result);
-		else firsts.set(label, result);
+		if (first) {
+			assert_passes_agree(label, first, result);
+			return;
+		}
+		firsts.set(label, result);
+		if (expected) {
+			assert_matches_deterministic(
+				label,
+				expected.get(to_expected_key(planned.cell.input.file, planned.library)),
+				result
+			);
+		}
 	};
 };
 
@@ -297,6 +321,7 @@ const create_agreement_check = (): ((planned: PlannedProcess, result: CellResult
  * @param processes - the processes
  * @param options - the run
  * @param concurrency - how many run at once
+ * @param expected - what the deterministic file has, which every result must agree with
  * @param on_result - called after each process, with its stderr
  * @returns their results, in the order planned
  * @throws `RunError` at the first process that fails, or whose result disagrees
@@ -306,10 +331,11 @@ const run_processes_at_once = async (
 	processes: ReadonlyArray<PlannedProcess>,
 	options: RunOptions,
 	concurrency: number,
+	expected: CarriedDeterministic['expected'] | undefined,
 	on_result: (planned: PlannedProcess, done: number, stderr: string) => void
 ): Promise<Array<ProcessResult>> => {
 	const results: Array<ProcessResult> = [];
-	const check = create_agreement_check();
+	const check = create_agreement_check(expected);
 	const children: Set<ChildProcess> = new Set();
 	const kill_children = (): void => {
 		for (const child of children) child.kill();
@@ -359,6 +385,8 @@ export interface RunCellsDeps {
 	measure: (planned: PlannedProcess) => CellResult;
 	/** Called with each result once it has passed the agreement check. */
 	on_result?: (planned: PlannedProcess, result: CellResult) => void;
+	/** What the deterministic file has, which every library's first result on a cell must match. */
+	expected?: CarriedDeterministic['expected'];
 }
 
 /**
@@ -379,7 +407,8 @@ export interface RunCellsDeps {
  * @param deps - how a result is got, and what happens to it
  * @returns every process with its result, in the order measured
  * @throws `RunError` at the first process that fails, or whose result disagrees
- * with an earlier one of the same library on the same cell
+ * with an earlier one of the same library on the same cell, or with the
+ * deterministic file
  */
 export const run_cells_in_turn = async (
 	cells: ReadonlyArray<PlannedCell>,
@@ -388,7 +417,7 @@ export const run_cells_in_turn = async (
 ): Promise<Array<ProcessResult>> => {
 	const { measure, on_result } = deps;
 	const arms = to_arm_count(options.kind);
-	const check = create_agreement_check();
+	const check = create_agreement_check(deps.expected);
 	const results: Array<ProcessResult> = [];
 	const run = async (processes: ReadonlyArray<PlannedProcess>): Promise<Array<ProcessResult>> => {
 		const ran: Array<ProcessResult> = [];
@@ -480,6 +509,37 @@ export const assert_passes_agree = (label: string, first: CellResult, pass: Cell
 	) {
 		throw new RunError(
 			`${label} came out differently from one process to the next, in something that should be deterministic: ${JSON.stringify([first, pass].map((p) => p.excluded ?? { tokens: p.measurement!.tokens, output: p.measurement!.output }))}`
+		);
+	}
+};
+
+/**
+ * Checks a library's result on a cell against the deterministic results file:
+ * whether it passed the output check, its token count, and its output size. The
+ * two come from the same check under the same setup, so they differ only when
+ * the file is stale or something is not deterministic.
+ *
+ * @param label - the cell and library, for the error
+ * @param expected - what the file has for the input and library, if anything
+ * @throws `RunError` with exit code 2 if they differ
+ */
+export const assert_matches_deterministic = (
+	label: string,
+	expected: CellNumbers | { excluded: string } | undefined,
+	result: CellResult
+): void => {
+	const measured = result.measurement;
+	const matches =
+		expected !== undefined &&
+		('excluded' in expected
+			? result.excluded === expected.excluded
+			: measured !== null &&
+				measured.tokens === expected.tokens &&
+				JSON.stringify(measured.output) === JSON.stringify(expected.output));
+	if (!matches) {
+		throw new RunError(
+			`${label} disagrees with the deterministic results file, which has ${JSON.stringify(expected ?? null)} where the process reported ${JSON.stringify(result.excluded ?? { tokens: measured!.tokens, output: measured!.output })}: regenerate the file with \`npm run bench:deterministic\`, and if it still disagrees the library's output is not deterministic`,
+			2
 		);
 	}
 };
@@ -593,7 +653,7 @@ export const carry_noise_floor = (
 	context: NoiseFloorContext
 ): { ok: true; noise_floor: BenchNoiseFloor } | { ok: false; reason: string } => {
 	const { run, machine, node, noise_floor, anchor, corpus_hash } = calibration.meta;
-	if (run?.kind !== 'calibrate' || noise_floor === null) {
+	if (run?.kind !== 'calibrate' || noise_floor === null || machine === null) {
 		return { ok: false, reason: 'it is not a calibration run' };
 	}
 	if (!bench_run_is_complete(run)) return { ok: false, reason: 'it was filtered' };
@@ -645,10 +705,16 @@ export interface RunRecord {
 	anchor: BenchAnchor;
 	/** The floor carried from the machine's calibration. A calibration run derives its own. */
 	noise_floor: BenchNoiseFloor | null;
+	/** What the run takes from the deterministic results file, when that file describes it. */
+	deterministic: CarriedDeterministic | null;
 }
 
 /**
  * Assembles a results file and validates it.
+ *
+ * The cells' token counts and HTML sizes are the ones their processes reported.
+ * The bundle sizes are the deterministic file's, when the run carries it, and
+ * otherwise the section is empty.
  *
  * A library that failed the output check in a cell has no numbers there and an
  * entry in `meta.excluded`. A library that doesn't claim a cell's language was
@@ -669,8 +735,7 @@ export const assemble_results = (
 	const cells = [...by_cell].map(([cell, processes]): BenchCell => {
 		const { input } = cell;
 		const values: BenchCell['values'] = {};
-		const tokens: BenchCell['tokens'] = {};
-		const output: BenchCell['output'] = {};
+		const numbers: Array<[string, CellNumbers]> = [];
 		const by_library = Map.groupBy(processes, (p) => p.planned.library);
 		// roster order, whichever library a pass started with
 		for (const library of cell.libraries) {
@@ -685,26 +750,10 @@ export const assemble_results = (
 				continue;
 			}
 			values[library] = outcome.value;
-			tokens[library] = outcome.tokens;
-			output[library] = outcome.output;
+			numbers.push([library, { tokens: outcome.tokens, output: outcome.output }]);
 			if (outcome.ratio !== null) pairs.push({ cell: cell.id, library, ratio: outcome.ratio });
 		}
-		return {
-			id: cell.id,
-			metric: 'throughput',
-			lang: input.lang,
-			size: input.size,
-			mode: cell.mode,
-			source: input.source,
-			home: input.home,
-			file: input.file,
-			bytes: input.bytes,
-			lines: input.lines,
-			synthetic: input.synthetic,
-			values,
-			tokens,
-			output
-		};
+		return to_bench_cell(input, cell.mode, numbers, values);
 	});
 	const results = parse_bench_results({
 		meta: {
@@ -729,16 +778,17 @@ export const assemble_results = (
 			anchor: record.anchor,
 			libraries: to_bench_libraries(record.adapters),
 			excluded,
-			noise_floor: calibrate ? to_noise_floor(pairs) : record.noise_floor
+			noise_floor: calibrate ? to_noise_floor(pairs) : record.noise_floor,
+			bundler: record.deterministic?.bundler ?? null
 		},
 		langs: [...LANG_ROSTER],
-		sets: FEATURE_SETS.map((set) => ({ ...set, langs: [...set.langs] })),
+		sets: to_bench_sets(),
 		inputs: [...new Set(cells.map((cell) => cell.file))].map(
 			(file) => [...by_cell.keys()].find((cell) => cell.input.file === file)!.input
 		),
 		cells,
 		startup: [],
-		bundle: {},
+		bundle: record.deterministic?.bundle ?? {},
 		coverage: to_bench_coverage(record.adapters)
 	} satisfies BenchResults);
 	return { results, pairs };
@@ -874,7 +924,12 @@ export const format_run_summary = (
 	for (const { cell, library, reason } of meta.excluded) {
 		lines.push(`  ${library} in ${cell}: ${reason}`);
 	}
-	if (meta.commit.endsWith('-dirty')) {
+	lines.push(
+		meta.bundler
+			? 'bundle sizes: carried from the deterministic results file, which every cell agreed with'
+			: 'bundle sizes: none'
+	);
+	if (meta.commit?.endsWith('-dirty')) {
 		lines.push(
 			'the working tree had uncommitted changes, so the commit does not describe this run'
 		);
@@ -946,6 +1001,10 @@ export interface RunPlan {
 	noise_floor: BenchNoiseFloor | null;
 	/** Why a full run carries no noise floor, if it doesn't. */
 	noise_floor_note: string | null;
+	/** What the run takes from the deterministic results file, when that file describes it. */
+	deterministic: CarriedDeterministic | null;
+	/** Why the run carries nothing from the deterministic results file, if it doesn't. */
+	deterministic_note: string | null;
 }
 
 /**
@@ -958,7 +1017,9 @@ export interface RunPlan {
  * matches, the output or the journal couldn't be written, a complete full run of
  * the same UTC date and machine is already there, a journal exists and
  * `--resume` wasn't given or doesn't match this run, `--resume` has no journal,
- * or the machine's calibration file doesn't parse
+ * the machine's calibration file or the deterministic results file doesn't
+ * parse, or a full run with no filters has no deterministic results file that
+ * describes it
  */
 export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {}): RunPlan => {
 	const { results_dir } = bench_options;
@@ -1010,6 +1071,7 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 	}
 	const generated_at = journal?.header.generated_at ?? new Date().toISOString();
 
+	const libraries = to_bench_libraries(adapters);
 	const header: JournalHeader | null = smoke
 		? null
 		: {
@@ -1025,7 +1087,7 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 				retries: options.retries,
 				filters: options.filters,
 				corpus_hash: manifest.corpus_hash,
-				libraries: to_bench_libraries(adapters).map(({ id, version, extra_packages }) => ({
+				libraries: libraries.map(({ id, version, extra_packages }) => ({
 					id,
 					version,
 					...(extra_packages && { extra_packages })
@@ -1101,6 +1163,41 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 		}
 	}
 
+	// the deterministic file: the bundle sizes a run carries, and what its cells must agree with
+	let deterministic: CarriedDeterministic | null = null;
+	let deterministic_note: string | null = null;
+	const deterministic_path = to_deterministic_path(results_dir);
+	if (!existsSync(deterministic_path)) {
+		deterministic_note =
+			'there is no deterministic results file: generate it with `npm run bench:deterministic`';
+	} else {
+		let parsed: BenchResults;
+		try {
+			parsed = parse_bench_results(JSON.parse(readFileSync(deterministic_path, 'utf8')));
+		} catch (error) {
+			throw new RunError(
+				`${deterministic_path} is not a results file: regenerate it with \`npm run bench:deterministic\`\n${(error as Error).message}`,
+				2
+			);
+		}
+		const carried = carry_deterministic(parsed, {
+			libraries,
+			corpus_hash: manifest.corpus_hash,
+			sets: to_bench_sets()
+		});
+		if (carried.ok) deterministic = carried;
+		else {
+			deterministic_note = `the deterministic results file doesn't describe this run, ${carried.reason}: regenerate it with \`npm run bench:deterministic\``;
+		}
+	}
+	// regenerating the file takes seconds and this run a long time: a publishable run is whole
+	if (deterministic_note !== null && options.kind === 'full' && bench_run_is_complete(options)) {
+		throw new RunError(
+			`a full run carries the bundle sizes and checks its cells against the deterministic results, and ${deterministic_note}`,
+			2
+		);
+	}
+
 	return {
 		options,
 		machine,
@@ -1118,7 +1215,9 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 		header,
 		journal,
 		noise_floor,
-		noise_floor_note
+		noise_floor_note,
+		deterministic,
+		deterministic_note
 	};
 };
 
@@ -1206,6 +1305,12 @@ export const format_run_plan = (plan: RunPlan): string => {
 		]);
 	}
 	rows.push([
+		'bundle sizes',
+		plan.deterministic
+			? 'carried from the deterministic results file'
+			: `none: ${plan.deterministic_note}`
+	]);
+	rows.push([
 		'estimate',
 		`about ${estimate_ms >= 60_000 ? `${Math.round(estimate_ms / 60_000)} min` : time_format_adaptive(estimate_ms * 1e6)} for the planned processes, without retries${journal ? ' and before what the journal already holds' : ''}: a rough figure from the parameters, not a measurement`
 	]);
@@ -1238,6 +1343,7 @@ const measure_smoke = async (
 		plan.processes,
 		plan.options,
 		plan.concurrency,
+		plan.deterministic?.expected,
 		(planned, done, stderr) => {
 			if (stderr.trim() !== '') {
 				log(`${to_process_label(planned)} wrote to stderr:\n${stderr.trim()}`);
@@ -1336,6 +1442,7 @@ const measure_segment = async (
 		readings_ns.push(opening);
 		writer.append({ type: 'segment', at_ms: at_ms(), anchor_ns: opening });
 		const processes = await run_cells_in_turn(plan.cells, options, {
+			...(plan.deterministic && { expected: plan.deterministic.expected }),
 			measure: (planned) => {
 				const key = to_journal_key(planned.cell.id, planned.library, planned.pass, planned.attempt);
 				const journaled = replay.get(key);
@@ -1413,6 +1520,7 @@ export const run_bench = async (
 	const plan = plan_run(options, bench_options);
 	const { machine, adapters, cells, processes, path, journal_path } = plan;
 	if (plan.noise_floor_note !== null) log(`no noise floor: ${plan.noise_floor_note}`);
+	if (plan.deterministic_note !== null) log(`no bundle sizes: ${plan.deterministic_note}`);
 	try {
 		mkdirSync(dirname(path), { recursive: true });
 	} catch (error) {
@@ -1458,7 +1566,8 @@ export const run_bench = async (
 			adapters,
 			processes: measured.processes,
 			anchor: to_anchor_drift(measured.readings_ns),
-			noise_floor: plan.noise_floor
+			noise_floor: plan.noise_floor,
+			deterministic: plan.deterministic
 		});
 
 		// a timed segment has released the lock already, and set its journal aside if it was lost
@@ -1470,7 +1579,7 @@ export const run_bench = async (
 		// whole or not at all: a reader never sees half a file
 		const temp_path = `${path}.${process.pid}.tmp`;
 		try {
-			writeFileSync(temp_path, JSON.stringify(results, null, '\t') + '\n');
+			writeFileSync(temp_path, serialize_results(results));
 			renameSync(temp_path, path);
 		} catch (error) {
 			rmSync(temp_path, { force: true });

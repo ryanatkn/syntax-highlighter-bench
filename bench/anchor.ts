@@ -16,14 +16,7 @@
  * @module
  */
 
-import type { BenchAnchor } from '../src/lib/results_schema.ts';
-
-/**
- * The drift under which a run counts as stable; 0.03 is 3%. Past it the machine
- * changed state during the run, and the ratios between libraries in a cell are
- * more trustworthy than any absolute time.
- */
-export const ANCHOR_STABLE_BELOW = 0.03;
+import { BENCH_ANCHOR_STABLE_BELOW, type BenchAnchor } from '../src/lib/results_schema.ts';
 
 const TEXT_LENGTH = 65_536;
 
@@ -150,7 +143,7 @@ export const measure_anchor = (): number => {
  * @param readings_ns - every reading, in the order taken: at least two
  * @returns the drift from the earlier of those two readings to the later,
  * positive when the machine got slower, and whether it stayed under
- * `ANCHOR_STABLE_BELOW`
+ * `BENCH_ANCHOR_STABLE_BELOW`
  */
 export const to_anchor_drift = (readings_ns: ReadonlyArray<number>): BenchAnchor => {
 	if (readings_ns.length < 2) throw new Error('an anchor needs a reading at each end');
@@ -161,5 +154,5 @@ export const to_anchor_drift = (readings_ns: ReadonlyArray<number>): BenchAnchor
 			if (Math.abs(change) > Math.abs(drift)) drift = change;
 		}
 	}
-	return { drift, stable: Math.abs(drift) < ANCHOR_STABLE_BELOW };
+	return { drift, stable: Math.abs(drift) < BENCH_ANCHOR_STABLE_BELOW };
 };

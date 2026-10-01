@@ -103,6 +103,7 @@ export const fuz_code_adapter: HighlighterAdapter<LexedSyntax> = {
 	output: 'classes',
 	engine: 'scanner',
 	theme_css: ['@fuzdev/fuz_code/theme.css', '@fuzdev/fuz_code/theme_variables.css'],
+	theme_schemes: ['light', 'dark'],
 	// eslint-disable-next-line @typescript-eslint/require-await
 	setup: async (langs) => {
 		const next = new SyntaxStyler();
@@ -139,5 +140,10 @@ export const fuz_code_adapter: HighlighterAdapter<LexedSyntax> = {
 			...names.map((name) => `syntax_styler.add_lang(${name});`),
 			''
 		].join('\n');
-	}
+	},
+	bundle_html: (exports, src, lang) =>
+		(exports.syntax_styler as SyntaxStyler).stylize(
+			src,
+			resolve_claimed_langs(ID, LANGS, [lang])[0]![1]
+		)
 };

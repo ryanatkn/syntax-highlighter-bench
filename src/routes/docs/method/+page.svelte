@@ -188,7 +188,9 @@ node bench/run.ts --help`;
 		<p>
 			The token count and the size of the HTML come from the output check, under the same setup and
 			outside the clock. Libraries split the same source differently, so a token count is the
-			library's own and is recorded rather than equalised.
+			library's own and is recorded rather than equalised. Each is stated once for an input: the
+			token count on its <code>tokenize</code> cell and the output size on its <code>html</code>
+			cell. <TomeLink slug="deterministic" /> describes them, and the bundle sizes a run carries.
 		</p>
 		<p>
 			<code>rss_peak_bytes</code> is a whole process: Node itself, the library as its adapter
@@ -487,8 +489,11 @@ node bench/run.ts --help`;
 			A results file records the commit, the Node version, the machine, the corpus hash, and every
 			library's version. From a checkout of that commit, <code>npm ci</code> installs the same
 			versions, and the command for the kind of run measures it again. The deterministic numbers
-			come out the same anywhere. The timed ones depend on the machine, so compare the ratios
-			between libraries rather than the times.
+			come out the same anywhere, and a run stops if one of its processes disagrees with the
+			committed <TomeLink slug="deterministic" />. A full run with no filters is refused unless that
+			file describes it, so run the smoke run first: it checks every cell against the file in about
+			a minute, before a long run can stop on a disagreement. The timed ones depend on the machine,
+			so compare the ratios between libraries rather than the times.
 		</p>
 		<p>
 			A quiet machine matters more than a fast one: close other programs, and prefer a fixed CPU

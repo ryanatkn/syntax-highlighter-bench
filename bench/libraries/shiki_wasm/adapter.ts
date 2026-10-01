@@ -15,6 +15,7 @@ export const shiki_wasm_adapter = create_shiki_adapter({
 	note: "The Oniguruma wasm engine, Shiki's default. The HTML carries inline styles rather than classes.",
 	// `shiki/wasm` carries the wasm binary inlined, so nothing is read from disk
 	create_engine: () => createOnigurumaEngine(import('shiki/wasm')),
+	wasm: [{ import: 'shiki/wasm', binary: 'shiki/onig.wasm' }],
 	entry: {
 		engine_import: `import { createOnigurumaEngine } from 'shiki/engine/oniguruma';`,
 		engine_expression: `createOnigurumaEngine(import('shiki/wasm'))`,

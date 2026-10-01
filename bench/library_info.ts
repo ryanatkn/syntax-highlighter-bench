@@ -66,6 +66,7 @@ export const to_bench_library = (adapter: HighlighterAdapter): BenchLibrary =>
 		engine: adapter.engine,
 		by_maintainer: adapter.by_maintainer,
 		note: adapter.note,
+		theme_schemes: [...adapter.theme_schemes],
 		...(adapter.extra_packages && {
 			extra_packages: Object.fromEntries(
 				adapter.extra_packages.map((name) => [name, resolve_package_version(name)])

@@ -27,6 +27,8 @@ npm run bench -- --machine <name>           # a full timed run, written to resul
 npm run bench:calibrate -- --machine <name> # the machine's noise floor
 node bench/run.ts --machine <name> --plan   # what a run would do, measuring nothing
 node bench/run.ts --machine <name> --resume # continue a timed run that was stopped
+npm run bench:deterministic             # regenerate results/deterministic.json
+npm run bench:deterministic -- --check  # fail if the committed file differs from what regenerates
 ```
 
 IMPORTANT for AI agents: Do NOT run `gro dev` — the developer manages the
@@ -36,9 +38,11 @@ dev server.
 
 Built: the adapter contract and the adapters, the roster, the output check,
 the corpus and its manifest, the language ids, the feature sets, the results
-schema, the timed harness, and the docs that describe them. Everything under
-"Planned" below is design, not code. No run is committed and no numbers are
-published: never put a measured number in the docs.
+schema, the timed harness, the deterministic metrics (bundle size, token
+counts, output sizes, coverage) with their committed results file, and the docs
+that describe them. Everything under "Planned" below is design, not code. No
+timed run is committed and no timed numbers are published. The committed
+`results/deterministic.json` is data: never put a measured number in the docs.
 
 ## Layout
 
@@ -50,6 +54,11 @@ bench/                       the Node harness; never imported by the site
   libraries/shiki.ts         what the two Shiki adapters share
   library_info.ts            Node side of an adapter: versions, theme CSS, roster + coverage
   check_output.ts            the pre-measurement output check
+  deterministic.ts           CLI: the deterministic results file — build, write, `--check`, and what a timed run carries from it
+  sizes.ts                   bundle size: build and minify a bundle entry, compress, the wasm and theme CSS columns
+  bundle_check.ts            one built bundle, imported in a process of its own and made to highlight its languages
+  outputs.ts                 token counts and output sizes: one process per library and language, folded into cells
+  node_child.ts              runs a harness script in a Node process and reads the JSON it prints
   run.ts                     CLI: a timed run — spawns the processes, assembles and writes the results file
   run_options.ts             a run's flags, parameters, cell and process plan, and output path (pure)
   cell.ts                    one library on one cell, in a process of its own: setup, output check, measurement
@@ -64,15 +73,15 @@ bench/                       the Node harness; never imported by the site
   corpus/                    the inputs, by source then language; manifest.json, INPUTS.md
   langs.ts                   the language ids every adapter maps onto
   sets.ts                    the feature sets bundle size is measured over
-results/                     where runs are written; `scratch/` (git-ignored) holds smoke and filtered ones; a journal (git-ignored) sits beside an unfinished run
+results/                     where runs are written; `deterministic.json` is committed; `scratch/` (git-ignored) holds smoke and filtered ones; a journal (git-ignored) sits beside an unfinished run
 src/lib/results_schema.ts    zod strict schemas for a results file
 src/routes/                  the static SvelteKit site
-  docs/                      tomes (overview, adapters, corpus, languages, method, results, design) + API docs
+  docs/                      tomes (overview, adapters, corpus, languages, method, deterministic, results, design) + API docs
 src/test/                    vitest tests; `bench/` mirrors the harness
   fixtures/results/          a fixture results file with invented numbers
 ```
 
-Planned additions: the bundle and cold-start measurements, committed runs in
+Planned additions: the cold-start measurement, committed timed runs in
 `results/`, and the results pages under `src/routes/`.
 
 ## The harness runs on Node directly
@@ -165,6 +174,20 @@ Two classes of number, kept apart:
 | machine-dependent | each cell's `values` (timing, memory); the `startup` section |
 | deterministic     | each cell's `tokens` and `output`; `bundle`; `coverage`     |
 
+A cell states each deterministic number once for its input, on the cell whose
+call returns it: `tokens` on the `tokenize` cell and `output` on the `html`
+cell, the other being empty there. `to_bench_cell` (`bench/outputs.ts`) builds
+every cell, for the timed harness and the deterministic pass alike.
+
+**A deterministic-only file** has no cell `values` and no `startup`. Its
+`meta.run`, `meta.anchor`, `meta.generated_at`, `meta.machine`, `meta.node`,
+and `meta.commit` are null: they say where timed numbers came from, and the
+schema requires each as soon as a file has any. A timestamp or a commit would
+also make the committed file change on every regeneration, and a commit can't
+name the tree it is itself committed in. `meta.bundler` (`BenchBundler`: the
+versions of Vite, Rollup, and esbuild, and the compression levels) is set
+exactly when `bundle` is not empty.
+
 `startup`, `bundle`, and `cells` may be empty, `meta.noise_floor` is null
 until the machine is calibrated, and `meta.anchor` may be null only when the run
 timed nothing (no cell `values`, no `startup`). `meta.run` (`BenchRun`) says
@@ -212,8 +235,25 @@ the sections agree with each other:
 - the unsupported/excluded rules above; a bundle entry holds sizes only when
   the library claims every language of the set, and otherwise names exactly the
   missing ones
+- `bundle` covers every library over every set or is empty; a `gzip` or
+  `brotli` size is at most `raw` plus a format's own overhead
+  (`to_max_compressed_bytes`: a few bytes compress to slightly more); `css` is
+  null exactly for an `inline_styles` library
+- a deterministic-only file with cells is complete
+  (`bench_results_find_gaps(results, 'deterministic')`): every claiming library
+  has the number each cell states or an `excluded` entry, and every listed
+  input has a cell in each mode
+- `tokens` only on `tokenize` cells and `output` only on `html` cells, and a
+  library with a value in a cell has that cell's deterministic number
+- a value's `p10_ns` is at most its `p90_ns`, and an anchor's `stable` is
+  exactly a drift under `BENCH_ANCHOR_STABLE_BELOW`, which lives in the schema
+  so the harness and the check can't disagree
 - each `startup` entry carries the fields its scenario needs and no others, for
   languages the library claims, and appears once
+
+`BenchBundleEntry` is a union with an error of its own: an entry with an
+`unsupported` key is reported against that shape and anything else against the
+sizes shape, so a malformed entry never reads as a bare "Invalid input".
 
 Every number the site shows must come through this schema.
 
@@ -232,11 +272,14 @@ a library is a devDependency, a directory, and one roster line.
 | `via` | a coverage footnote for a claimed language |
 | `output`, `engine` | filterable tags: classes or inline styles, and how it lexes |
 | `theme_css` | module specifiers of the default theme's stylesheets, or null |
+| `theme_schemes` | the color schemes that default theme covers |
+| `wasm` | optional: the wasm binaries the library loads, each as the import that inlines it and the binary's own specifier |
 | `setup(langs)` | loads exactly these languages, once, before any timing |
 | `tokenize(src, lang)` | the timed tokens-out call; returns the library's own result |
 | `count_tokens(tokens)` | counts a `tokenize` result; never timed |
 | `html(src, lang)` | the timed HTML-out call |
 | `bundle_entry(langs)` | source of a module importing exactly these languages |
+| `bundle_html(exports, src, lang)` | highlights through the exports of a module built from `bundle_entry`; never timed |
 
 The rules, stated in the module's doc comment and enforced by
 `src/test/bench/adapters.test.ts`:
@@ -253,7 +296,7 @@ The rules, stated in the module's doc comment and enforced by
 - **Browser-safe** — no `node:` import, no Node global, no file access in
   anything under `bench/libraries/`, `bench/adapter.ts`, or
   `bench/check_output.ts`. Disk access on a library's behalf goes in
-  `bench/library_info.ts`.
+  `bench/library_info.ts` and `bench/sizes.ts`.
 
 **The loaded-language rule: a timed cell's process calls
 `adapter.setup([cell.lang])` exactly once, for every library.** `setup` decides
@@ -267,8 +310,18 @@ on its markup grammar, so Prism still highlights a fence tagged `html`, `xml`,
 `svg`, or `markup`, and fuz_code and Prism highlight a fence tagged as Markdown.
 
 `extra_packages` on an adapter names packages versioned apart from `package`
-(twinkleplop's language packages, `prism-svelte`); their versions land in the
-roster entry's `extra_packages`.
+(twinkleplop's language packages and its theme package, `prism-svelte`); their
+versions land in the roster entry's `extra_packages`. A test fails when a
+stylesheet or wasm binary comes from a package that isn't recorded.
+
+**Shiki's per-line time limit is out of reach, not off.** Shiki stops
+tokenizing a line after `tokenizeTimeLimit` (500ms by default) and returns the
+rest as one token, so a cold first call on a busy machine returned fewer tokens
+than the next call. A token count has to be the same anywhere, so
+`bench/libraries/shiki.ts` passes a `tokenizeTimeLimit` no line can reach to
+every call (not 0, which would also skip the clock read Shiki's default does
+before every match, and read faster). Don't remove it: the deterministic file
+and the count check inside a timed batch both depend on it.
 
 **`library_info.ts`** builds `meta.libraries` (`to_bench_libraries`) and
 `coverage` (`to_bench_coverage`) from the adapters, validated by the schema, and
@@ -329,6 +382,118 @@ tiers, and commands, and the generated `bench/corpus/INPUTS.md` for the list.
 `src/test/bench/corpus.test.ts` rebuilds the manifest from disk and compares it
 to the committed one, so a file added, removed, or changed without regenerating
 fails the suite.
+
+## Deterministic metrics
+
+`node bench/deterministic.ts` measures everything that is the same on any
+machine and writes `results/deterministic.json` through `BenchResults`. It
+times nothing and takes no machine lock. `--check` regenerates in memory and
+exits 1 with the places that differ (`diff_json`, which names a cell by its id)
+when the committed file is stale; `--out <path>` reads and writes another file.
+The committed file must be diff-clean: regenerate it whenever a library
+version, the corpus, a feature set, an adapter's `bundle_entry`, or Vite
+changes, and commit the result.
+
+**Bundle size** (`bench/sizes.ts`, `measure_bundles`). For each adapter and
+each set of `FEATURE_SETS`:
+
+- `find_missing_langs` names the set's languages the adapter doesn't claim; if
+  any, the entry is `{unsupported: [...]}` and nothing is built.
+- `build_bundle` bundles `adapter.bundle_entry(set.langs)` with Vite's build API
+  in library mode (ES, `write: false`, no source map, `minify: false`), then
+  minifies the chunk once, whole, with Vite's `transformWithEsbuild`
+  (`minify: true`). Library mode never minifies the whitespace of an ES chunk,
+  whatever `build.minify` says, so the second step is what makes the figure a
+  minified one. A non-library build would minify in one step, but it wraps a
+  dynamic import in Vite's preload helper, which is bytes no library ships.
+- The entry is a virtual module whose id sits under `bench/`, served by a
+  plugin: its imports resolve from this repo's `node_modules`, and no path of
+  the machine reaches the output.
+- `measure_compressed` reports raw, gzip (`GZIP_LEVEL`), and brotli
+  (`BROTLI_QUALITY`) bytes with Node's zlib.
+- `measure_wasm` measures each `adapter.wasm[].binary` as the JavaScript is
+  measured (`BenchByteSizes`: raw, gzip, brotli), null for a library with none.
+  The matching `import` is made external to the build, and `build_bundle`
+  throws if the bundle never imports it, or leaves out anything else.
+- `measure_theme_css` minifies each `theme_css` stylesheet with the same esbuild
+  and measures it the same way. Null when `theme_css` is null: the theme is
+  then in the JavaScript. Files served apart are compressed apart and summed
+  (`sum_byte_sizes`).
+- `adapter.theme_schemes` lands on the roster entry: the color schemes the
+  default theme covers. A stylesheet with a light and a dark palette is larger
+  than one with one, so the site must show it beside the stylesheet sizes.
+- Each bundle is written to
+  `node_modules/.cache/syntax-highlighter-bench/bundles/<library>/<set>.js` and
+  `bench/bundle_check.ts` imports it in a process of its own and calls
+  `adapter.bundle_html` for each language of the set on its harness snippet,
+  requiring `MIN_SNIPPET_SPAN_KINDS`. For a `single:<lang>` bundle it then
+  calls `adapter.setup([lang])` and requires the bundle's HTML to equal
+  `adapter.html`: the floor alone passes a language that lost what it embeds
+  (HTML with the markup lexer only), which is a much smaller bundle. Sets of
+  several languages keep the floor only, since a Markdown fence is highlighted
+  there and not under one loaded language. The directory is under
+  `node_modules` so the external wasm import still resolves and no tool sweeps
+  the bundles; open one there to see exactly what was measured. A process per
+  bundle, because a bundle may register globally (Prism's components read the
+  global `Prism`).
+
+**What makes the sizes deterministic, and what would break it.**
+
+- Vite takes its resolve conditions from `NODE_ENV`, and a test runner sets it.
+  `build_bundle` sets it to `production` for the build and restores it, and a
+  plugin hook throws unless the resolved config is a production one. Without
+  that a build under vitest bundles a library's development build.
+- No hashed file names, banner, or source map: one chunk under a fixed name,
+  never written by Vite.
+- The versions of Vite, Rollup, and esbuild are in `meta.bundler`, and a test
+  compares the committed file's with the installed ones.
+- The gzip and brotli sizes depend on the zlib and brotli inside Node. That is
+  not recorded, since a file naming a Node version would differ between
+  machines that compress identically. The check workflow pins the Node version,
+  and a failed `--check` whose only differences are compressed sizes says so.
+
+**Token counts and output sizes** (`bench/outputs.ts`). `measure_outputs` spawns
+`node bench/outputs.ts '<spec>'` for every library and timed language, several
+at a time. A process sets up exactly that language, runs the snippet gate
+(`check_snippet`), then `check_output` on every input of the language: the same
+functions under the same setup as a timed cell. One language per process,
+always: Prism's registry is global and only grows. `to_deterministic_cells`
+folds the results into cells with no `values`, and an `excluded` entry for each
+cell of an input a library failed on.
+
+**Coverage** is `to_bench_coverage` over the adapters. The footnote text lives
+only in each adapter's `via`.
+
+**A timed run and the deterministic file** (`carry_deterministic`). `plan_run`
+reads `deterministic.json` from the results directory. If it describes the run
+(every library of the run at the same version with the same extra packages, the
+same corpus hash, the same sets) the run carries it. Otherwise a smoke or
+filtered run logs why and its `bundle` is empty, and a `full` run with no
+filters is refused with exit 2 before measuring, `--plan` included:
+regenerating the file takes seconds and the run is long. A calibration goes
+ahead without it. A file that isn't a results file is refused with exit 2.
+When carried:
+
+- `assemble_results` copies the `bundle` entries of the run's libraries and
+  `meta.bundler` from it. The timed harness never builds a bundle.
+- Each library's first result on a cell is compared with the file as it arrives
+  (`assert_matches_deterministic`, wired into `create_agreement_check`): passed
+  or excluded, token count, output size. A difference is a `RunError` with exit
+  2, before the result is journaled.
+
+So there is one source for each number: cell numbers come from `check_output`
+in the process that measured the cell and must equal the file's, and bundle
+sizes come from the file. The smoke run is therefore also a check of the
+committed file against every real process.
+
+Tests use a results directory of their own. `src/test/bench/run.spawn.test.ts`
+runs its small smoke run against the committed file, and
+`src/test/bench/sizes.test.ts` holds the only tests that run a real build.
+
+**CI** (`.github/workflows/check.yml`): one job on the pinned Node version runs
+`gro check`, `npm run bench:smoke`, and `npm run bench:deterministic --
+--check`. Nothing after `npm ci` needs the network or a checkout of the corpus
+sources.
 
 ## Timed harness
 
@@ -442,6 +607,9 @@ the engine is tested with a fake clock; `create_measure_deps` throws without
   token count, the output size, across passes, arms, and attempts), so a
   disagreement stops the run at that cell. What it asks for next depends only
   on the results so far, which is what lets a journal be replayed through it.
+- `plan_run` also decides what the run takes from the deterministic results
+  file (see Deterministic metrics): `--plan` prints whether the bundle sizes
+  are carried, and the run logs why when they aren't.
 - `assemble_results` groups the results by cell and library and
   `combine_passes` pools them: for each attempt `summarize_passes` takes the
   median, p10/p90, and spread over the rounds of every pass, the median of the
@@ -545,9 +713,10 @@ null and the run logs why.
 library in it, read before the first process and after the last of every
 segment. `to_anchor_drift` takes every reading: `drift` is the relative change
 between the two that differ most, earlier to later, and `stable` is a drift
-under `ANCHOR_STABLE_BELOW`. With two readings that is the plain change. It
-only brackets what was measured, so the summary also lists every library-cell
-whose `spread` still exceeds `DISTURBED_SPREAD` after its retries.
+under `BENCH_ANCHOR_STABLE_BELOW` (in the schema, which checks the two agree).
+With two readings that is the plain change. It only brackets what was measured,
+so the summary also lists every library-cell whose `spread` still exceeds
+`DISTURBED_SPREAD` after its retries.
 
 **The lock** (`bench/lock.ts`): an exclusively created file in the OS temp
 directory naming the holder's process, held for as long as a segment
@@ -567,9 +736,6 @@ run through the `spawn_cell` seam.
 Timed numbers are published from one named machine; deterministic numbers
 regenerate anywhere.
 
-**Bundle size** over each feature set, from a build of each adapter's
-`bundle_entry`, with wasm and theme CSS reported apart from the JavaScript.
-
 **Cold start**, from a bare import through to the first highlight.
 
 ## Neutrality
@@ -587,7 +753,8 @@ wording.
 The measured libraries are devDependencies: `@fuzdev/fuz_code`, `prismjs`
 (with `@types/prismjs` and `prism-svelte`), `shiki`, and `@twinkleplop/core`
 with its per-language packages and `@twinkleplop/theme-github`. Vite stays on
-7.x.
+7.x, and it is also what builds the measured bundles: a Vite upgrade changes
+the committed sizes.
 
 ## Project standards
 

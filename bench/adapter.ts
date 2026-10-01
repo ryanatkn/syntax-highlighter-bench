@@ -19,12 +19,16 @@
  *   synchronous core.
  * - **Browser-safe.** No Node-only API and no file access, so an adapter runs in a
  *   page unchanged. Reading a version, a stylesheet, or a wasm file from disk is
- *   the harness's job, in `bench/library_info.ts`.
+ *   the harness's job, in `bench/library_info.ts` and `bench/sizes.ts`.
  *
  * @module
  */
 
-import type { BenchEngineKind, BenchOutputKind } from '../src/lib/results_schema.ts';
+import type {
+	BenchColorScheme,
+	BenchEngineKind,
+	BenchOutputKind
+} from '../src/lib/results_schema.ts';
 import type { Lang } from './langs.ts';
 
 /**
@@ -69,6 +73,18 @@ export interface HighlighterAdapter<TTokens = unknown> {
 	 */
 	theme_css: ReadonlyArray<string> | null;
 	/**
+	 * The color schemes that default theme covers: the stylesheets', or for inline
+	 * styles the theme the library is bundled with. A stylesheet holding a light
+	 * and a dark palette is larger than one holding one, so the theme's size is
+	 * read beside this.
+	 */
+	theme_schemes: ReadonlyArray<BenchColorScheme>;
+	/**
+	 * The WebAssembly binaries the library loads, for a library that has any. Each
+	 * is reported as wasm bytes, apart from the JavaScript.
+	 */
+	wasm?: ReadonlyArray<AdapterWasm>;
+	/**
 	 * Loads and registers exactly these languages, plus whatever the library
 	 * itself requires for them. Called once per process, before any timing.
 	 *
@@ -105,6 +121,30 @@ export interface HighlighterAdapter<TTokens = unknown> {
 	 * @throws if a language is outside `langs`
 	 */
 	bundle_entry(langs: ReadonlyArray<Lang>): string;
+	/**
+	 * Highlights with the exports of a module built from `bundle_entry`, the way a
+	 * consumer of that module would. The harness calls it on every bundle it
+	 * measures, for each language of the bundle, to prove the bundle holds what its
+	 * size is reported for. Never timed.
+	 *
+	 * @param exports - the namespace of a module built from `bundle_entry(langs)`
+	 * @param src - the source to highlight
+	 * @param lang - one of those `langs`
+	 * @returns the HTML
+	 */
+	bundle_html(exports: Record<string, any>, src: string, lang: Lang): string;
+}
+
+/** A WebAssembly binary a library loads, and how it reaches a bundle. */
+export interface AdapterWasm {
+	/**
+	 * The specifier `bundle_entry` imports the binary through, when that module
+	 * carries it inlined as text. The size build leaves this import out of the
+	 * bundle, so the binary isn't counted as JavaScript.
+	 */
+	import: string;
+	/** The specifier of the binary itself, whose bytes are counted. */
+	binary: string;
 }
 
 /**

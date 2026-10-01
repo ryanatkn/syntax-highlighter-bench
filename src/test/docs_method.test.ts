@@ -1,8 +1,7 @@
 import { assert, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { BenchCellValue, BenchRunKind } from '$lib/results_schema.ts';
-import { ANCHOR_STABLE_BELOW } from '../../bench/anchor.ts';
+import { BENCH_ANCHOR_STABLE_BELOW, BenchCellValue, BenchRunKind } from '$lib/results_schema.ts';
 import { DISTURBED_SPREAD } from '../../bench/run.ts';
 import { FULL_PARAMS, RUN_FLAGS } from '../../bench/run_options.ts';
 
@@ -39,7 +38,7 @@ test('the method docs name every number of a cell', () => {
 test('the method docs state the parameters of a full run and the anchor threshold', () => {
 	const { passes, rounds, target_ms, warmup_ms, rewarm_ms } = FULL_PARAMS;
 	const parameters = `in ${passes} processes per cell, each timing ${rounds} rounds of ${target_ms}ms batches, after a ${warmup_ms}ms warmup, with a ${rewarm_ms}ms rewarm`;
-	const threshold = `${ANCHOR_STABLE_BELOW * 100}%`;
+	const threshold = `${BENCH_ANCHOR_STABLE_BELOW * 100}%`;
 	for (const [name, text] of Object.entries(docs)) {
 		assert.ok(unwrap(text).includes(parameters), `${name} lacks "${parameters}"`);
 		assert.ok(text.includes(threshold), `${name} lacks ${threshold}`);

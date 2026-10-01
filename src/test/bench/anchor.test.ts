@@ -1,12 +1,7 @@
 import { assert, describe, test } from 'vitest';
 
-import { BenchAnchor } from '$lib/results_schema.ts';
-import {
-	ANCHOR_STABLE_BELOW,
-	measure_anchor,
-	run_anchor_workload,
-	to_anchor_drift
-} from '../../../bench/anchor.ts';
+import { BENCH_ANCHOR_STABLE_BELOW, BenchAnchor } from '$lib/results_schema.ts';
+import { measure_anchor, run_anchor_workload, to_anchor_drift } from '../../../bench/anchor.ts';
 
 describe('the anchor workload', () => {
 	test('is deterministic', () => {
@@ -29,11 +24,11 @@ describe('to_anchor_drift', () => {
 	});
 
 	test('a run is stable while the drift stays under the threshold, either way', () => {
-		const just_under = ANCHOR_STABLE_BELOW - 0.001;
+		const just_under = BENCH_ANCHOR_STABLE_BELOW - 0.001;
 		assert.ok(to_anchor_drift([1000, 1000 * (1 + just_under)]).stable);
 		assert.ok(to_anchor_drift([1000, 1000 * (1 - just_under)]).stable);
-		assert.ok(!to_anchor_drift([1000, 1000 * (1 + ANCHOR_STABLE_BELOW)]).stable);
-		assert.ok(!to_anchor_drift([1000, 1000 * (1 - ANCHOR_STABLE_BELOW)]).stable);
+		assert.ok(!to_anchor_drift([1000, 1000 * (1 + BENCH_ANCHOR_STABLE_BELOW)]).stable);
+		assert.ok(!to_anchor_drift([1000, 1000 * (1 - BENCH_ANCHOR_STABLE_BELOW)]).stable);
 		assert.ok(!to_anchor_drift([1000, 1700]).stable);
 	});
 

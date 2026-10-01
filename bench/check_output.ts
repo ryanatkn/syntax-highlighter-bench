@@ -138,3 +138,26 @@ export const check_output = (
 
 	return { ok: true, tokens, output: { html_bytes, spans: elements } };
 };
+
+/**
+ * The snippet gate: checks a library on a language's harness snippet against
+ * `MIN_SNIPPET_SPAN_KINDS`. It decides whether the library is measured on the
+ * language at all, so every pass of the harness runs it before the per-input
+ * floor: a timed cell's process, and the deterministic pass.
+ *
+ * @param adapter - the library, with the language set up
+ * @param lang - a language the adapter claims
+ * @param snippet_src - the language's harness snippet
+ * @returns the snippet's numbers, or a reason that names the snippet
+ * @throws as `check_output` does
+ */
+export const check_snippet = (
+	adapter: HighlighterAdapter,
+	lang: Lang,
+	snippet_src: string
+): OutputCheckResult => {
+	const gate = check_output(adapter, lang, snippet_src, MIN_SNIPPET_SPAN_KINDS);
+	return gate.ok
+		? gate
+		: { ok: false, reason: `failed the check on the ${lang} snippet: ${gate.reason}` };
+};

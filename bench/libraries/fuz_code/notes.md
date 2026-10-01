@@ -33,6 +33,8 @@ syntax_styler.add_lang(lexer_ts);
 ```
 
 `bundle_entry` returns this shape. With no languages it is the styler alone.
+Bundle size is measured over it, and a built bundle is checked by highlighting
+through its `syntax_styler` export (`bundle_html`).
 
 ## Token count
 
@@ -79,8 +81,10 @@ The whole API is synchronous. `setup` only builds the styler.
 `@fuzdev/fuz_code/theme.css` and `@fuzdev/fuz_code/theme_variables.css`. The
 theme reads its colors from custom properties that
 [fuz_css](https://github.com/fuzdev/fuz_css) defines, and
-`theme_variables.css` defines them for a page without fuz_css. Both are counted
-so the figure is what a standalone page needs.
+`theme_variables.css` defines them for a page without fuz_css. Both are counted:
+together they are the theme of a standalone page, in a light and a dark scheme. The dark palette applies through `light-dark()`, so the page sets
+`color-scheme`.
+They are measured minified, like every library's stylesheets.
 
 ## Caveats
 

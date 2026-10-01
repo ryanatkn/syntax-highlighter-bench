@@ -20,11 +20,14 @@
 	output: 'classes' | 'inline_styles';
 	engine: 'scanner' | 'grammar_vm' | 'regex' | 'textmate';
 	theme_css: ReadonlyArray<string> | null; // the default theme's stylesheets; null when styles are inline
+	theme_schemes: ReadonlyArray<'light' | 'dark'>; // the color schemes that theme covers
+	wasm?: ReadonlyArray<{import: string; binary: string}>; // the wasm binaries it loads, counted apart from the JavaScript
 	setup(langs: ReadonlyArray<Lang>): Promise<void>; // once per process, before any timing
 	tokenize(src: string, lang: Lang): TTokens; // timed: the library's own result
 	count_tokens(tokens: TTokens): number; // never timed
 	html(src: string, lang: Lang): string; // timed: the string consumers ship
 	bundle_entry(langs: ReadonlyArray<Lang>): string; // module source importing exactly these languages
+	bundle_html(exports: Record<string, any>, src: string, lang: Lang): string; // highlights through a built bundle's exports
 }`;
 </script>
 
@@ -61,9 +64,16 @@
 			</li>
 			<li>
 				<strong>Browser-safe.</strong> An adapter uses no Node-only API, so it can run in a page
-				unchanged. The harness reads versions and stylesheets from disk on its behalf.
+				unchanged. The harness reads versions, stylesheets, and wasm binaries from disk on its
+				behalf.
 			</li>
 		</ul>
+		<p>
+			<code>bundle_entry</code> and <code>bundle_html</code> serve the bundle sizes of
+			<TomeLink slug="deterministic" />: the first writes the module a bundle is built from, and the
+			second highlights through that bundle's exports, which is how each bundle is shown to hold its
+			languages.
+		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="What each adapter calls" />
@@ -107,6 +117,13 @@
 			Each adapter has a <code>notes.md</code> beside it with the entry points, the import shape,
 			how its tokens are counted, and its caveats, written so the library's maintainers can review
 			or replace it.
+		</p>
+		<p>
+			One default is changed. Shiki stops tokenizing a line after half a second and returns the rest
+			of it as one token, so what a call returns depends on how fast the machine is at that moment:
+			a first call on a busy machine can come back with fewer tokens than the next. Both Shiki
+			adapters raise that limit out of reach rather than turning it off, so every call does the same
+			work, and still reads the clock as Shiki's default does.
 		</p>
 		<p>What the HTML looks like differs, and the results say so:</p>
 		<ul>

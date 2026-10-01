@@ -42,6 +42,8 @@ export const highlighter = createHighlighterCoreSync({
 
 `bundle_entry` returns this shape. With no languages it still holds the core,
 the engine, and the theme, since Shiki cannot produce output without a theme.
+Bundle size is measured over it, and a built bundle is checked by highlighting
+through its `highlighter` export (`bundle_html`).
 
 The `shiki/langs/*.mjs` and `shiki/themes/*.mjs` paths re-export
 `@shikijs/langs` and `@shikijs/themes`. They are used because `shiki` is the
@@ -88,12 +90,29 @@ language modules, and creates the engine.
 ## Theme
 
 `github-light`, the theme twinkleplop's comparison harness uses for Shiki. One
-theme must be bundled for Shiki to produce output, and which one is an open
-choice: themes differ in size, and a theme changes how many distinct colors the
-HTML carries. A smaller theme would lower the bundle figure.
+theme must be bundled for Shiki to produce output, so every bundle figure
+includes it, the `core` set too. It is the only theme measured: themes differ
+in size, and a smaller one would lower the bundle figure, and change how many
+distinct colors the HTML carries.
+
+Shiki has no stylesheet, so its theme CSS figure is null: its theme lives in the
+JavaScript figure, and its colors in the HTML, on every token. The theme covers
+one scheme, light.
 
 ## Caveats
 
+- **The per-line time limit is put out of reach.** Shiki stops tokenizing a line
+  after `tokenizeTimeLimit` milliseconds, 500 by default, and returns the rest
+  of the line as one token without saying so. What a call returns then depends
+  on how fast the machine is at that moment: a first call in a cold process on
+  a busy machine came back with fewer tokens than the next call on the same
+  input. The benchmark needs every call to do the same work, and a token count
+  that is the same anywhere, so the adapter passes a `tokenizeTimeLimit` no line
+  can reach, to every call. It is not 0, which turns the limit off: Shiki reads
+  the clock before every match only while a limit is set, so 0 would also skip
+  work that the default does, and read faster than a consumer with default
+  options gets. Where the default limit would not have been reached, the output
+  and the work are the same.
 - **Shiki falls back to plain text for the names `text`, `plaintext`, `txt`,
   and `plain`, and for a missing `lang` option**, returning one token per line.
   The adapter maps only its declared ids and refuses any language `setup` was

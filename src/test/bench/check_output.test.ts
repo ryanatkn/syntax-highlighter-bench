@@ -25,11 +25,13 @@ const create_adapter = (
 		output: 'classes',
 		engine: 'regex',
 		theme_css: [],
+		theme_schemes: ['light'],
 		setup: async () => {},
 		tokenize: () => 3,
 		count_tokens: (tokens) => tokens,
 		html: () => HIGHLIGHTED,
 		bundle_entry: () => '',
+		bundle_html: () => HIGHLIGHTED,
 		...overrides
 	};
 	return adapter;

@@ -171,6 +171,25 @@ describe.each(ADAPTERS.map((adapter) => ({ id: adapter.id, adapter })))('$id', (
 		}
 	});
 
+	test('a stylesheet or wasm binary from another package has that package recorded', () => {
+		const to_package = (specifier: string): string =>
+			specifier
+				.split('/')
+				.slice(0, specifier.startsWith('@') ? 2 : 1)
+				.join('/');
+		const specifiers = [
+			...(adapter.theme_css ?? []),
+			...(adapter.wasm ?? []).flatMap((wasm) => [wasm.import, wasm.binary])
+		];
+		for (const specifier of specifiers) {
+			const name = to_package(specifier);
+			assert.ok(
+				name === adapter.package || adapter.extra_packages?.includes(name),
+				`${adapter.id} measures "${specifier}" without recording the version of ${name}`
+			);
+		}
+	});
+
 	// The measured configuration: a cell's process sets up the cell's language and
 	// nothing else. Each group below does the same, but a file is one process, so
 	// what an earlier group loaded into a library with a global registry (Prism)
@@ -273,7 +292,11 @@ describe.each(ADAPTERS.map((adapter) => ({ id: adapter.id, adapter })))('$id', (
 
 		test.each(langs)('for %s is an importable module with exports', async (lang) => {
 			const source = adapter.bundle_entry([lang]);
-			assert.ok(Object.keys(await import_entry(lang, source)).length > 0);
+			const exports = await import_entry(lang, source);
+			assert.ok(Object.keys(exports).length > 0);
+			// and `bundle_html` highlights through those exports, as the size build's check does
+			const { span_kinds } = analyze_html(adapter.bundle_html(exports, read_snippet(lang), lang));
+			assert.ok(span_kinds >= MIN_SNIPPET_SPAN_KINDS, `${span_kinds} kinds of span`);
 			// a language changes the floor, and imports nothing every language together doesn't
 			const specifiers = to_specifiers(source);
 			assert.notStrictEqual(source, adapter.bundle_entry([]));

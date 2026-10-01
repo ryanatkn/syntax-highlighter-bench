@@ -42,10 +42,19 @@ const LANGS = {
 	rust: 'rust'
 } as const satisfies Partial<Record<Lang, PackageName>>;
 
+/** The package of the default theme's stylesheet, versioned apart from the core. */
+const THEME_PACKAGE = '@twinkleplop/theme-github';
+
 /** How many slots of `TokenizeResult.tokens` one token takes: type, start, end. */
 const TOKEN_STRIDE = 3;
 
 type HtmlFn = (input: string) => string;
+
+/** The names a bundle entry exports a language's two factories under. */
+const to_export_names = (name: PackageName): { language: string; tokenize: string } => ({
+	language: `${name}_language`,
+	tokenize: `${name}_tokenize`
+});
 
 /** The bound tokenizer and renderer for each language `setup` was given. */
 let tokenizers = create_lang_map<LanguageFn>();
@@ -57,12 +66,13 @@ export const twinkleplop_adapter: HighlighterAdapter<TokenizeResult> = {
 	package: '@twinkleplop/core',
 	by_maintainer: false,
 	note: "The full pipeline: the grammar plus the language's reclassifier stack, as shipped.",
-	extra_packages: Object.keys(PACKAGES).map((name) => `@twinkleplop/${name}`),
+	extra_packages: [...Object.keys(PACKAGES).map((name) => `@twinkleplop/${name}`), THEME_PACKAGE],
 	langs: LANGS,
 	via: {},
 	output: 'classes',
 	engine: 'grammar_vm',
-	theme_css: ['@twinkleplop/theme-github'],
+	theme_css: [THEME_PACKAGE],
+	theme_schemes: ['light', 'dark'],
 	// eslint-disable-next-line @typescript-eslint/require-await
 	setup: async (langs) => {
 		const next_tokenizers = create_lang_map<LanguageFn>();
@@ -90,13 +100,25 @@ export const twinkleplop_adapter: HighlighterAdapter<TokenizeResult> = {
 	bundle_entry: (langs) => {
 		const names = resolve_claimed_langs(ID, LANGS, langs).map(([, name]) => name);
 		if (names.length === 0) {
-			return `export { create_language, to_html } from '@twinkleplop/core';\n`;
+			// what every language package is built from: the runtime, and the grammar compiler
+			return [
+				`export { create_language, to_html } from '@twinkleplop/core';`,
+				`export { compile, define_grammar } from '@twinkleplop/core/compile';`,
+				''
+			].join('\n');
 		}
 		return names
-			.map(
-				(name) =>
-					`export { language as ${name}_language, tokenize as ${name}_tokenize } from '@twinkleplop/${name}';\n`
-			)
+			.map((name) => {
+				const exported = to_export_names(name);
+				return `export { language as ${exported.language}, tokenize as ${exported.tokenize} } from '@twinkleplop/${name}';\n`;
+			})
 			.join('');
+	},
+	bundle_html: (exports, src, lang) => {
+		const [[, name]] = resolve_claimed_langs(ID, LANGS, [lang]) as [[Lang, PackageName]];
+		const language = exports[
+			to_export_names(name).language
+		] as (typeof PACKAGES)[PackageName]['language'];
+		return language()(src);
 	}
 };

@@ -137,6 +137,7 @@ export const prism_adapter: HighlighterAdapter<Array<string | Token>> = {
 	output: 'classes',
 	engine: 'regex',
 	theme_css: ['prismjs/themes/prism.css'],
+	theme_schemes: ['light'],
 	setup: async (langs) => {
 		const claimed = resolve_claimed_langs(ID, LANGS, langs);
 		const loaded = (await import('prismjs/components/prism-core.js')).default;
@@ -169,5 +170,12 @@ export const prism_adapter: HighlighterAdapter<Array<string | Token>> = {
 			'',
 			'export default Prism;',
 			''
-		].join('\n')
+		].join('\n'),
+	bundle_html: (exports, src, lang) => {
+		const bundled = exports.default as PrismApi;
+		const [[, id]] = resolve_claimed_langs(ID, LANGS, [lang]) as [[Lang, string]];
+		const grammar = bundled.languages[id];
+		if (grammar === undefined) throw new Error(`the ${ID} bundle registered no grammar "${id}"`);
+		return bundled.highlight(src, grammar, id);
+	}
 };

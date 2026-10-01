@@ -16,6 +16,7 @@
     "bench": "node bench/run.ts",
     "bench:smoke": "node bench/run.ts --smoke",
     "bench:calibrate": "node bench/run.ts --calibrate",
+    "bench:deterministic": "node bench/deterministic.ts",
     "corpus:manifest": "node bench/corpus_manifest.ts",
     "corpus:check": "node bench/corpus_manifest.ts --check",
     "corpus:fetch": "node bench/corpus_fetch.ts",
@@ -27,7 +28,7 @@
   },
   "devDependencies": {
     "@fuzdev/blake3-wasm": "^0.2.0",
-    "@fuzdev/fuz_code": "^0.48.0",
+    "@fuzdev/fuz_code": "^0.49.0",
     "@fuzdev/fuz_css": "^0.64.0",
     "@fuzdev/fuz_ui": "^0.208.0",
     "@fuzdev/fuz_util": "^0.69.0",

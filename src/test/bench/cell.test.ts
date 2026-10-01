@@ -57,6 +57,7 @@ const create_stub = (
 		output: 'classes',
 		engine: 'regex',
 		theme_css: [],
+		theme_schemes: ['light'],
 		setup: async (langs) => {
 			log.push(`setup ${langs.join(',')}`);
 		},
@@ -69,7 +70,8 @@ const create_stub = (
 			if (log.at(-1) !== 'html') log.push('html');
 			return overrides.html ? overrides.html(src, lang) : HIGHLIGHTED;
 		},
-		bundle_entry: () => ''
+		bundle_entry: () => '',
+		bundle_html: () => HIGHLIGHTED
 	};
 	return { load: () => Promise.resolve(adapter), log };
 };

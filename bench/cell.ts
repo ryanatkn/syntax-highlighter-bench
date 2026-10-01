@@ -38,7 +38,7 @@ import { z } from 'zod';
 
 import { BenchCellOutput, BenchMode, to_bench_cell_id } from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
-import { check_output, MIN_SNIPPET_SPAN_KINDS } from './check_output.ts';
+import { check_output, check_snippet } from './check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from './corpus.ts';
 import { lang_is_timed, type Lang } from './langs.ts';
 import {
@@ -185,13 +185,8 @@ export const run_cell = async (
 	});
 
 	// a `LangNotSetUpError` propagates from either check: that is this harness's bug
-	const gate = check_output(adapter, lang, snippet_src, MIN_SNIPPET_SPAN_KINDS);
-	if (!gate.ok) {
-		return result({
-			measurement: null,
-			excluded: `failed the check on the ${lang} snippet: ${gate.reason}`
-		});
-	}
+	const gate = check_snippet(adapter, lang, snippet_src);
+	if (!gate.ok) return result({ measurement: null, excluded: gate.reason });
 	const check = snippet === input ? gate : check_output(adapter, lang, src);
 	if (!check.ok) return result({ measurement: null, excluded: check.reason });
 

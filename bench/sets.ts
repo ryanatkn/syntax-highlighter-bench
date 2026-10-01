@@ -43,3 +43,7 @@ export const FEATURE_SETS: ReadonlyArray<FeatureSet> = [
 	),
 	create_feature_set('all', 'all', LANGS)
 ];
+
+/** The feature sets as a results file carries them: its `sets` section. */
+export const to_bench_sets = (): Array<BenchSet> =>
+	FEATURE_SETS.map((set) => ({ ...set, langs: [...set.langs] }));

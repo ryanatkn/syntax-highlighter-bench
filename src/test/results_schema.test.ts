@@ -2,13 +2,15 @@ import { assert, describe, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 import {
+	BENCH_ANCHOR_STABLE_BELOW,
 	BenchInput,
 	BenchResults,
 	bench_results_find_gaps,
 	bench_results_is_publishable,
 	bench_run_is_complete,
 	parse_bench_results,
-	to_bench_cell_id
+	to_bench_cell_id,
+	to_max_compressed_bytes
 } from '$lib/results_schema.ts';
 
 const FIXTURE_URL = new URL('./fixtures/results/fixture_run.json', import.meta.url);
@@ -30,6 +32,25 @@ const assert_rejects = (data: unknown, expected: string): void => {
 };
 
 const EXCLUDED_CELL = 'shiki/rust/rust.sample:tokenize';
+
+/** The three per-library sections of a cell. */
+const SECTIONS = ['values', 'tokens', 'output'] as const;
+
+/** The deterministic section a cell states: `tokens` on a tokenize cell, `output` on an html one. */
+const to_stated = (cell: BenchResults['cells'][number]): 'tokens' | 'output' =>
+	cell.mode === 'tokenize' ? 'tokens' : 'output';
+
+/** The sections of a cell that hold numbers: its values, and the deterministic one it states. */
+const to_filled = (cell: BenchResults['cells'][number]): Array<(typeof SECTIONS)[number]> => [
+	'values',
+	to_stated(cell)
+];
+
+/** Removes the bundle sizes, and what they were built with. */
+const clear_bundle = (data: BenchResults): void => {
+	data.bundle = {};
+	data.meta.bundler = null;
+};
 
 /** Marks the fixture as a smoke run, which is neither retried nor resumed nor carries a floor. */
 const to_smoke = (data: BenchResults): BenchResults => {
@@ -65,7 +86,7 @@ describe('sections later filled', () => {
 	test('startup, bundle, cells, inputs, and excluded can be empty', () => {
 		const data = load_fixture();
 		data.startup = [];
-		data.bundle = {};
+		clear_bundle(data);
 		data.cells = [];
 		data.inputs = [];
 		data.meta.excluded = [];
@@ -134,7 +155,7 @@ describe('rosters', () => {
 	});
 
 	test('rejects a cell value for a library not in the roster', () => {
-		for (const section of ['values', 'tokens', 'output'] as const) {
+		for (const section of to_filled(load_fixture().cells[0]!)) {
 			const data = load_fixture();
 			const cell = data.cells[0]!;
 			(cell[section] as Record<string, unknown>).highlight_js = cell[section].fuz_code;
@@ -226,11 +247,15 @@ describe('unsupported and excluded', () => {
 	});
 
 	test('rejects numbers for a library excluded from the cell', () => {
-		for (const section of ['values', 'tokens', 'output'] as const) {
-			const data = load_fixture();
-			const cell = data.cells.find((c) => c.id === EXCLUDED_CELL)!;
-			(cell[section] as Record<string, unknown>).prism = cell[section].fuz_code;
-			assert_rejects(data, 'library "prism" is excluded from this cell');
+		// in the tokenize cell and the html one, which state different sections
+		for (const mode of ['tokenize', 'html'] as const) {
+			const id = to_bench_cell_id('shiki/rust/rust.sample', mode);
+			for (const section of to_filled(load_fixture().cells.find((c) => c.id === id)!)) {
+				const data = load_fixture();
+				const cell = data.cells.find((c) => c.id === id)!;
+				(cell[section] as Record<string, unknown>).prism = cell[section].fuz_code;
+				assert_rejects(data, 'library "prism" is excluded from this cell');
+			}
 		}
 	});
 
@@ -259,6 +284,9 @@ describe('unsupported and excluded', () => {
 		const data = load_fixture();
 		data.bundle.prism!.web_rust = data.bundle.prism!.docs!;
 		assert_rejects(data, `library "prism" has sizes but doesn't claim: xml`);
+		// the set that needs the language is unsupported, and the ones that don't are measured
+		assert.deepStrictEqual(load_fixture().bundle.prism!['single:xml'], { unsupported: ['xml'] });
+		assert.ok('raw' in load_fixture().bundle.prism!['single:ts']!);
 	});
 
 	test('rejects an unsupported bundle entry that misnames the missing languages', () => {
@@ -399,7 +427,7 @@ describe('run', () => {
 		data.cells = [cell];
 		data.meta.excluded = [];
 		data.startup = [];
-		data.bundle = {};
+		clear_bundle(data);
 		data.meta.libraries = data.meta.libraries.filter((l) => libraries.includes(l.id));
 		data.coverage = Object.fromEntries(
 			data.meta.libraries.map((l) => [l.id, data.coverage[l.id]!])
@@ -499,7 +527,7 @@ describe('run', () => {
 	/** Removes a library's numbers from a cell. */
 	const remove_library = (data: BenchResults, cell_id: string, library: string): void => {
 		const cell = data.cells.find((c) => c.id === cell_id)!;
-		for (const section of ['values', 'tokens', 'output'] as const) delete cell[section][library];
+		for (const section of SECTIONS) delete cell[section][library];
 	};
 
 	test('a run with no filters has every claiming library in every cell, or excludes it', () => {
@@ -529,7 +557,7 @@ describe('run', () => {
 			remove_library(data, cell.id, 'twinkleplop');
 		}
 		delete data.coverage.twinkleplop!.rust;
-		data.bundle = {};
+		clear_bundle(data);
 		data.startup = [];
 		assert.ok(bench_results_is_publishable(BenchResults.parse(data)));
 	});
@@ -642,7 +670,7 @@ describe('startup', () => {
 		// drop the cells so only the startup entry refers to the language
 		data.cells = [];
 		data.meta.excluded = [];
-		data.bundle = {};
+		clear_bundle(data);
 		assert_rejects(data, `library "${entry.library}" doesn't claim lang "${entry.lang}"`);
 	});
 
@@ -686,7 +714,6 @@ describe('cells', () => {
 		cell.lang = 'xml';
 		cell.values = { fuz_code: cell.values.fuz_code! };
 		cell.tokens = { fuz_code: cell.tokens.fuz_code! };
-		cell.output = { fuz_code: cell.output.fuz_code! };
 		assert_rejects(data, 'lang "xml" is not timed');
 	});
 
@@ -866,6 +893,25 @@ describe('inputs', () => {
 });
 
 describe('libraries', () => {
+	test('a library records the color schemes its default theme covers', () => {
+		const data = load_fixture();
+		assert.deepStrictEqual(
+			data.meta.libraries.map((l) => [l.id, l.theme_schemes]),
+			[
+				['fuz_code', ['light', 'dark']],
+				['twinkleplop', ['light', 'dark']],
+				['prism', ['light']],
+				['shiki_js', ['light']],
+				['shiki_wasm', ['light']]
+			]
+		);
+		for (const schemes of [[], ['sepia'], undefined]) {
+			const data2 = load_fixture();
+			(data2.meta.libraries[0] as any).theme_schemes = schemes;
+			assert_rejects(data2, 'meta.libraries.0.theme_schemes');
+		}
+	});
+
 	test('a library may record the versions of its separately versioned packages', () => {
 		const data = load_fixture();
 		const library = data.meta.libraries.find((l) => l.extra_packages)!;
@@ -927,7 +973,7 @@ describe('ids', () => {
 							? data.bundle
 							: at === 'bundle.prism'
 								? data.bundle.prism
-								: data.cells[0][at];
+								: data.cells[at === 'output' ? 1 : 0][at];
 			// a placeholder key, renamed in the JSON text so it parses as an own property
 			target.PLACEHOLDER = structuredClone(Object.values(target)[0]);
 			return JSON.stringify(data).replace('"PLACEHOLDER"', JSON.stringify(key));
@@ -943,6 +989,260 @@ describe('ids', () => {
 		]) {
 			const data = JSON.parse(text('__proto__', at));
 			assert_rejects(data, '"__proto__" key is not allowed');
+		}
+	});
+});
+
+describe('deterministic numbers', () => {
+	test('a tokenize cell states token counts, and an html cell output sizes', () => {
+		const data = load_fixture();
+		for (const cell of data.cells) {
+			assert.ok(Object.keys(cell[to_stated(cell)]).length > 0, cell.id);
+			assert.deepStrictEqual(cell[cell.mode === 'tokenize' ? 'output' : 'tokens'], {}, cell.id);
+		}
+	});
+
+	test('rejects a number stated on the other cell of its input', () => {
+		const data = load_fixture();
+		const [tokenize, html] = data.cells;
+		assert.strictEqual(tokenize!.mode, 'tokenize');
+		assert.strictEqual(html!.mode, 'html');
+		tokenize!.output = html!.output;
+		assert_rejects(data, "cells.0.output: output is stated on the input's html cell");
+		const data2 = load_fixture();
+		data2.cells[1]!.tokens = data2.cells[0]!.tokens;
+		assert_rejects(data2, "cells.1.tokens: tokens is stated on the input's tokenize cell");
+	});
+
+	test('rejects a timed value without the deterministic number of its cell', () => {
+		const data = load_fixture();
+		delete data.cells[0]!.tokens.prism;
+		assert_rejects(data, 'cells.0.tokens: library "prism" has a value here and no tokens');
+		const data2 = load_fixture();
+		delete data2.cells[1]!.output.prism;
+		assert_rejects(data2, 'cells.1.output: library "prism" has a value here and no output');
+	});
+});
+
+/** The fixture as a deterministic-only file: nothing timed, and nothing that says where or when. */
+const load_deterministic_only = (): BenchResults => {
+	const data = load_deterministic_fixture();
+	data.meta.run = null;
+	data.meta.anchor = null;
+	data.meta.noise_floor = null;
+	data.meta.generated_at = null;
+	data.meta.machine = null;
+	data.meta.node = null;
+	data.meta.commit = null;
+	return data;
+};
+
+describe('a deterministic-only file', () => {
+	test('records no time, machine, Node version, or commit', () => {
+		const data = load_deterministic_only();
+		const parsed = BenchResults.parse(data);
+		assert.ok(!bench_results_is_publishable(parsed));
+		// it still holds every deterministic section
+		assert.ok(parsed.cells.length > 0);
+		assert.ok(Object.keys(parsed.bundle).length > 0);
+		assert.ok(parsed.meta.bundler !== null);
+	});
+
+	test('is complete: every claiming library has its number in every cell, or is excluded', () => {
+		const data = load_deterministic_only();
+		delete data.cells[0]!.tokens.prism;
+		assert_rejects(
+			data,
+			'cells.0.tokens: library "prism" claims lang "ts" and has neither its tokens nor an excluded entry here'
+		);
+		const data2 = load_deterministic_only();
+		delete data2.cells[1]!.output.prism;
+		assert_rejects(
+			data2,
+			'cells.1.output: library "prism" claims lang "ts" and has neither its output nor an excluded entry here'
+		);
+		assert.deepStrictEqual(bench_results_find_gaps(data2, 'deterministic'), [
+			{
+				path: ['cells', 1, 'output'],
+				message:
+					'library "prism" claims lang "ts" and has neither its output nor an excluded entry here'
+			}
+		]);
+		// excluded there, it is accounted for, as in the cells the fixture already excludes it from
+		data2.meta.excluded.push({ cell: data2.cells[1]!.id, library: 'prism', reason: 'no HTML' });
+		BenchResults.parse(data2);
+		assert.deepStrictEqual(bench_results_find_gaps(load_deterministic_only(), 'deterministic'), []);
+	});
+
+	test('is complete: every listed input has a cell in each mode', () => {
+		const data = load_deterministic_only();
+		const [removed] = data.cells.splice(1, 1);
+		assert.strictEqual(removed!.mode, 'html');
+		assert_rejects(data, `inputs.0: input "${removed!.file}" has no html cell`);
+	});
+
+	test('a timed file is not held to it: a filtered run lists what it has', () => {
+		const data = load_fixture();
+		for (const cell of data.cells) cell.values = {};
+		delete data.cells[0]!.tokens.prism;
+		data.meta.run!.filters.sizes = ['micro', 'small', 'medium', 'large'];
+		BenchResults.parse(data);
+	});
+
+	test('rejects a file with timed numbers that does not say where they came from', () => {
+		for (const key of ['generated_at', 'machine', 'node', 'commit'] as const) {
+			const data = load_fixture();
+			data.meta[key] = null;
+			assert_rejects(data, `meta.${key}: a run with timed numbers records its ${key}`);
+			// cold start alone is timed too
+			const data2 = load_fixture();
+			for (const cell of data2.cells) cell.values = {};
+			data2.meta[key] = null;
+			assert_rejects(data2, `meta.${key}: a run with timed numbers records its ${key}`);
+		}
+	});
+});
+
+describe('bundle', () => {
+	test("rejects a compressed size past the raw one and a format's own overhead", () => {
+		for (const key of ['gzip', 'brotli'] as const) {
+			for (const section of ['js', 'css', 'wasm'] as const) {
+				const data = load_fixture();
+				const entry = data.bundle.shiki_wasm!.docs!;
+				const classes = data.bundle.prism!.docs!;
+				assert.ok('raw' in entry && 'raw' in classes);
+				const sizes = section === 'js' ? entry : section === 'wasm' ? entry.wasm! : classes.css!;
+				sizes[key] = to_max_compressed_bytes(sizes.raw) + 1;
+				assert_rejects(data, `${key} is larger than raw`);
+				// equal to raw, or over it by a header, is what a few bytes compress to
+				sizes[key] = sizes.raw + 20;
+				BenchResults.parse(data);
+			}
+		}
+		assert.ok(to_max_compressed_bytes(1) >= 1 + 20);
+	});
+
+	test('css is null exactly for a library that writes its styles inline', () => {
+		const data = load_fixture();
+		const classes = data.bundle.prism!.docs!;
+		assert.ok('raw' in classes && classes.css !== null);
+		assert.deepStrictEqual(Object.keys(classes.css), ['raw', 'gzip', 'brotli']);
+		classes.css = null;
+		assert_rejects(
+			data,
+			'bundle.prism.docs.css: library "prism" styles by class, so its stylesheet is measured'
+		);
+		const data2 = load_fixture();
+		const inline = data2.bundle.shiki_js!.docs!;
+		assert.ok('raw' in inline && inline.css === null);
+		inline.css = { raw: 2000, gzip: 700, brotli: 600 };
+		assert_rejects(
+			data2,
+			'bundle.shiki_js.docs.css: library "shiki_js" writes its styles inline, so it has no stylesheet to measure'
+		);
+	});
+
+	test('wasm is measured raw and compressed, and null without wasm', () => {
+		const data = load_fixture();
+		const without = data.bundle.prism!.docs!;
+		const with_wasm = data.bundle.shiki_wasm!.docs!;
+		assert.ok('raw' in without && 'raw' in with_wasm);
+		assert.strictEqual(without.wasm, null);
+		assert.deepStrictEqual(Object.keys(with_wasm.wasm!), ['raw', 'gzip', 'brotli']);
+		for (const wasm of [0, 1000, { raw: 0, gzip: 0, brotli: 0 }, { raw: 10 }, { raw: 1.5 }]) {
+			const data2 = load_fixture();
+			(data2.bundle.prism!.docs as any).wasm = wasm;
+			assert_rejects(data2, 'bundle.prism.docs');
+		}
+	});
+
+	test('a malformed entry is reported against the shape it was meant to be', () => {
+		const data = load_fixture();
+		delete (data.bundle.prism!.docs as any).gzip;
+		assert_rejects(data, 'bundle.prism.docs: a bundle entry is sizes');
+		assert_rejects(data, 'read as sizes: gzip: ');
+		const data2 = load_fixture();
+		(data2.bundle.prism!.docs as any).extra = 1;
+		assert_rejects(data2, 'read as sizes: Unrecognized key');
+		const data3 = load_fixture();
+		(data3.bundle.prism!['single:xml'] as any).unsupported = ['XML'];
+		// zod names the place itself when only one shape comes close
+		assert_rejects(data3, 'bundle.prism.single:xml.unsupported.0: Invalid string');
+		const data5 = load_fixture();
+		(data5.bundle.prism as any)['single:xml'] = { unsupported: ['xml'], raw: 1 };
+		assert_rejects(data5, 'read as unsupported: Unrecognized key');
+		const data4 = load_fixture();
+		(data4.bundle.prism as any).docs = 12;
+		assert_rejects(data4, 'read as sizes: ');
+		// the message never falls back to the union's own
+		for (const changed of [data, data2, data3, data4, data5]) {
+			const parsed = BenchResults.safeParse(changed);
+			assert.ok(!parsed.success);
+			assert.ok(parsed.error.issues.every((i) => i.message !== 'Invalid input'));
+		}
+	});
+
+	test('sizes cover every library over every set, or none', () => {
+		const data = load_fixture();
+		delete data.bundle.prism;
+		assert_rejects(data, 'bundle: library "prism" has no bundle entry');
+		const data2 = load_fixture();
+		delete data2.bundle.prism!.docs;
+		assert_rejects(data2, 'bundle.prism: library "prism" has no entry for set "docs"');
+		// every set of the fixture has an entry for every library
+		const data3 = load_fixture();
+		for (const { id } of data3.meta.libraries) {
+			assert.deepStrictEqual(
+				Object.keys(data3.bundle[id]!),
+				data3.sets.map((s) => s.id)
+			);
+		}
+	});
+
+	test('what the sizes were built with is recorded exactly when there are sizes', () => {
+		const data = load_fixture();
+		data.meta.bundler = null;
+		assert_rejects(data, 'meta.bundler: bundler is set exactly when bundle sizes were measured');
+		const data2 = load_fixture();
+		data2.bundle = {};
+		assert_rejects(data2, 'meta.bundler: bundler is set exactly when bundle sizes were measured');
+		for (const [key, value] of [
+			['gzip_level', 0],
+			['gzip_level', 10],
+			['brotli_quality', 12],
+			['vite', '']
+		] as const) {
+			const data3 = load_fixture();
+			(data3.meta.bundler as any)[key] = value;
+			assert_rejects(data3, `meta.bundler.${key}`);
+		}
+	});
+});
+
+describe('plausibility of timed numbers', () => {
+	test('rejects a 10th percentile over the 90th', () => {
+		const data = load_fixture();
+		const value = data.cells[0]!.values.fuz_code!;
+		[value.p10_ns, value.p90_ns] = [value.p90_ns, value.p10_ns];
+		assert_rejects(data, 'cells.0.values.fuz_code.p10_ns: the 10th percentile is at most the 90th');
+		value.p10_ns = value.p90_ns;
+		BenchResults.parse(data);
+	});
+
+	test('stable is exactly a drift under the threshold, either way', () => {
+		for (const [drift, stable] of [
+			[0, true],
+			[BENCH_ANCHOR_STABLE_BELOW - 0.001, true],
+			[-(BENCH_ANCHOR_STABLE_BELOW - 0.001), true],
+			[BENCH_ANCHOR_STABLE_BELOW, false],
+			[-BENCH_ANCHOR_STABLE_BELOW, false],
+			[0.5, false]
+		] as const) {
+			const data = load_fixture();
+			data.meta.anchor = { drift, stable };
+			BenchResults.parse(data);
+			data.meta.anchor = { drift, stable: !stable };
+			assert_rejects(data, 'meta.anchor.stable: stable is exactly a drift under');
 		}
 	});
 });

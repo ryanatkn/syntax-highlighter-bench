@@ -23,7 +23,10 @@
 	</section>
 	<TomeSection>
 		<TomeSectionHeader text="What exists" />
-		<p>The harness that times the libraries is built, and no run has been published:</p>
+		<p>
+			The harness that times the libraries and the deterministic measurements are built. No timed
+			run has been published:
+		</p>
 		<ul>
 			<li>
 				an adapter for each library, and the check that guards against a plain-text fallback, in
@@ -44,13 +47,18 @@
 				<TomeLink slug="method" />
 			</li>
 			<li>
+				the deterministic measurements, which are bundle size over each feature set, token counts,
+				output sizes, and coverage, in <code>bench/deterministic.ts</code>, with their numbers
+				committed as <code>results/deterministic.json</code> — see <TomeLink slug="deterministic" />
+			</li>
+			<li>
 				the schema of the results file, in <ModuleLink module_path="results_schema.ts" /> — see
 				<TomeLink slug="results" />
 			</li>
 		</ul>
 		<p>
-			The bundle and cold-start measurements, the results pages, and a published run are designed
-			but not built. <TomeLink slug="design" /> describes them.
+			The cold-start measurement, the results pages, and a published timed run are designed but not
+			built. <TomeLink slug="design" /> describes them.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -61,7 +69,8 @@
 				site.
 			</li>
 			<li>
-				<code>results/</code> — where the harness writes runs. None is committed yet.
+				<code>results/</code> — where the harness writes runs. The deterministic results are
+				committed there, and no timed run is yet.
 			</li>
 			<li>
 				<code>src/lib/results_schema.ts</code> — the one module the harness and the site share.

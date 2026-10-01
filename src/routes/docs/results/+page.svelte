@@ -19,8 +19,10 @@
 			rendering blanks. The schema is strict: an unknown key is an error.
 		</p>
 		<p>
-			<code>bench/run.ts</code> writes one, as <TomeLink slug="method" /> describes. No run has been
-			published yet.
+			<code>bench/run.ts</code> writes one for a timed run, as <TomeLink slug="method" /> describes,
+			and <code>bench/deterministic.ts</code> writes the committed
+			<code>results/deterministic.json</code>, which holds only the numbers that are the same on any
+			machine, as <TomeLink slug="deterministic" /> describes. No timed run has been published yet.
 		</p>
 	</section>
 	<TomeSection>
@@ -30,7 +32,9 @@
 				<DeclarationLink name="BenchMeta" /> — the machine, Node version, commit, and corpus hash;
 				what kind of run it was and how it measured, in <DeclarationLink name="BenchRun" />, with
 				the retries it allowed and how many segments it was measured in; the roster of libraries
-				with their versions; the excluded list; the anchor's drift; the machine's noise floor
+				with their versions and the color schemes their default themes cover; the excluded list; the
+				anchor's drift; the machine's noise floor; what the bundle sizes were built with, in
+				<DeclarationLink name="BenchBundler" />
 			</li>
 			<li>
 				<DeclarationLink name="BenchLang" /> and <DeclarationLink name="BenchSet" /> — the language
@@ -43,17 +47,19 @@
 			</li>
 			<li>
 				<DeclarationLink name="BenchCell" /> — one input measured in one mode, with each library's
-				numbers. Its id is <code>&lt;file&gt;:&lt;mode&gt;</code>. Each value carries
-				<code>attempts</code>: how many times the library was measured there, more than 1 when its
-				rounds disagreed and it was retried. A retried value's spread and percentiles are those of
-				the attempt that was kept
+				numbers. Its id is <code>&lt;file&gt;:&lt;mode&gt;</code>. A <code>tokenize</code> cell
+				states the token counts and an <code>html</code> cell the output sizes, so each is stated
+				once for an input. Each value carries <code>attempts</code>: how many times the library was
+				measured there, more than 1 when its rounds disagreed and it was retried. A retried value's
+				spread and percentiles are those of the attempt that was kept
 			</li>
 			<li>
 				<DeclarationLink name="BenchStartup" /> — cold-start measurements, which no run fills yet
 			</li>
 			<li>
-				<DeclarationLink name="BenchBundleEntry" /> — bundle sizes for each library over each
-				feature set, which no run fills yet
+				<DeclarationLink name="BenchBundleEntry" /> — for each library over each feature set, its
+				bundle sizes in <DeclarationLink name="BenchBundleSizes" />, or the languages of the set it
+				lacks. The sizes are the JavaScript's, with the wasm and the theme CSS each measured apart
 			</li>
 			<li>
 				<DeclarationLink name="BenchCoverageEntry" /> — which languages each library claims, with a
@@ -77,6 +83,13 @@
 			<strong>Deterministic</strong> numbers come out the same anywhere: token counts and output
 			size in each cell's <code>tokens</code> and <code>output</code>, plus <code>bundle</code> and
 			<code>coverage</code>.
+		</p>
+		<p>
+			A file may hold only the deterministic ones. It then has no <code>meta.run</code> and no
+			anchor, and its <code>generated_at</code>, <code>machine</code>, <code>node</code>, and
+			<code>commit</code> are null: they say where timed numbers came from, and are required as soon
+			as a file has any. A timed run carries the deterministic numbers too, so one published file
+			holds both.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -139,8 +152,16 @@
 				provenance pins, and one built from several files is marked synthetic
 			</li>
 			<li>
-				a run with timed numbers records its anchor, and one with timed cells records how they were
-				measured
+				a run with timed numbers records its anchor, when it started, and its machine, Node version,
+				and commit, and one with timed cells records how they were measured
+			</li>
+			<li>
+				token counts are on <code>tokenize</code> cells only and output sizes on <code>html</code>
+				cells only, and a library with a timed value in a cell has that cell's deterministic number
+			</li>
+			<li>
+				a value's 10th percentile is at most its 90th, and an anchor is stable exactly when its
+				drift is under the threshold
 			</li>
 			<li>
 				a run's filters describe the file: every cell is inside them, the libraries listed are
@@ -161,6 +182,19 @@
 			<li>
 				a bundle entry holds sizes only when the library claims every language of the set, and
 				otherwise names exactly the languages it lacks
+			</li>
+			<li>
+				bundle sizes cover every library over every set or are absent altogether, and what they were
+				built with is recorded exactly when they are present
+			</li>
+			<li>
+				a compressed size is no larger than the raw one plus a compression format's own overhead,
+				and the theme CSS sizes are null exactly for a library that writes its styles inline
+			</li>
+			<li>
+				a file with no timed numbers is complete: in every cell each library that claims the
+				language has the number the cell states or is listed as excluded, and every listed input has
+				a cell in each mode
 			</li>
 		</ul>
 		<p>

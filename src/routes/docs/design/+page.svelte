@@ -11,30 +11,12 @@
 <TomeContent {tome}>
 	<section>
 		<aside>
-			This page describes what is designed and not built: the bundle and cold-start measurements,
-			the results pages, and a published run. The details may change as they are built. The
-			<TomeLink slug="adapters" />, the <TomeLink slug="corpus" />, and the timed harness described
-			in <TomeLink slug="method" /> exist.
+			This page describes what is designed and not built: the cold-start measurement, the results
+			pages, and a published timed run. The details may change as they are built. The
+			<TomeLink slug="adapters" />, the <TomeLink slug="corpus" />, the timed harness described in
+			<TomeLink slug="method" />, and the <TomeLink slug="deterministic" /> exist.
 		</aside>
 	</section>
-	<TomeSection>
-		<TomeSectionHeader text="Bundle size" />
-		<p>
-			How many bytes a library adds to a page, measured over each feature set of
-			<TomeLink slug="languages" />: a build of the module each adapter writes for the set, minified
-			and compressed. Two things are reported apart from the JavaScript, because folding them in
-			would hide a real difference: the wasm a library loads, and the stylesheet a library with
-			class-based output needs for its default theme.
-		</p>
-		<p>
-			Because one set holds no languages and one holds each language alone, the cost of adding a
-			language is their difference, with no extra measurement.
-		</p>
-		<p>
-			Bundle size is deterministic, like the token counts and output sizes the timed harness already
-			records, so it can be regenerated anywhere and kept current on every change.
-		</p>
-	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Cold start" />
 		<p>
@@ -57,6 +39,10 @@
 			and modes, so a reader compares the subset they care about. A summary is a geometric mean over
 			only the cells every selected library was measured in, and differences inside the machine's
 			noise floor are shown as such.
+		</p>
+		<p>
+			For bundle size the pages will show what each language adds to a library, derived from the
+			measured sets as <TomeLink slug="deterministic" /> describes, beside the sets' totals.
 		</p>
 	</TomeSection>
 	<TomeSection>

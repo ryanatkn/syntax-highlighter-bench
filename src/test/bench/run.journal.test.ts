@@ -15,13 +15,21 @@ import { join } from 'node:path';
 import { parse_bench_results, type BenchResults } from '$lib/results_schema.ts';
 import type { CellResult, CellSpec } from '../../../bench/cell.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
+import {
+	carry_deterministic,
+	to_deterministic_path,
+	to_expected_key,
+	type CarriedDeterministic
+} from '../../../bench/deterministic.ts';
 import { read_journal } from '../../../bench/journal.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
+import { to_bench_libraries } from '../../../bench/library_info.ts';
 import {
 	DISTURBED_SPREAD,
 	OVERLAPPED_SUFFIX,
 	RunError,
 	format_run_plan,
+	format_run_summary,
 	plan_run,
 	read_commit,
 	run_bench,
@@ -29,6 +37,7 @@ import {
 	type RunBenchOptions
 } from '../../../bench/run.ts';
 import { parse_run_args, type RunOptions } from '../../../bench/run_options.ts';
+import { to_bench_sets } from '../../../bench/sets.ts';
 
 // A timed run end to end, with invented process results in place of real
 // processes and anchor readings: the journal, resuming, and retrying.
@@ -89,6 +98,19 @@ const to_outcome = (spec: CellSpec, ns: Array<number>, tokens: number = 10): Chi
 	};
 };
 
+/** What a process would print when it reports what the deterministic file expects. */
+const to_expected_outcome = (
+	spec: CellSpec,
+	expected: CarriedDeterministic['expected']
+): ChildOutcome => {
+	const numbers = expected.get(to_expected_key(spec.file, spec.library));
+	assert.ok(numbers && !('excluded' in numbers));
+	const outcome = to_outcome(spec, STEADY, numbers.tokens);
+	const result: CellResult = JSON.parse(outcome.stdout);
+	result.measurement!.output = numbers.output;
+	return { ...outcome, stdout: JSON.stringify(result) + '\n' };
+};
+
 const INTERRUPTED: ChildOutcome = {
 	error: null,
 	status: null,
@@ -114,6 +136,8 @@ const create_machine = (
 		log: [] as Array<string>,
 		options: {
 			lock_path,
+			// holds no deterministic file, unless a test puts one there
+			results_dir: dir,
 			log: (line: string) => machine.log.push(line),
 			spawn_cell: (spec: CellSpec): ChildOutcome => {
 				if (machine.spawned >= machine.interrupt_after) return INTERRUPTED;
@@ -533,6 +557,160 @@ describe('a timed run retries what was disturbed', () => {
 		for (const cell of results.cells) assert.strictEqual(cell.values.prism!.attempts, 2);
 		// both arms then agree
 		for (const pair of pairs) assert.closeTo(pair.ratio, 1, 1e-12);
+	});
+});
+
+describe('a timed run and the deterministic results file', () => {
+	const committed = readFileSync(to_deterministic_path(), 'utf8');
+	const deterministic = parse_bench_results(JSON.parse(committed));
+	const carry = () => {
+		const libraries = to_bench_libraries(
+			ADAPTERS.filter((a) => a.id === 'fuz_code' || a.id === 'prism')
+		);
+		const carried = carry_deterministic(deterministic, {
+			libraries,
+			corpus_hash: manifest.corpus_hash,
+			sets: to_bench_sets()
+		});
+		assert.ok(carried.ok, carried.ok ? '' : carried.reason);
+		return carried;
+	};
+
+	test('a run carries the bundle sizes of its libraries when every cell agrees with the file', async () => {
+		writeFileSync(to_deterministic_path(dir), committed);
+		const { expected, bundle, bundler } = carry();
+		const machine = create_machine((spec) => to_expected_outcome(spec, expected));
+		const { results } = await run_bench(parse(), machine.options);
+		assert.deepStrictEqual(results.bundle, bundle);
+		assert.deepStrictEqual(Object.keys(results.bundle), ['fuz_code', 'prism']);
+		assert.deepStrictEqual(results.meta.bundler, bundler);
+		assert.ok(machine.log.every((line) => !line.includes('no bundle sizes')));
+		// the cells state what the processes reported, which is what the file has
+		for (const cell of results.cells) {
+			const from_file = deterministic.cells.find((c) => c.id === cell.id)!;
+			assert.deepStrictEqual(cell.tokens, {
+				...(cell.mode === 'tokenize' && {
+					fuz_code: from_file.tokens.fuz_code,
+					prism: from_file.tokens.prism
+				})
+			});
+			assert.deepStrictEqual(cell.output, {
+				...(cell.mode === 'html' && {
+					fuz_code: from_file.output.fuz_code,
+					prism: from_file.output.prism
+				})
+			});
+		}
+		assert.match(format_run_summary(results), /bundle sizes: carried from the deterministic/);
+	});
+
+	test('a result that disagrees with the file stops the run at that cell, and keeps the journal', async () => {
+		writeFileSync(to_deterministic_path(dir), committed);
+		const { expected } = carry();
+		// the second process, a library's first on the cell, reports another token count
+		const machine = create_machine((spec) => {
+			const outcome = to_expected_outcome(spec, expected);
+			if (machine.spawned !== 2) return outcome;
+			const result: CellResult = JSON.parse(outcome.stdout);
+			result.measurement!.tokens += 1;
+			return { ...outcome, stdout: JSON.stringify(result) + '\n' };
+		});
+		const error = await catch_run_error(parse(), machine.options);
+		assert.strictEqual(error.exit_code, 2);
+		assert.match(error.message, /disagrees with the deterministic results file/);
+		assert.match(error.message, /npm run bench:deterministic/);
+		assert.strictEqual(machine.spawned, 2);
+		assert.ok(!existsSync(out));
+		// the one that agreed is journaled, and the one that did not is not
+		assert.strictEqual(read_journal_ok().results.size, 1);
+	});
+
+	test('a file that describes another tree is not carried, and the run says why', async () => {
+		const stale = structuredClone(deterministic);
+		stale.meta.corpus_hash = '0'.repeat(64);
+		writeFileSync(to_deterministic_path(dir), JSON.stringify(stale));
+		const machine = create_machine();
+		const { results } = await run_bench(parse(), machine.options);
+		assert.deepStrictEqual(results.bundle, {});
+		assert.strictEqual(results.meta.bundler, null);
+		assert.ok(
+			machine.log.some((line) =>
+				/^no bundle sizes: .* doesn't describe this run, it measured another corpus: regenerate/.test(
+					line
+				)
+			)
+		);
+		assert.match(format_run_summary(results), /bundle sizes: none/);
+		// with no file at all, the run says that
+		rmSync(to_deterministic_path(dir));
+		rmSync(out);
+		const bare = create_machine();
+		await run_bench(parse(), bare.options);
+		assert.ok(
+			bare.log.some((line) =>
+				line.startsWith('no bundle sizes: there is no deterministic results file: generate it')
+			)
+		);
+	});
+
+	test('a file that is not a results file is refused before measuring', async () => {
+		writeFileSync(to_deterministic_path(dir), '{"meta": {}}');
+		const machine = create_machine();
+		const error = await catch_run_error(parse(), machine.options);
+		assert.strictEqual(error.exit_code, 2);
+		assert.match(error.message, /deterministic\.json is not a results file: regenerate it/);
+		assert.strictEqual(machine.spawned, 0);
+		assert.ok(!existsSync(journal_path));
+	});
+
+	test('a full run with no filters is refused before measuring unless the file describes it', async () => {
+		const unfiltered = (...args: Array<string>): RunOptions => {
+			const parsed = parse_run_args(['--machine', 'box', '--out', out, ...args], ADAPTERS);
+			assert.ok(parsed.ok && !parsed.help);
+			return parsed.options;
+		};
+		// no file
+		const machine = create_machine();
+		const missing = await catch_run_error(unfiltered(), machine.options);
+		assert.strictEqual(missing.exit_code, 2);
+		assert.match(
+			missing.message,
+			/^a full run carries the bundle sizes .* there is no deterministic results file: generate it with `npm run bench:deterministic`/
+		);
+		assert.strictEqual(machine.spawned, 0);
+		assert.ok(!existsSync(journal_path));
+		assert.ok(!existsSync(lock_path));
+		// a file for another tree
+		const stale = structuredClone(deterministic);
+		stale.meta.libraries[0]!.version = '0.0.1';
+		writeFileSync(to_deterministic_path(dir), JSON.stringify(stale));
+		const refused = await catch_run_error(unfiltered(), machine.options);
+		assert.strictEqual(refused.exit_code, 2);
+		assert.match(refused.message, /doesn't describe this run, it measured fuz_code at another/);
+		assert.strictEqual(machine.spawned, 0);
+		// `--plan` is refused where the run would be
+		assert.throws(
+			() => plan_run(unfiltered('--plan'), { results_dir: dir }),
+			/a full run carries the bundle sizes/
+		);
+		// a calibration is not a result, and goes ahead without the file
+		assert.strictEqual(
+			plan_run(unfiltered('--calibrate', '--plan'), { results_dir: dir }).deterministic,
+			null
+		);
+		// with the file of this tree the run is planned
+		writeFileSync(to_deterministic_path(dir), committed);
+		const plan = plan_run(unfiltered('--plan'), { results_dir: dir });
+		assert.ok(plan.deterministic !== null);
+		assert.match(format_run_plan(plan), /bundle sizes +carried from the deterministic/);
+	});
+
+	test('--plan says whether the sizes are carried', () => {
+		const text = format_run_plan(plan_run(parse('--plan'), { results_dir: dir }));
+		assert.match(text, /bundle sizes +none: there is no deterministic results file/);
+		writeFileSync(to_deterministic_path(dir), committed);
+		const carried = format_run_plan(plan_run(parse('--plan'), { results_dir: dir }));
+		assert.match(carried, /bundle sizes +carried from the deterministic results file/);
 	});
 });
 
