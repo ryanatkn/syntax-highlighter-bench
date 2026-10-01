@@ -80,6 +80,7 @@ bench/                       the Node harness; never imported by the site
   langs.ts                   the language ids every adapter maps onto
   sets.ts                    the feature sets bundle size is measured over
 results/                     where runs are written; `deterministic.json` is committed; `scratch/` (git-ignored) holds smoke and filtered ones; a journal (git-ignored) sits beside an unfinished run
+  README.md                  what each file is, and how a run is published: the machine, quieting it, the commands in order, the checks before a commit
 src/lib/results_schema.ts    zod strict schemas for a results file
 src/lib/bench_constants.ts   the id lists and thresholds the schema, the harness, and the pages share; imports nothing
 src/lib/                     the site's modules and components: see Site
@@ -93,7 +94,12 @@ static/                      the mark: `logo.svg`, `favicon.png`, and `src/lib/l
 ```
 
 Planned addition: committed timed runs in `results/`, the latest as
-`results/latest.json`.
+`results/latest.json`. Nothing in the harness writes that file: a published
+run is its dated file copied there by hand, as `results/README.md` says. Keep
+that page in step with the harness: `src/test/docs_publish.test.ts` checks the
+scripts, flags, and thresholds it quotes. `read_commit` ignores `results/`, so
+an edit to the page never marks a run `-dirty`, which is right: it changes
+nothing that is measured.
 
 ## The harness runs on Node directly
 

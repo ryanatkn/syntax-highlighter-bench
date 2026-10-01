@@ -38,7 +38,8 @@ wherever one would be.
   - `bench/langs.ts` — the language ids every adapter maps onto
   - `bench/sets.ts` — the feature sets bundle size is measured over
 - `results/` — where the harness writes runs; `deterministic.json` is
-  committed, and no timed run is yet
+  committed, and no timed run is yet. [results/README.md](results/README.md)
+  says what each file is and how a run is published
 - `src/lib/results_schema.ts` — the schema of a results file, written by the
   harness and parsed by the site
 - `src/lib/` — besides the schema, the modules and components that turn a
@@ -549,6 +550,10 @@ library-cells were retried and whether the run was resumed.
 Run `npm run bench:smoke` on the machine first. It checks every cell and every
 first highlight against the committed deterministic file in a minute or two,
 before a long run can stop on a disagreement.
+
+To publish a run, follow [results/README.md](results/README.md): the files in
+`results/`, how the machine is quieted, the commands in order, and the checks a
+run passes before it is committed as `results/latest.json`.
 
 ## Deterministic metrics
 
