@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Sign in &amp; continue</title>
+		<style>
+			form { max-width: 20rem; }
+		</style>
+	</head>
+	<body>
+		<!-- the sign-in form -->
+		<form action="/session" method="post">
+			<label for="email">Email</label>
+			<input id="email" type="email" name="email" required />
+			<button type="submit" disabled>Continue</button>
+		</form>
+		<script>
+			document.querySelector('button').disabled = false;
+		</script>
+	</body>
+</html>

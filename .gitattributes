@@ -1,2 +1,5 @@
 # Force LF on checkout everywhere, even under Windows autocrlf.
 * text=auto eol=lf
+
+# The corpus is measured byte for byte: no EOL conversion, and not counted as this repo's code.
+bench/corpus/** -text linguist-vendored

@@ -33,6 +33,11 @@
 				ids and feature sets of the run, described in <TomeLink slug="languages" />
 			</li>
 			<li>
+				<DeclarationLink name="BenchInput" /> — the inputs the run measured, each with its source,
+				size tier, hash, and the upstream commit it was copied from, as in the
+				<TomeLink slug="corpus" /> manifest
+			</li>
+			<li>
 				<DeclarationLink name="BenchCell" /> — one input measured in one mode, with each library's
 				numbers
 			</li>
@@ -47,9 +52,9 @@
 			</li>
 		</ul>
 		<p>
-			The file describes itself. The libraries, languages, and sets are lists inside it, and every
-			other section refers to them by id, so the site needs no list of its own and adding a library
-			changes no site code.
+			The file describes itself. The libraries, languages, sets, and inputs are lists inside it, and
+			every other section refers to them by id, or by file for inputs, so the site needs no list of
+			its own and adding a library changes no site code.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -75,6 +80,11 @@
 			</li>
 			<li>
 				no two cells measure the same input in the same mode, and no cell covers an untimed language
+			</li>
+			<li>every cell names a listed input and describes it as that entry does</li>
+			<li>
+				an input written for the benchmark has no provenance, a copied one has the hash its
+				provenance pins, and one built from several files is marked synthetic
 			</li>
 			<li>a run with timed numbers records its anchor</li>
 			<li>

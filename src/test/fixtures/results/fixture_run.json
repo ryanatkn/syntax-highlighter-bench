@@ -9,7 +9,7 @@
 		},
 		"node": "v24.14.1",
 		"commit": "0000000000000000000000000000000000000000",
-		"corpus_hash": "0000000000000000",
+		"corpus_hash": "0000000000000000000000000000000000000000000000000000000000000000",
 		"anchor": {
 			"drift": 0.002,
 			"stable": true
@@ -33,7 +33,10 @@
 				"output": "classes",
 				"engine": "grammar_vm",
 				"by_maintainer": false,
-				"note": "Full pipeline: the grammar plus the language's reclassifier stack, as shipped."
+				"note": "Full pipeline: the grammar plus the language's reclassifier stack, as shipped.",
+				"extra_packages": {
+					"@twinkleplop/typescript": "0.1.5"
+				}
 			},
 			{
 				"id": "prism",
@@ -68,7 +71,7 @@
 		],
 		"excluded": [
 			{
-				"cell": "rust/small/tokenize/shiki/rust.sample.rs",
+				"cell": "rust/small/tokenize/shiki/rust.sample",
 				"library": "prism",
 				"reason": "produced no tokens"
 			}
@@ -264,6 +267,100 @@
 				"rust"
 			],
 			"footnote": null
+		}
+	],
+	"inputs": [
+		{
+			"file": "neutral/ts/checker_excerpt.ts",
+			"source": "neutral",
+			"home": null,
+			"lang": "ts",
+			"size": "medium",
+			"bytes": 10240,
+			"lines": 312,
+			"sha256": "ea6b855792e8cf9720442be2fb2373e82dee74622c6717ca2e449a25e7a8355d",
+			"synthetic": false,
+			"provenance": [
+				{
+					"repo": "https://github.com/example/fixture",
+					"commit": "0000000000000000000000000000000000000000",
+					"path": "src/checker_excerpt.ts",
+					"sha256": "ea6b855792e8cf9720442be2fb2373e82dee74622c6717ca2e449a25e7a8355d",
+					"license": "MIT",
+					"note": null
+				}
+			]
+		},
+		{
+			"file": "shiki/rust/rust.sample",
+			"source": "shiki",
+			"home": null,
+			"lang": "rust",
+			"size": "small",
+			"bytes": 1180,
+			"lines": 44,
+			"sha256": "2cc3c77a1ffb6dec6f12ecffcc288a654c9014a162bd0a5754fd0c78c5f8747b",
+			"synthetic": false,
+			"provenance": [
+				{
+					"repo": "https://github.com/shikijs/textmate-grammars-themes",
+					"commit": "0000000000000000000000000000000000000000",
+					"path": "samples/rust.sample",
+					"sha256": "2cc3c77a1ffb6dec6f12ecffcc288a654c9014a162bd0a5754fd0c78c5f8747b",
+					"license": "MIT",
+					"note": null
+				}
+			]
+		},
+		{
+			"file": "home/fuz_code/svelte/sample.svelte",
+			"source": "home",
+			"home": "fuz_code",
+			"lang": "svelte",
+			"size": "micro",
+			"bytes": 212,
+			"lines": 9,
+			"sha256": "e94c98a922bd1cc20b8a3d422750797092992d56090a57af0a03b90a48064a05",
+			"synthetic": false,
+			"provenance": [
+				{
+					"repo": "https://github.com/fuzdev/fuz_code",
+					"commit": "0000000000000000000000000000000000000000",
+					"path": "src/test/fixtures/samples/sample.svelte",
+					"sha256": "e94c98a922bd1cc20b8a3d422750797092992d56090a57af0a03b90a48064a05",
+					"license": "MIT",
+					"note": null
+				}
+			]
+		},
+		{
+			"file": "neutral/json/package_lock.json",
+			"source": "neutral",
+			"home": null,
+			"lang": "json",
+			"size": "large",
+			"bytes": 102400,
+			"lines": 2980,
+			"sha256": "f94df5320bedf6ed9656acd3aa6b149114fec3fe129f8c431c5c9e406d77ace9",
+			"synthetic": true,
+			"provenance": [
+				{
+					"repo": "https://github.com/example/fixture",
+					"commit": "0000000000000000000000000000000000000000",
+					"path": "src/package_lock.json",
+					"sha256": "f94df5320bedf6ed9656acd3aa6b149114fec3fe129f8c431c5c9e406d77ace9",
+					"license": "MIT",
+					"note": null
+				},
+				{
+					"repo": "https://github.com/example/fixture",
+					"commit": "0000000000000000000000000000000000000000",
+					"path": "src/other.json",
+					"sha256": "2f4f14a47efe8928e6ff04e352f861bb09c1fe975ccda476430b39cd084d4455",
+					"license": "MIT",
+					"note": "Repeated to reach the size."
+				}
+			]
 		}
 	],
 	"cells": [
@@ -466,14 +563,14 @@
 			}
 		},
 		{
-			"id": "rust/small/tokenize/shiki/rust.sample.rs",
+			"id": "rust/small/tokenize/shiki/rust.sample",
 			"metric": "throughput",
 			"lang": "rust",
 			"size": "small",
 			"mode": "tokenize",
 			"source": "shiki",
 			"home": null,
-			"file": "shiki/rust/rust.sample.rs",
+			"file": "shiki/rust/rust.sample",
 			"bytes": 1180,
 			"lines": 44,
 			"synthetic": false,

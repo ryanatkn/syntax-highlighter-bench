@@ -27,8 +27,8 @@
 			<code>svelte</code>, <code>md</code>, <code>bash</code>, <code>rust</code>
 		</p>
 		<p>
-			<code>xml</code> is also an id but is not timed, because the roster doesn't share it. It
-			appears in the coverage matrix and in feature sets.
+			<code>xml</code> is also an id but is not timed, because the roster doesn't share it:
+			twinkleplop has no XML language. It appears in the coverage matrix and in feature sets.
 		</p>
 		<p>
 			The measured libraries support many more languages than these. An id is added when a feature
@@ -46,7 +46,7 @@
 			</li>
 			<li>
 				<strong>excluded</strong> — the adapter claims the language, but its output failed the check
-				that runs before measuring.
+				that runs before measuring, described in <TomeLink slug="adapters" />.
 			</li>
 		</ul>
 		<p>

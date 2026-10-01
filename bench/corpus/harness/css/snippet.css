@@ -1,0 +1,24 @@
+:root {
+	--accent: #3b82f6;
+	--radius: 0.5rem;
+}
+
+/* a card that lifts on hover */
+.card {
+	padding: 1rem 1.5rem;
+	border: 1px solid rgb(0 0 0 / 10%);
+	border-radius: var(--radius);
+	transition: transform 150ms ease-out;
+}
+
+.card:hover,
+.card:focus-within {
+	transform: translateY(-2px);
+}
+
+@media (prefers-color-scheme: dark) {
+	.card > h2::before {
+		content: '\2192 ';
+		color: var(--accent) !important;
+	}
+}

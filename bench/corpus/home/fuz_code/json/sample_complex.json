@@ -1,0 +1,14 @@
+{
+	"string": "a string",
+	"number": 12345,
+	"boolean": true,
+	"null": null,
+	"empty": "",
+	"escaped": "quote: \"test\" and backslash: \\",
+	"object": {
+		"array": [1, "b", false],
+		"strings": ["1", "2", "3"],
+		"mixed": ["start", 123, true, "middle", null, "end"],
+		"nested": [["a", "str", ""], {"key": "nested value"}]
+	}
+}

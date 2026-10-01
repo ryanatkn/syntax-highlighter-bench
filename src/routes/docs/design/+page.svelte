@@ -3,53 +3,19 @@
 	import TomeSection from '@fuzdev/fuz_ui/TomeSection.svelte';
 	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
-	import Code from '@fuzdev/fuz_code/Code.svelte';
+	import TomeLink from '@fuzdev/fuz_ui/TomeLink.svelte';
 
 	const tome = tome_get_by_slug('design');
-
-	const adapter_contract = `interface HighlighterAdapter {
-	id: string;
-	label: string;
-	package: string; // its manifest is read for the version
-	langs: Partial<Record<Lang, string>>; // harness id to library id; absent means unsupported
-	output: 'classes' | 'inline_styles';
-	engine: 'scanner' | 'grammar_vm' | 'regex' | 'textmate';
-	theme_css: string | null; // the default theme stylesheet; null when styles are inline
-	setup(langs: Array<Lang>): Promise<void>; // once per process, before any timing
-	tokenize(src: string, lang: Lang): number; // returns the token count
-	html(src: string, lang: Lang): string; // the string consumers ship
-	bundle_entry(langs: Array<Lang>): string; // module source importing exactly these languages
-}`;
 </script>
 
 <TomeContent {tome}>
 	<section>
 		<aside>
-			This page describes the design. None of it is built yet, and the details may change as it is.
+			This page describes what is designed and not built: the timed harness, the bundle and
+			cold-start measurements, and the results pages. The details may change as they are built. The
+			<TomeLink slug="adapters" /> and the <TomeLink slug="corpus" /> exist.
 		</aside>
 	</section>
-	<TomeSection>
-		<TomeSectionHeader text="The adapter contract" />
-		<p>
-			Each library is measured through one adapter, and the adapter is the extension point: adding a
-			library means adding an adapter and its dependency.
-		</p>
-		<Code lang="ts" content={adapter_contract} />
-		<p>The rules an adapter follows:</p>
-		<ul>
-			<li>expose the narrowest entry point that does the same stage of work as the others</li>
-			<li>declare languages explicitly, and never let the library fall back to plain text</li>
-			<li>
-				report token counts rather than trying to equalise them, since libraries split the same
-				source differently
-			</li>
-			<li>
-				time synchronous paths only; a library with an async API preloads and calls its synchronous
-				core
-			</li>
-			<li>stay browser-safe, with no Node-only APIs</li>
-		</ul>
-	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Metrics" />
 		<p>Machine-dependent, published only from one named machine:</p>
@@ -70,12 +36,12 @@
 		</ul>
 	</TomeSection>
 	<TomeSection>
-		<TomeSectionHeader text="Inputs" />
+		<TomeSectionHeader text="Cells" />
 		<p>
-			Every input is labelled by its source: real code from pinned upstream projects that no
-			measured library authored, Shiki's own benchmark samples, and each library's own samples,
-			marked as home turf. Inputs are grouped into size tiers by real file size, and an input built
-			by repetition is marked synthetic.
+			A cell is one input of the <TomeLink slug="corpus" /> measured in one mode,
+			<code>tokenize</code> or <code>html</code>, across the libraries that claim its language. A
+			cell carries its input's source and size tier, so a reader can compare on the neutral inputs
+			alone, or see whether a result holds on a library's home turf.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -94,8 +60,9 @@
 				changed state during the run
 			</li>
 			<li>
-				before measuring, every adapter's output is checked for every language it claims, and a
-				failure is recorded as excluded rather than measured
+				before measuring, every adapter's output is checked for every language it claims, with the
+				check described in <TomeLink slug="adapters" />, and a failure is recorded as excluded
+				rather than measured
 			</li>
 			<li>
 				a machine is calibrated before its numbers are trusted, by measuring one adapter as two

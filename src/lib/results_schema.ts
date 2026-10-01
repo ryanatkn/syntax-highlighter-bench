@@ -14,10 +14,11 @@
  * failed the pre-measurement output check — it has an entry in `meta.excluded`.
  * Neither is ever a zero.
  *
- * The file is self-describing: `meta.libraries`, `langs`, and `sets` are rosters,
- * and every other section refers to them by id. The language ids are owned by
- * the harness in `bench/langs.ts`, not enumerated here, so a new id needs no
- * schema change and the site reads the roster from the file.
+ * The file is self-describing: `meta.libraries`, `langs`, `sets`, and `inputs` are
+ * rosters, and every other section refers to them by id, or by file for inputs.
+ * The language ids are owned by the harness in `bench/langs.ts`, not enumerated
+ * here, so a new id needs no schema change and the site reads the roster from
+ * the file.
  *
  * @module
  */
@@ -26,6 +27,9 @@ import { z } from 'zod';
 
 /** An id used as a key or a cross-reference: a set or a cell. */
 const Id = z.string().min(1);
+
+/** A SHA-256 digest in lowercase hex. */
+const Sha256 = z.string().regex(/^[0-9a-f]{64}$/);
 
 /** The shape of a library id and a language id: lowercase, safe as a key and in a path. */
 const NAME_MATCHER = /^[a-z][a-z0-9_]*$/;
@@ -104,7 +108,11 @@ export const BenchLibrary = z.strictObject({
 		.string()
 		.min(1)
 		.nullable()
-		.meta({ description: 'What was measured and any caveat, shown beside the library.' })
+		.meta({ description: 'What was measured and any caveat, shown beside the library.' }),
+	extra_packages: z.record(z.string().min(1), z.string().min(1)).optional().meta({
+		description:
+			'The installed versions of packages the library was measured with that are versioned apart from `package`, by name.'
+	})
 });
 export type BenchLibrary = z.infer<typeof BenchLibrary>;
 
@@ -145,7 +153,7 @@ export const BenchMeta = z.strictObject({
 		.min(1)
 		.meta({ description: 'The Node version, as `process.version` prints it.' }),
 	commit: z.string().min(1).meta({ description: 'The harness commit that ran.' }),
-	corpus_hash: z.string().min(1).meta({
+	corpus_hash: Sha256.meta({
 		description: 'A hash over the corpus manifest. Runs with different hashes are not comparable.'
 	}),
 	anchor: BenchAnchor.nullable().meta({ description: 'Null when nothing was timed.' }),
@@ -188,11 +196,103 @@ export type BenchMode = z.infer<typeof BenchMode>;
 
 /**
  * Who an input came from: `neutral` is real code no measured library authored,
- * `shiki` is Shiki's upstream benchmark samples, and `home` is one library's own
- * samples.
+ * `shiki` is Shiki's upstream benchmark samples, `home` is one library's own
+ * samples, and `harness` is a snippet written for this benchmark.
  */
-export const BenchSource = z.enum(['neutral', 'shiki', 'home']);
+export const BenchSource = z.enum(['neutral', 'shiki', 'home', 'harness']);
 export type BenchSource = z.infer<typeof BenchSource>;
+
+/** One file an input came from, pinned so the input can be rebuilt and checked. */
+export const BenchProvenance = z.strictObject({
+	repo: z
+		.url({ protocol: /^https$/ })
+		.meta({ description: 'The repository the file came from, as an https URL.' }),
+	commit: z
+		.string()
+		.regex(/^[0-9a-f]{40}$/)
+		.meta({ description: 'The commit the file was read at.' }),
+	path: z
+		.string()
+		.min(1)
+		.refine(
+			(path) => path.split('/').every((segment) => segment !== '.' && segment !== '..'),
+			'a path has no "." or ".." segment'
+		)
+		.meta({ description: "The file's path in that repository." }),
+	sha256: Sha256.meta({ description: 'The hash of the file at that commit.' }),
+	license: z
+		.string()
+		.min(1)
+		.meta({ description: 'The SPDX expression of the license it is under.' }),
+	note: z
+		.string()
+		.min(1)
+		.nullable()
+		.meta({ description: 'How the upstream describes or built the file, when it says.' })
+});
+export type BenchProvenance = z.infer<typeof BenchProvenance>;
+
+/**
+ * One input of the corpus: a file, what it is, and where it came from. The
+ * corpus manifest is a list of these, and a results file carries the ones its
+ * cells measured.
+ */
+export const BenchInput = z
+	.strictObject({
+		file: z
+			.string()
+			.min(1)
+			.meta({ description: "The input's path within the corpus, which identifies it." }),
+		source: BenchSource,
+		home: LibraryId.nullable().meta({
+			description:
+				"The library whose samples the input came from, set exactly when the source is home. It may name a library outside a run's roster."
+		}),
+		lang: LangId,
+		size: BenchSize,
+		bytes: z.number().int().positive(),
+		lines: z.number().int().positive(),
+		sha256: Sha256.meta({ description: "The hash of the input's bytes." }),
+		synthetic: z.boolean().meta({
+			description:
+				'Whether the input was built by joining or repeating files to reach its size, rather than being one real file.'
+		}),
+		provenance: z.array(BenchProvenance).meta({
+			description:
+				'The upstream files the input came from. Empty exactly when the source is harness: the input was written here. One entry is a verbatim copy with the same hash. Several are the files a synthetic input was built from.'
+		})
+	})
+	.superRefine((input, ctx) => {
+		if ((input.source === 'home') !== (input.home !== null)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['home'],
+				message: 'home is set exactly when the source is home'
+			});
+		}
+		if ((input.source === 'harness') !== (input.provenance.length === 0)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['provenance'],
+				message: 'provenance is empty exactly when the source is harness'
+			});
+		}
+		if (input.provenance.length === 1 && input.provenance[0]!.sha256 !== input.sha256) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['provenance', 0, 'sha256'],
+				message: 'an input with one upstream file is a verbatim copy, so the hashes match'
+			});
+		}
+		if (input.provenance.length > 1 && !input.synthetic) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['synthetic'],
+				message: 'an input built from several upstream files is synthetic'
+			});
+		}
+	});
+export type BenchInput = z.infer<typeof BenchInput>;
 
 /** One library's timing and memory in one cell. Machine-dependent. */
 export const BenchCellValue = z.strictObject({
@@ -245,7 +345,8 @@ export const BenchCell = z.strictObject({
 	bytes: z.number().int().positive(),
 	lines: z.number().int().positive(),
 	synthetic: z.boolean().meta({
-		description: 'Whether the input was built by repeating a smaller one to reach the size tier.'
+		description:
+			'Whether the input was built by joining or repeating files to reach its size, rather than being one real file.'
 	}),
 	values: strict_record(LibraryId, BenchCellValue).meta({
 		description: 'Machine-dependent: timing and memory by library id.'
@@ -319,10 +420,21 @@ export const BenchCoverageEntry = z.union([
 ]);
 export type BenchCoverageEntry = z.infer<typeof BenchCoverageEntry>;
 
+/** What a cell repeats from its input, which must agree with the `inputs` roster. */
+const INPUT_KEYS_ON_CELL = [
+	'lang',
+	'size',
+	'source',
+	'home',
+	'bytes',
+	'lines',
+	'synthetic'
+] as const;
+
 /**
  * One run of the benchmark. Beyond each section's shape, parsing checks that
- * the sections agree: ids are unique and refer to roster entries, no library
- * has numbers for a language it doesn't claim or a cell it was excluded from,
+ * the sections agree: ids are unique and refer to roster entries, every cell
+ * describes its input as the `inputs` roster does, no library has numbers for a language it doesn't claim or a cell it was excluded from,
  * no cell covers an untimed language, and a run with timed numbers has an
  * anchor.
  */
@@ -331,6 +443,9 @@ export const BenchResults = z
 		meta: BenchMeta,
 		langs: z.array(BenchLang),
 		sets: z.array(BenchSet),
+		inputs: z.array(BenchInput).meta({
+			description: 'The corpus inputs the cells measured, with where each came from.'
+		}),
 		cells: z.array(BenchCell),
 		startup: z
 			.array(BenchStartup)
@@ -382,6 +497,7 @@ export const BenchResults = z
 			['cells'],
 			'cell'
 		);
+		const inputs = new Map(results.inputs.map((input) => [input.file, input]));
 		const untimed_langs = new Set(results.langs.filter((l) => !l.timed).map((l) => l.id));
 		const claims = (library: string, lang: string): boolean =>
 			Object.hasOwn(results.coverage, library) && Object.hasOwn(results.coverage[library]!, lang);
@@ -393,6 +509,14 @@ export const BenchResults = z
 				if (set.langs.indexOf(lang) !== j) {
 					issue(['sets', i, 'langs', j], `duplicate lang "${lang}" in set "${set.id}"`);
 				}
+			}
+		}
+
+		// inputs
+		for (const [i, input] of results.inputs.entries()) {
+			if (!lang_ids.has(input.lang)) issue(['inputs', i, 'lang'], `unknown lang "${input.lang}"`);
+			if (results.inputs.findIndex((other) => other.file === input.file) !== i) {
+				issue(['inputs', i, 'file'], `duplicate input file "${input.file}"`);
 			}
 		}
 
@@ -451,6 +575,16 @@ export const BenchResults = z
 			if (Object.keys(cell.values).length > 0) timed = true;
 			if ((cell.source === 'home') !== (cell.home !== null)) {
 				issue([...path, 'home'], 'home is set exactly when the source is home');
+			}
+			const cell_input = inputs.get(cell.file);
+			if (!cell_input) {
+				issue([...path, 'file'], `unknown input "${cell.file}"`);
+			} else {
+				for (const key of INPUT_KEYS_ON_CELL) {
+					if (cell[key] !== cell_input[key]) {
+						issue([...path, key], `${key} disagrees with input "${cell.file}"`);
+					}
+				}
 			}
 			for (const section of ['values', 'tokens', 'output'] as const) {
 				for (const library of Object.keys(cell[section])) {

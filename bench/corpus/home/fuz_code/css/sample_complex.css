@@ -1,0 +1,45 @@
+.some_class {
+	color: red;
+}
+
+.hypen-class {
+	font-size: 16px;
+}
+
+p {
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* comment */
+
+/*
+multi
+.line {
+	i: 100px
+
+</style>
+
+@media*/
+
+#id {
+	background-color: blue;
+}
+
+div > p {
+	margin: 10px;
+}
+
+@media (max-width: 600px) {
+	body {
+		background-color: light-dark(lightblue, darkblue);
+	}
+}
+
+.content::before {
+	/* prettier-ignore */
+	content: "</style> /* not a comment */";
+}
+
+.attr[title='Click: here'] {
+	background-image: url('data:image/svg+xml...');
+}

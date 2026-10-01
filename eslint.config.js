@@ -1,3 +1,4 @@
 import { configs } from '@ryanatkn/eslint-config';
 
-export default configs;
+// the corpus is input data, not code
+export default [...configs, { ignores: ['bench/corpus/'] }];

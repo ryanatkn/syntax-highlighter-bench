@@ -1,0 +1,173 @@
+<script lang="ts">
+	import TomeContent from '@fuzdev/fuz_ui/TomeContent.svelte';
+	import TomeLink from '@fuzdev/fuz_ui/TomeLink.svelte';
+	import DeclarationLink from '@fuzdev/fuz_ui/DeclarationLink.svelte';
+	import TomeSection from '@fuzdev/fuz_ui/TomeSection.svelte';
+	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
+	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
+	import Code from '@fuzdev/fuz_code/Code.svelte';
+
+	const tome = tome_get_by_slug('corpus');
+
+	const REPO_URL = 'https://github.com/ryanatkn/syntax-highlighter-bench/blob/main/bench/corpus';
+
+	const commands = `npm run corpus:check      # the manifest matches the files, and every copy its pin
+npm run corpus:manifest   # regenerate the manifest and the table of inputs
+npm run corpus:fetch      # download neutral inputs by their pins, verifying each
+npm run corpus:harvest -- --repos <dir> --check   # the synthetic Svelte input matches its sources`;
+</script>
+
+<TomeContent {tome}>
+	<section>
+		<p>
+			The corpus is the set of files the libraries are run on. It lives in
+			<code>bench/corpus/</code>, and its manifest records what each input is and where it came
+			from. <a href="{REPO_URL}/INPUTS.md">The table of inputs</a> is generated from the manifest
+			and lists every file with its upstream commit.
+		</p>
+	</section>
+	<TomeSection>
+		<TomeSectionHeader text="Sources" />
+		<p>Every input is labelled by its source, in its path and in every result:</p>
+		<table>
+			<thead>
+				<tr>
+					<th>source</th>
+					<th>what it holds</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>neutral</code></td>
+					<td>
+						real files from projects no measured library authored, copied unmodified at a pinned
+						commit: the primary set
+					</td>
+				</tr>
+				<tr>
+					<td><code>shiki</code></td>
+					<td>the sample files Shiki's own benchmark uses, at a pinned commit</td>
+				</tr>
+				<tr>
+					<td><code>home</code></td>
+					<td>
+						a measured library's own samples, labelled with the library: fuz_code's test fixtures,
+						and the corpus twinkleplop benchmarks itself on
+					</td>
+				</tr>
+				<tr>
+					<td><code>harness</code></td>
+					<td>
+						one short snippet for each language, written for this benchmark by its maintainer, who
+						also maintains fuz_code
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			The neutral set has a small, a medium, and a large file for each timed language. The other
+			sources are kept so a reader can see whether a result holds on inputs a library chose for
+			itself, and the site can filter by source.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Size tiers" />
+		<p>An input's tier comes from its size in bytes, never from its name:</p>
+		<table>
+			<thead>
+				<tr>
+					<th>tier</th>
+					<th>size</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>micro</code></td>
+					<td>under 600 bytes</td>
+				</tr>
+				<tr>
+					<td><code>small</code></td>
+					<td>600 bytes to under 3,200</td>
+				</tr>
+				<tr>
+					<td><code>medium</code></td>
+					<td>3,200 bytes to under 32,000</td>
+				</tr>
+				<tr>
+					<td><code>large</code></td>
+					<td>32,000 bytes and over</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			The upper three centre on roughly 1KB, 10KB, and 100KB. The micro tier is the docs-site case:
+			a snippet of a few lines, where the fixed cost of a call outweighs the scanning. The large
+			tier has no upper bound, and the neutral large inputs range from about 90KB to several hundred
+			KB, so compare throughput in MB/s across languages, not time per call.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Synthetic inputs" />
+		<p>
+			An input is marked synthetic when it is not one real file but was built by joining or
+			repeating files to reach its size. Real files are preferred. Most of twinkleplop's own corpus
+			is built this way and is marked.
+		</p>
+		<p>
+			One neutral input is synthetic: the large Svelte file. Svelte components of around 100KB are
+			rare, so a script builds one from several real components of other projects. It splits each
+			component into its scripts, markup, and style, and writes one of each block holding the bodies
+			in order, unchanged. The result is shaped like one large component and is lexically well
+			formed, but it is not a working component: unrelated scripts share one scope, so their names
+			collide and Svelte's parser rejects it. No source is rewritten to avoid that. The manifest
+			lists every component it is built from.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="The manifest" />
+		<p>
+			<code>bench/corpus/manifest.json</code> holds one <DeclarationLink name="BenchInput" /> for
+			each input: its path, source, language, tier, size in bytes and lines, SHA-256, whether it is
+			synthetic, and its provenance. A results file carries the same entries for the inputs it
+			measured, described in <TomeLink slug="results" />.
+		</p>
+		<p>
+			Provenance is a list of <DeclarationLink name="BenchProvenance" /> pins, each a repository, a
+			commit, a path, a hash, and a license:
+		</p>
+		<ul>
+			<li>none, for a snippet written here</li>
+			<li>
+				one, for a verbatim copy, whose hash must equal the input's; the copy is still marked
+				synthetic when its upstream built it by joining files
+			</li>
+			<li>several, for a synthetic input, naming what it was built from</li>
+		</ul>
+		<p>
+			The manifest also holds a hash over the whole corpus. A run records it, so two runs over
+			different inputs are never compared as one.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Checking and regenerating" />
+		<Code lang="bash" content={commands} />
+		<p>
+			Sizes, line counts, hashes, and tiers are derived from the files. The synthetic flag and the
+			provenance are written by hand and carried forward. The tests rebuild the manifest from disk
+			and compare it to the committed one, so a file added, removed, or changed without regenerating
+			fails.
+		</p>
+		<p>
+			The corpus is data: no formatter, linter, or type checker runs on it, since a reformatted file
+			is no longer the upstream file.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Licenses" />
+		<p>
+			Every copied file stays under its upstream license, which its provenance records.
+			<a href="{REPO_URL}/README.md">The corpus readme</a> and the notice beside the neutral inputs
+			give the attribution.
+		</p>
+	</TomeSection>
+</TomeContent>

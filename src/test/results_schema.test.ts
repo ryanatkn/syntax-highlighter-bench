@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { BenchResults, parse_bench_results } from '$lib/results_schema.ts';
+import { BenchInput, BenchResults, parse_bench_results } from '$lib/results_schema.ts';
 
 const FIXTURE_URL = new URL('./fixtures/results/fixture_run.json', import.meta.url);
 
@@ -21,7 +21,7 @@ const assert_rejects = (data: unknown, expected: string): void => {
 	);
 };
 
-const EXCLUDED_CELL = 'rust/small/tokenize/shiki/rust.sample.rs';
+const EXCLUDED_CELL = 'rust/small/tokenize/shiki/rust.sample';
 
 describe('round trip', () => {
 	test('the fixture parses and serializes back to itself', () => {
@@ -41,11 +41,12 @@ describe('round trip', () => {
 });
 
 describe('sections later filled', () => {
-	test('startup, bundle, cells, and excluded can be empty', () => {
+	test('startup, bundle, cells, inputs, and excluded can be empty', () => {
 		const data = load_fixture();
 		data.startup = [];
 		data.bundle = {};
 		data.cells = [];
+		data.inputs = [];
 		data.meta.excluded = [];
 		BenchResults.parse(data);
 	});
@@ -365,6 +366,7 @@ describe('cells', () => {
 	test('home may name a library outside the roster', () => {
 		const data = load_fixture();
 		data.cells.find((c) => c.source === 'home')!.home = 'highlight_js';
+		data.inputs.find((i) => i.source === 'home')!.home = 'highlight_js';
 		BenchResults.parse(data);
 	});
 
@@ -395,6 +397,138 @@ describe('cells', () => {
 		const cell = data.cells.find((c) => c.id === EXCLUDED_CELL)!;
 		data.cells.push({ ...cell, id: 'another', mode: 'html', values: {}, tokens: {}, output: {} });
 		BenchResults.parse(data);
+	});
+});
+
+describe('inputs', () => {
+	test('rejects a cell whose file is not a listed input', () => {
+		const data = load_fixture();
+		data.inputs = data.inputs.filter((i) => i.file !== data.cells[0]!.file);
+		assert_rejects(data, `unknown input "${data.cells[0]!.file}"`);
+	});
+
+	test('rejects a cell that describes its input differently', () => {
+		for (const [key, value] of [
+			['size', 'large'],
+			['bytes', 1],
+			['lines', 1],
+			['synthetic', true],
+			['source', 'shiki']
+		] as const) {
+			const data = load_fixture();
+			(data.cells[0] as any)[key] = value;
+			assert_rejects(data, `${key} disagrees with input`);
+		}
+	});
+
+	test('an input no cell measured is allowed', () => {
+		const data = load_fixture();
+		data.cells = data.cells.filter((c) => c.file !== data.inputs[0]!.file);
+		data.meta.excluded = [];
+		BenchResults.parse(data);
+	});
+
+	test('rejects a duplicate input file', () => {
+		const data = load_fixture();
+		data.inputs.push({ ...data.inputs[0]! });
+		assert_rejects(data, 'duplicate input file');
+	});
+
+	test('rejects an input naming an unknown lang', () => {
+		const data = load_fixture();
+		data.inputs.push({
+			...data.inputs[0]!,
+			file: 'neutral/tsx/other.tsx',
+			lang: 'tsx'
+		});
+		assert_rejects(data, 'inputs.4.lang: unknown lang "tsx"');
+	});
+
+	test('a harness input has no provenance, and every other input has some', () => {
+		const input: BenchInput = {
+			file: 'harness/ts/snippet.ts',
+			source: 'harness',
+			home: null,
+			lang: 'ts',
+			size: 'micro',
+			bytes: 100,
+			lines: 5,
+			sha256: 'a'.repeat(64),
+			synthetic: false,
+			provenance: []
+		};
+		BenchInput.parse(input);
+		const pin = load_fixture().inputs[0]!.provenance[0]!;
+		assert.ok(!BenchInput.safeParse({ ...input, provenance: [pin] }).success);
+		assert.ok(!BenchInput.safeParse({ ...input, source: 'neutral' }).success);
+	});
+
+	test('one upstream file is a verbatim copy, and several make the input synthetic', () => {
+		const input = load_fixture().inputs.find((i) => i.provenance.length === 1)!;
+		const pin = input.provenance[0]!;
+		BenchInput.parse(input);
+		const changed = { ...input, provenance: [{ ...pin, sha256: 'b'.repeat(64) }] };
+		assert.ok(!BenchInput.safeParse(changed).success);
+		const joined = { ...changed, provenance: [...changed.provenance, pin] };
+		assert.ok(!BenchInput.safeParse(joined).success);
+		BenchInput.parse({ ...joined, synthetic: true });
+	});
+
+	test('rejects a home input without its library, and the reverse', () => {
+		const data = load_fixture();
+		const home = data.inputs.find((i) => i.source === 'home')!;
+		assert.ok(!BenchInput.safeParse({ ...home, home: null }).success);
+		const neutral = data.inputs.find((i) => i.source === 'neutral')!;
+		assert.ok(!BenchInput.safeParse({ ...neutral, home: 'fuz_code' }).success);
+	});
+
+	test('rejects a pin that is not a full commit or hash', () => {
+		const input = load_fixture().inputs[0]!;
+		const pin = input.provenance[0]!;
+		assert.ok(
+			!BenchInput.safeParse({ ...input, provenance: [{ ...pin, commit: 'main' }] }).success
+		);
+		assert.ok(!BenchInput.safeParse({ ...input, sha256: 'abc' }).success);
+	});
+
+	test('a pin names an https repository and a path that stays inside it', () => {
+		const input = load_fixture().inputs[0]!;
+		const pin = input.provenance[0]!;
+		const parses = (changed: Partial<typeof pin>): boolean =>
+			BenchInput.safeParse({ ...input, provenance: [{ ...pin, ...changed }] }).success;
+		assert.ok(parses({}));
+		// the repository is rendered as a link, so nothing but https
+		for (const repo of [
+			'java' + 'script:alert(1)',
+			'http://github.com/a/b',
+			'git@github.com:a/b',
+			'a/b'
+		]) {
+			assert.ok(!parses({ repo }), repo);
+		}
+		for (const path of ['../other/file.ts', 'src/../../file.ts', './file.ts', 'src/./file.ts']) {
+			assert.ok(!parses({ path }), path);
+		}
+		assert.ok(parses({ path: 'src/.config/a..b.ts' }));
+	});
+
+	test('the corpus hash is a full SHA-256', () => {
+		const data = load_fixture();
+		data.meta.corpus_hash = '0000000000000000';
+		assert_rejects(data, 'meta.corpus_hash');
+	});
+});
+
+describe('libraries', () => {
+	test('a library may record the versions of its separately versioned packages', () => {
+		const data = load_fixture();
+		const library = data.meta.libraries.find((l) => l.extra_packages)!;
+		assert.deepStrictEqual(library.extra_packages, { '@twinkleplop/typescript': '0.1.5' });
+		delete library.extra_packages;
+		BenchResults.parse(data);
+		const data2 = load_fixture();
+		data2.meta.libraries[0]!.extra_packages = { 'prism-svelte': '' };
+		assert.ok(!BenchResults.safeParse(data2).success);
 	});
 });
 

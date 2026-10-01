@@ -1,0 +1,18 @@
+{
+	"name": "example-app",
+	"version": "1.4.2",
+	"private": true,
+	"scripts": {
+		"build": "vite build",
+		"test": "vitest run"
+	},
+	"engines": { "node": ">=20" },
+	"keywords": ["example", "demo"],
+	"config": {
+		"port": 5173,
+		"retries": 3,
+		"ratio": 0.75,
+		"proxy": null,
+		"escape": "tab\tand \"quotes\" é"
+	}
+}

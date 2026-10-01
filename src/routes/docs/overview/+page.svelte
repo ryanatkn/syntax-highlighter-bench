@@ -23,8 +23,17 @@
 	</section>
 	<TomeSection>
 		<TomeSectionHeader text="What exists" />
-		<p>The foundations are in place, and no library has been measured yet:</p>
+		<p>The pieces a measurement needs are in place, and no library has been timed yet:</p>
 		<ul>
+			<li>
+				an adapter for each library, and the check that guards against a plain-text fallback, in
+				<code>bench/libraries/</code> and <code>bench/check_output.ts</code> — see
+				<TomeLink slug="adapters" />
+			</li>
+			<li>
+				the inputs and their manifest, in <code>bench/corpus/</code> — see
+				<TomeLink slug="corpus" />
+			</li>
 			<li>
 				the language ids and the feature sets, in <code>bench/langs.ts</code> and
 				<code>bench/sets.ts</code> — see <TomeLink slug="languages" />
@@ -35,8 +44,8 @@
 			</li>
 		</ul>
 		<p>
-			The adapters, the corpus, the harness that measures them, and the results pages are designed
-			but not built. <TomeLink slug="design" /> describes them.
+			The harness that times the libraries, the bundle and cold-start measurements, and the results
+			pages are designed but not built. <TomeLink slug="design" /> describes them.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -63,7 +72,7 @@
 			<li>the maintainer's library is flagged in the results file and on the site</li>
 			<li>
 				every input is labelled by its source, and real code that no measured library authored is
-				the primary set
+				the primary set; a snippet written for this benchmark is labelled as that, never as neutral
 			</li>
 			<li>
 				each library is driven through one adapter with notes on the entry points it uses, so its

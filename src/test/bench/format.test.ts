@@ -5,7 +5,10 @@ import { format_file } from '@fuzdev/gro/format_file.ts';
 // `gro format` sweeps `src/` and the root config files, so `gro check` wouldn't
 // notice an unformatted harness file. Fix a failure with `gro format 'bench/**/*'`.
 test('the harness is formatted', () => {
-	const files = globSync('bench/**/*.{ts,mts,cts,js,mjs,cjs,svelte,css}');
+	// the corpus is input data, kept byte for byte
+	const files = globSync('bench/**/*.{ts,mts,cts,js,mjs,cjs,svelte,css}', {
+		exclude: ['bench/corpus/**']
+	});
 	assert.ok(files.length > 0);
 	const unformatted = files.filter((file) => {
 		const content = readFileSync(file, 'utf8');

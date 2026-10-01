@@ -1,0 +1,2 @@
+# the corpus is input data, kept byte for byte
+bench/corpus/**
