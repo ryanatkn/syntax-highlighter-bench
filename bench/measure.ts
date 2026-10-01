@@ -219,6 +219,9 @@ export const measure_call = (
 	return { iterations, ns_per_op };
 };
 
+/** The numbers of one attempt at a cell: a cell's value without its count of attempts. */
+export type PassSummary = Omit<BenchCellValue, 'attempts'>;
+
 /**
  * Reduces a library's passes on one cell to the numbers a results cell carries.
  * The rounds of every pass are pooled, so `spread` and the percentiles cover the
@@ -230,7 +233,7 @@ export const measure_call = (
 export const summarize_passes = (
 	passes: ReadonlyArray<PassMeasurement>,
 	bytes: number
-): BenchCellValue => {
+): PassSummary => {
 	const samples = passes.flatMap((pass) => pass.ns_per_op);
 	const median = stats_median(samples);
 	const { min, max } = stats_min_max(samples);

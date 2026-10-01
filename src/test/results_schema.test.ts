@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
 	BenchInput,
 	BenchResults,
+	bench_results_find_gaps,
 	bench_results_is_publishable,
 	bench_run_is_complete,
 	parse_bench_results,
@@ -29,6 +30,19 @@ const assert_rejects = (data: unknown, expected: string): void => {
 };
 
 const EXCLUDED_CELL = 'shiki/rust/rust.sample:tokenize';
+
+/** Marks the fixture as a smoke run, which is neither retried nor resumed nor carries a floor. */
+const to_smoke = (data: BenchResults): BenchResults => {
+	const run = data.meta.run!;
+	run.kind = 'smoke';
+	run.retries = 0;
+	run.segments = 1;
+	data.meta.noise_floor = null;
+	for (const cell of data.cells) {
+		for (const value of Object.values(cell.values)) value.attempts = 1;
+	}
+	return data;
+};
 
 describe('round trip', () => {
 	test('the fixture parses and serializes back to itself', () => {
@@ -135,6 +149,15 @@ describe('rosters', () => {
 		const data2 = load_fixture();
 		data2.cells[0]!.lang = 'tsx';
 		assert_rejects(data2, 'unknown lang "tsx"');
+		// one issue for the cell, not another for every library with numbers in it
+		const parsed = BenchResults.safeParse(data2);
+		assert.ok(!parsed.success);
+		assert.ok(parsed.error.issues.every((i) => !i.message.includes("doesn't claim")));
+		const data4 = load_fixture();
+		data4.cells.find((c) => c.id === EXCLUDED_CELL)!.lang = 'tsx';
+		const parsed4 = BenchResults.safeParse(data4);
+		assert.ok(!parsed4.success);
+		assert.ok(parsed4.error.issues.every((i) => !i.message.includes('not excluded')));
 		const data3 = load_fixture();
 		data3.coverage.prism!.tsx = true;
 		assert_rejects(data3, 'unknown lang "tsx"');
@@ -182,9 +205,13 @@ describe('unsupported and excluded', () => {
 		assert.deepStrictEqual(data.bundle.prism!.web_rust, { unsupported: ['xml'] });
 		// excluded: claimed in coverage, listed in meta, absent from the cell
 		assert.strictEqual(data.coverage.prism!.rust, true);
+		// in both of the input's cells: the check runs before either mode is timed
 		assert.deepStrictEqual(
 			data.meta.excluded.map((e) => [e.cell, e.library]),
-			[[EXCLUDED_CELL, 'prism']]
+			[
+				[EXCLUDED_CELL, 'prism'],
+				['shiki/rust/rust.sample:html', 'prism']
+			]
 		);
 		const cell = data.cells.find((c) => c.id === EXCLUDED_CELL)!;
 		assert.ok(!('prism' in cell.values));
@@ -320,11 +347,48 @@ describe('run', () => {
 	});
 
 	test('a smoke run carries no noise floor', () => {
-		const data = load_fixture();
-		data.meta.run!.kind = 'smoke';
-		assert_rejects(data, 'meta.noise_floor: a smoke run carries no noise floor');
-		data.meta.noise_floor = null;
+		const data = to_smoke(load_fixture());
 		BenchResults.parse(data);
+		data.meta.noise_floor = load_fixture().meta.noise_floor;
+		assert_rejects(data, 'meta.noise_floor: a smoke run carries no noise floor');
+	});
+
+	test('a smoke run is neither retried nor resumed', () => {
+		for (const key of ['retries', 'segments'] as const) {
+			const data = to_smoke(load_fixture());
+			data.meta.run![key] = 2;
+			assert_rejects(data, 'meta.run: a smoke run is neither retried nor resumed');
+		}
+	});
+
+	test('a run records its retries and segments, and a value its attempts', () => {
+		const data = load_fixture();
+		assert.strictEqual(data.meta.run!.segments, 1);
+		data.meta.run!.segments = 3;
+		BenchResults.parse(data);
+		for (const [key, value] of [
+			['segments', 0],
+			['retries', -1],
+			['retries', 1.5]
+		] as const) {
+			const data2 = load_fixture();
+			data2.meta.run![key] = value;
+			assert_rejects(data2, `meta.run.${key}`);
+		}
+		// the fixture has a value that was measured again
+		const retried = data.cells
+			.flatMap((c) => Object.values(c.values))
+			.filter((v) => v.attempts > 1);
+		assert.ok(retried.length > 0);
+		const data3 = load_fixture();
+		data3.cells[0]!.values.fuz_code!.attempts = 0;
+		assert_rejects(data3, 'cells.0.values.fuz_code.attempts');
+		// no more attempts than the retries allow
+		const data4 = load_fixture();
+		data4.cells[0]!.values.fuz_code!.attempts = data4.meta.run!.retries + 2;
+		assert_rejects(data4, 'cells.0.values.fuz_code.attempts: more attempts than');
+		data4.cells[0]!.values.fuz_code!.attempts = data4.meta.run!.retries + 1;
+		BenchResults.parse(data4);
 	});
 
 	/** The fixture narrowed to one of its cells, with the filters that describe exactly that. */
@@ -413,7 +477,7 @@ describe('run', () => {
 		const changes: Array<(data: BenchResults) => void> = [
 			(data) => (data.meta.run = null),
 			(data) => (data.meta.run!.kind = 'calibrate'),
-			(data) => (data.meta.run!.kind = 'smoke'),
+			(data) => to_smoke(data),
 			(data) => (data.meta.run!.filters.sizes = ['medium']),
 			(data) => (data.meta.run!.filters.libraries = data.meta.libraries.map((l) => l.id)),
 			(data) => (data.meta.anchor = { drift: 0.5, stable: false }),
@@ -426,6 +490,77 @@ describe('run', () => {
 			assert.ok(!bench_results_is_publishable(data), `change ${i}`);
 		}
 		assert.ok(!bench_run_is_complete(load_filtered_fixture().meta.run!));
+		// a run that was stopped and resumed is a result like any other
+		const resumed = load_fixture();
+		resumed.meta.run!.segments = 2;
+		assert.ok(bench_results_is_publishable(BenchResults.parse(resumed)));
+	});
+
+	/** Removes a library's numbers from a cell. */
+	const remove_library = (data: BenchResults, cell_id: string, library: string): void => {
+		const cell = data.cells.find((c) => c.id === cell_id)!;
+		for (const section of ['values', 'tokens', 'output'] as const) delete cell[section][library];
+	};
+
+	test('a run with no filters has every claiming library in every cell, or excludes it', () => {
+		const cell_id = 'neutral/ts/checker_excerpt.ts:html';
+		const message =
+			'library "prism" claims lang "ts" and has neither a value nor an excluded entry here';
+		for (const kind of ['full', 'calibrate'] as const) {
+			const data = load_fixture();
+			data.meta.run!.kind = kind;
+			remove_library(data, cell_id, 'prism');
+			assert_rejects(data, `cells.1.values: ${message}`);
+			// the predicate says so of a file that was never parsed too
+			assert.ok(!bench_results_is_publishable(data));
+			assert.deepStrictEqual(bench_results_find_gaps(data), [
+				{ path: ['cells', 1, 'values'], message }
+			]);
+			// excluded there, it is accounted for
+			data.meta.excluded.push({ cell: cell_id, library: 'prism', reason: 'produced no tokens' });
+			BenchResults.parse(data);
+			assert.strictEqual(bench_results_is_publishable(data), kind === 'full');
+		}
+	});
+
+	test('a library that does not claim the language is not a gap: it is unsupported', () => {
+		const data = load_fixture();
+		for (const cell of data.cells.filter((c) => c.lang === 'rust')) {
+			remove_library(data, cell.id, 'twinkleplop');
+		}
+		delete data.coverage.twinkleplop!.rust;
+		data.bundle = {};
+		data.startup = [];
+		assert.ok(bench_results_is_publishable(BenchResults.parse(data)));
+	});
+
+	test('a run with no filters has a cell for every listed input in every mode', () => {
+		const data = load_fixture();
+		const [removed] = data.cells.splice(1, 1);
+		assert.strictEqual(removed!.mode, 'html');
+		assert_rejects(data, `inputs.0: input "${removed!.file}" has no html cell`);
+		assert.ok(!bench_results_is_publishable(data));
+	});
+
+	test('the modes a run must cover are the ones its cells use, not a list of the schema', () => {
+		// a whole mode missing can't be seen from the file, like an input missing altogether
+		const data = load_fixture();
+		data.cells = data.cells.filter((c) => c.mode === 'tokenize');
+		data.meta.excluded = data.meta.excluded.filter((e) => e.cell.endsWith(':tokenize'));
+		assert.deepStrictEqual(bench_results_find_gaps(data), []);
+		BenchResults.parse(data);
+	});
+
+	test('a filtered or smoke run, and one that timed no cell, may have gaps', () => {
+		const filtered = load_filtered_fixture();
+		assert.ok(bench_results_find_gaps(filtered).length > 0);
+		BenchResults.parse(filtered);
+		const smoke = to_smoke(load_fixture());
+		remove_library(smoke, 'neutral/ts/checker_excerpt.ts:html', 'prism');
+		BenchResults.parse(smoke);
+		const untimed = load_fixture();
+		for (const cell of untimed.cells) cell.values = {};
+		BenchResults.parse(untimed);
 	});
 
 	test('rejects parameters that are not positive', () => {
@@ -534,7 +669,7 @@ describe('startup', () => {
 describe('cells', () => {
 	test('home may name a library outside the roster', () => {
 		const data = load_fixture();
-		data.cells.find((c) => c.source === 'home')!.home = 'highlight_js';
+		for (const cell of data.cells.filter((c) => c.source === 'home')) cell.home = 'highlight_js';
 		data.inputs.find((i) => i.source === 'home')!.home = 'highlight_js';
 		BenchResults.parse(data);
 	});
@@ -576,15 +711,9 @@ describe('cells', () => {
 	test('accepts the same input in another mode', () => {
 		const data = load_fixture();
 		const cell = data.cells.find((c) => c.id === EXCLUDED_CELL)!;
-		data.cells.push({
-			...cell,
-			id: to_bench_cell_id(cell.file, 'html'),
-			mode: 'html',
-			values: {},
-			tokens: {},
-			output: {}
-		});
-		BenchResults.parse(data);
+		const other = data.cells.find((c) => c.id === to_bench_cell_id(cell.file, 'html'))!;
+		assert.strictEqual(other.file, cell.file);
+		assert.notStrictEqual(other.mode, cell.mode);
 	});
 });
 
@@ -609,10 +738,12 @@ describe('inputs', () => {
 		}
 	});
 
-	test('an input no cell measured is allowed', () => {
+	test('an input no cell measured is allowed in a run that is not complete', () => {
 		const data = load_fixture();
 		data.cells = data.cells.filter((c) => c.file !== data.inputs[0]!.file);
-		data.meta.excluded = [];
+		assert_rejects(data, 'has no tokenize cell');
+		// any filter makes the run partial, and a partial run lists what it has
+		data.meta.run!.filters.sizes = ['micro', 'small', 'medium', 'large'];
 		BenchResults.parse(data);
 	});
 

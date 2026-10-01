@@ -1,8 +1,8 @@
 /**
- * The anchor: a fixed workload measured at the start and end of a run. No
- * measured library is involved in it, so a change between the two readings is
- * the machine changing state (heat, frequency scaling, another process), and the
- * run's absolute numbers are then suspect.
+ * The anchor: a fixed workload measured at the start and end of a run, and of
+ * each segment of a resumed one. No measured library is involved in it, so a
+ * change between readings is the machine changing state (heat, frequency
+ * scaling, another process), and the run's absolute numbers are then suspect.
  *
  * The workload reads a string by character code, looks classes up in a typed
  * array, steps a small state machine, and writes to a typed array: the shapes a
@@ -139,14 +139,27 @@ export const measure_anchor = (): number => {
 };
 
 /**
- * Compares the anchor readings taken around a run.
+ * Compares the anchor readings taken around a run: one before its first process
+ * and one after its last, and the same around every segment of a run that was
+ * stopped and resumed.
  *
- * @param start_ns - the reading before the first cell
- * @param end_ns - the reading after the last
- * @returns the drift, positive when the machine got slower, and whether it stayed
- * under `ANCHOR_STABLE_BELOW`
+ * The drift is that of the two readings that differ most, so a machine that
+ * changed state between segments, or within one, is not hidden by readings that
+ * happen to agree at the two ends.
+ *
+ * @param readings_ns - every reading, in the order taken: at least two
+ * @returns the drift from the earlier of those two readings to the later,
+ * positive when the machine got slower, and whether it stayed under
+ * `ANCHOR_STABLE_BELOW`
  */
-export const to_anchor_drift = (start_ns: number, end_ns: number): BenchAnchor => {
-	const drift = (end_ns - start_ns) / start_ns;
+export const to_anchor_drift = (readings_ns: ReadonlyArray<number>): BenchAnchor => {
+	if (readings_ns.length < 2) throw new Error('an anchor needs a reading at each end');
+	let drift = 0;
+	for (const [i, earlier] of readings_ns.entries()) {
+		for (const later of readings_ns.slice(i + 1)) {
+			const change = (later - earlier) / earlier;
+			if (Math.abs(change) > Math.abs(drift)) drift = change;
+		}
+	}
 	return { drift, stable: Math.abs(drift) < ANCHOR_STABLE_BELOW };
 };

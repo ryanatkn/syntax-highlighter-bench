@@ -37,6 +37,8 @@ export const SCRATCH_DIR_NAME = 'scratch';
 export interface RunParams extends MeasureOptions {
 	/** How many processes measure each library in each cell. */
 	passes: number;
+	/** How many times a library whose rounds on a cell disagreed is measured again there. */
+	retries: number;
 }
 
 /**
@@ -47,15 +49,22 @@ export interface RunParams extends MeasureOptions {
  * Three rather than two, so the median of the pooled rounds comes from the
  * middle pass and not from between two that disagree.
  *
- * The rewarm is as long as the warmup. With a shorter one a library was still
- * recovering from the full collection when its batch was timed.
+ * The rewarm is longer than the warmup. A forced collection leaves code cold,
+ * and libraries recover from it at different speeds: Shiki more slowly than
+ * the others. With a rewarm as short as the warmup a slow recoverer was still
+ * recovering when its batch was timed, and read slow for it. The rewarm is long
+ * enough that every library in the roster has recovered.
+ *
+ * The retries are few: a library-cell that stays disturbed after them says the
+ * machine is busy, and measuring it again and again would only hide that.
  */
 export const FULL_PARAMS: Readonly<RunParams> = {
 	passes: 3,
+	retries: 2,
 	rounds: 4,
 	target_ms: 20,
 	warmup_ms: 100,
-	rewarm_ms: 100
+	rewarm_ms: 300
 };
 
 /**
@@ -64,6 +73,7 @@ export const FULL_PARAMS: Readonly<RunParams> = {
  */
 export const SMOKE_PARAMS: Readonly<RunParams> = {
 	passes: 1,
+	retries: 0,
 	rounds: 1,
 	target_ms: 1,
 	warmup_ms: 1,
@@ -118,6 +128,23 @@ export const RUN_FLAGS: ReadonlyArray<{ flag: string; value: string | null; desc
 			description: `how long one timed batch aims to run (default ${FULL_PARAMS.target_ms})`
 		},
 		{
+			flag: '--retries',
+			value: '<n>',
+			description: `how many times a library whose rounds on a cell disagreed is measured again there; 0 is never (default ${FULL_PARAMS.retries})`
+		},
+		{
+			flag: '--resume',
+			value: null,
+			description:
+				'continue the run its journal records, which must be this same run: flags, corpus, libraries, machine, Node, and commit'
+		},
+		{
+			flag: '--plan',
+			value: null,
+			description:
+				'print what the run would measure, where it would write, and roughly how long it would take, and measure nothing'
+		},
+		{
 			flag: '--machine',
 			value: '<name>',
 			description:
@@ -149,6 +176,10 @@ export interface RunOptions extends RunParams {
 	machine: string | null;
 	/** The results path, or null for the default. */
 	out: string | null;
+	/** Whether to continue the run its journal records. */
+	resume: boolean;
+	/** Whether to print the plan and measure nothing. */
+	plan: boolean;
 }
 
 /** The options of a run, a request for the help, or what is wrong with the flags. */
@@ -199,8 +230,11 @@ export const parse_run_args = (
 	if (smoke && values.has('--calibrate')) {
 		return error('--smoke and --calibrate are different kinds of run: give one');
 	}
-	if (smoke && NUMERIC_FLAGS.some(([flag]) => values.has(flag))) {
-		return error('--smoke sets its own passes, rounds, and durations');
+	if (smoke && [...NUMERIC_FLAGS.map(([flag]) => flag), '--retries'].some((f) => values.has(f))) {
+		return error('--smoke sets its own passes, rounds, durations, and retries');
+	}
+	if (smoke && values.has('--resume')) {
+		return error('--smoke keeps no journal, so there is nothing to resume');
 	}
 	const kind: BenchRunKind = smoke ? 'smoke' : values.has('--calibrate') ? 'calibrate' : 'full';
 
@@ -249,6 +283,11 @@ export const parse_run_args = (
 		}
 		params[key] = Number(value);
 	}
+	const retries = values.get('--retries');
+	if (retries != null) {
+		if (!/^\d+$/.test(retries)) return error(`--retries: "${retries}" is not a whole number`);
+		params.retries = Number(retries);
+	}
 
 	const machine = values.get('--machine') ?? null;
 	if (machine !== null && !MACHINE_NAME_MATCHER.test(machine)) {
@@ -265,7 +304,9 @@ export const parse_run_args = (
 			filters: { libraries, langs, sizes, modes, sources },
 			...params,
 			machine,
-			out: values.get('--out') ?? null
+			out: values.get('--out') ?? null,
+			resume: values.has('--resume'),
+			plan: values.has('--plan')
 		}
 	};
 };
@@ -302,6 +343,30 @@ export const to_results_path = (
 		? to_calibration_path(run.machine, dir)
 		: join(dir, `${run.generated_at.slice(0, 10)}_${run.machine}.json`);
 };
+
+/**
+ * The path of a timed run's journal, beside its results file.
+ *
+ * - with `--out`: `<out>.journal.jsonl`
+ * - otherwise: `<kind>_<machine>.journal.jsonl` in the directory the results go
+ *   to. It carries no date, because a full run's results are named by the date
+ *   the run started, and a run resumed on a later day must still find its
+ *   journal.
+ *
+ * @param run - the kind of run, its filters, the machine's name, and the resolved `--out` or null
+ * @param dir - the results directory
+ */
+export const to_journal_path = (
+	run: { kind: BenchRunKind; filters: BenchRunFilters; machine: string; out: string | null },
+	dir: string = RESULTS_DIR
+): string =>
+	run.out !== null
+		? `${run.out}.journal.jsonl`
+		: join(
+				dir,
+				bench_run_is_complete(run) ? '' : SCRATCH_DIR_NAME,
+				`${run.kind}_${run.machine}.journal.jsonl`
+			);
 
 /** One cell a run will measure. */
 export interface PlannedCell {
@@ -364,13 +429,25 @@ export interface PlannedProcess {
 	library: string;
 	/** Which of the library's processes on this cell it is, from zero. */
 	pass: number;
+	/**
+	 * Which measurement of the library on this cell it belongs to: zero for the
+	 * planned one, and from one for each retry.
+	 */
+	attempt: number;
 }
+
+/**
+ * How many arms a library's passes are split into: two in a calibration, which
+ * measures each library as if it were two, and otherwise one. A pass belongs to
+ * the arm `pass % arms`.
+ */
+export const to_arm_count = (kind: BenchRunKind): number => (kind === 'calibrate' ? 2 : 1);
 
 /**
  * Lists the processes of a run, in the order they are measured: cell by cell,
  * pass by pass, and within a pass every library once. The library a pass starts
  * with rotates from pass to pass and from cell to cell, so no library is always
- * measured first.
+ * measured first. Retries are not planned ahead: see `plan_retry`.
  *
  * @param cells - the cells of the run
  * @param passes - how many processes each library gets on each cell
@@ -384,7 +461,68 @@ export const plan_processes = (
 			cell.libraries.map((_library, k): PlannedProcess => ({
 				cell,
 				library: cell.libraries[(k + cell.rotation + pass) % cell.libraries.length]!,
-				pass
+				pass,
+				attempt: 0
 			}))
 		).flat()
 	);
+
+/** A library's passes on a cell that are summarized into one number: one arm of them. */
+export interface PassUnit {
+	library: string;
+	/** Which arm: always zero outside a calibration. */
+	arm: number;
+}
+
+/**
+ * Lists the processes that measure some libraries on a cell again: every pass
+ * of each unit, pass by pass, with the unit a pass starts with rotating as it
+ * does in the planned passes.
+ *
+ * @param cell - the cell
+ * @param units - the libraries to measure again, and for a calibration which arm of each
+ * @param passes - how many processes one arm gets
+ * @param arms - how many arms a library's passes are split into
+ * @param attempt - which retry this is, from one
+ */
+export const plan_retry = (
+	cell: PlannedCell,
+	units: ReadonlyArray<PassUnit>,
+	passes: number,
+	arms: number,
+	attempt: number
+): Array<PlannedProcess> =>
+	Array.from({ length: passes }, (_, k) =>
+		units.map((_unit, j): PlannedProcess => {
+			const { library, arm } = units[(j + cell.rotation + k) % units.length]!;
+			return { cell, library, pass: arm + arms * k, attempt };
+		})
+	).flat();
+
+/**
+ * What a process costs beyond the loops its parameters set, in milliseconds:
+ * starting Node, loading the library, the output check, calibration, and the
+ * collections. A rough figure, for `estimate_run_ms` only.
+ */
+export const PROCESS_OVERHEAD_MS = 500;
+
+/**
+ * Estimates how long a run measures for, from its parameters. It is rough: a
+ * call longer than a batch's target stretches the batch, and retries add
+ * processes that can't be known ahead.
+ *
+ * @param processes - how many processes the run plans
+ * @param params - how each measures
+ * @param concurrency - how many run at once
+ * @returns milliseconds
+ */
+export const estimate_run_ms = (
+	processes: number,
+	params: MeasureOptions,
+	concurrency: number = 1
+): number =>
+	(processes *
+		(PROCESS_OVERHEAD_MS +
+			params.warmup_ms +
+			params.rounds * (params.rewarm_ms + params.target_ms))) /
+	concurrency;

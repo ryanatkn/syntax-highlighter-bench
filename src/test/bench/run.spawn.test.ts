@@ -16,7 +16,8 @@ import { fileURLToPath } from 'node:url';
 import { BenchResults, parse_bench_results } from '$lib/results_schema.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
-import { RunError, run_bench } from '../../../bench/run.ts';
+import { read_journal } from '../../../bench/journal.ts';
+import { RunError, run_bench, spawn_cell_sync } from '../../../bench/run.ts';
 import { parse_run_args, type RunOptions } from '../../../bench/run_options.ts';
 
 // The tests that start real processes: one small smoke run through real cell
@@ -119,6 +120,60 @@ describe('run_bench', () => {
 			);
 			assert.ok(log.some((line) => line.includes('smoke run')));
 			BenchResults.parse(results);
+		}
+	);
+
+	test(
+		'a timed run stopped after a real process resumes from its journal',
+		{ timeout: 60_000 },
+		async () => {
+			const out = join(dir, 'resumed.json');
+			const journal_path = `${out}.journal.jsonl`;
+			const args = [
+				...['--langs', 'json', '--sizes', 'micro', '--modes', 'tokenize'],
+				...['--libraries', 'fuz_code', '--passes', '1', '--rounds', '1', '--target-ms', '1'],
+				...['--retries', '0', '--out', out]
+			];
+			let spawned = 0;
+			let stop_after = 1;
+			const bench_options = {
+				lock_path: join(dir, 'resumed.lock'),
+				log: () => {},
+				measure_anchor: () => 1000,
+				// real processes, and then what a signal to the child looks like
+				spawn_cell: (spec: Parameters<typeof spawn_cell_sync>[0]) =>
+					spawned++ < stop_after
+						? spawn_cell_sync(spec)
+						: { error: null, status: null, signal: 'SIGINT', stdout: '', stderr: '' }
+			};
+			let error: unknown;
+			try {
+				await run_bench(parse(...args), bench_options);
+			} catch (caught) {
+				error = caught;
+			}
+			assert.ok(error instanceof RunError);
+			assert.strictEqual(error.exit_code, 130);
+			assert.match(error.message, /--resume/);
+			assert.ok(!existsSync(out));
+			const journal = read_journal(journal_path);
+			assert.ok(journal.ok);
+			assert.strictEqual(journal.results.size, 1);
+			const [journaled] = journal.results.values();
+
+			spawned = 0;
+			stop_after = Infinity;
+			const { results } = await run_bench(parse(...args, '--resume'), bench_options);
+			assert.strictEqual(results.meta.run!.segments, 2);
+			assert.ok(!existsSync(journal_path));
+			assert.deepStrictEqual(parse_bench_results(JSON.parse(readFileSync(out, 'utf8'))), results);
+			// the first cell's number is the journaled process's, and the rest were measured now
+			assert.strictEqual(spawned, results.cells.length - 1);
+			assert.strictEqual(results.cells[0]!.id, journaled!.cell);
+			assert.strictEqual(
+				results.cells[0]!.values.fuz_code!.ns_per_op,
+				journaled!.measurement!.ns_per_op[0]
+			);
 		}
 	);
 
@@ -228,9 +283,24 @@ describe('the commands', { timeout: 30_000 }, () => {
 	test('bench/run.ts --help prints the flags and exits 0', () => {
 		const run = run_node('bench/run.ts', '--help');
 		assert.strictEqual(run.status, 0);
-		for (const flag of ['--smoke', '--calibrate', '--libraries', '--machine']) {
+		for (const flag of ['--smoke', '--calibrate', '--libraries', '--machine', '--resume']) {
 			assert.ok(run.stdout.includes(flag), flag);
 		}
+	});
+
+	test('bench/run.ts --plan prints the plan, exits 0, and measures nothing', () => {
+		const out = join(dir, 'planned', 'run.json');
+		const args = ['--plan', '--langs', 'json', '--sizes', 'micro', '--out', out];
+		const run = run_node('bench/run.ts', ...args);
+		assert.strictEqual(run.status, 0, run.stderr);
+		assert.match(run.stdout, /^the plan of a full run on .*: nothing is measured\n/);
+		assert.match(run.stdout, /estimate +about /);
+		assert.ok(run.stdout.includes(`${out}.journal.jsonl`));
+		assert.ok(!existsSync(join(dir, 'planned')));
+		// and it is refused where the run would be
+		const refused = run_node('bench/run.ts', '--plan');
+		assert.strictEqual(refused.status, 2);
+		assert.match(refused.stderr, /--machine/);
 	});
 
 	test('bench/cell.ts fails loudly without --expose-gc, and prints no result', () => {
@@ -282,7 +352,9 @@ describe('the commands', { timeout: 30_000 }, () => {
 				%OptimizeFunctionOnNextCall(run);
 				const optimised = %StringIsFlat(run());
 				let hot = true;
-				for (let i = 0; i < 2000; i++) hot = %StringIsFlat(run()) && hot;
+				// a string that is flat as returned has no read to drop, so a few calls do
+				const calls = raw ? 20 : 2000;
+				for (let i = 0; i < calls; i++) hot = %StringIsFlat(run()) && hot;
 				flat[id] = { raw, cold, optimised, hot };
 			}
 			console.log(JSON.stringify({ flat, sink: read_html_sink() }));

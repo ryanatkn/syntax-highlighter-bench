@@ -69,13 +69,15 @@ export const BenchMachine = z.strictObject({
 export type BenchMachine = z.infer<typeof BenchMachine>;
 
 /**
- * The reference workload measured at the start and end of a run. Its drift says
- * whether the machine changed state while the run was in progress.
+ * The reference workload measured at the start and end of a run, and of every
+ * segment of a run that was stopped and resumed. Its drift says whether the
+ * machine changed state while the run was in progress.
  */
 export const BenchAnchor = z.strictObject({
-	drift: z
-		.number()
-		.meta({ description: 'Relative change from the first measurement to the last; 0.01 is 1%.' }),
+	drift: z.number().meta({
+		description:
+			'Relative change between the two readings that differ most, from the earlier to the later; 0.01 is 1%. An uninterrupted run has two readings.'
+	}),
 	stable: z.boolean().meta({ description: 'Whether the drift stayed inside the threshold.' })
 });
 export type BenchAnchor = z.infer<typeof BenchAnchor>;
@@ -202,29 +204,39 @@ export const BenchRun = z.strictObject({
 	rewarm_ms: z.number().nonnegative().meta({
 		description: 'How long each library ran untimed before each timed batch, in milliseconds.'
 	}),
+	retries: z.number().int().nonnegative().meta({
+		description:
+			'How many times a library whose rounds on a cell disagreed could be measured again there. 0 is never.'
+	}),
 	loaded_langs: z.literal('cell').meta({
 		description:
 			"Which languages each cell's process set up in every library: `cell` is exactly the cell's language."
 	}),
 	filters: BenchRunFilters,
-	duration_ms: z
-		.number()
-		.int()
-		.nonnegative()
-		.meta({ description: 'How long the run took, anchor readings included.' })
+	segments: z.number().int().positive().meta({
+		description:
+			'How many stretches the run was measured in. 1 is an uninterrupted run, and more means it was stopped and resumed.'
+	}),
+	duration_ms: z.number().int().nonnegative().meta({
+		description:
+			'How long the run measured for, anchor readings included: the sum of its segments, without the time between them.'
+	})
 });
 export type BenchRun = z.infer<typeof BenchRun>;
 
 /**
- * Whether a run covered everything: every library on every cell, measured for
- * real. A smoke run never did, and neither did a run with any filter.
+ * Whether a run set out to cover everything: every library on every cell,
+ * measured for real. A smoke run never did, and neither did a run with any
+ * filter. Whether the file then holds everything is `bench_results_find_gaps`.
  */
 export const bench_run_is_complete = (run: Pick<BenchRun, 'kind' | 'filters'>): boolean =>
 	run.kind !== 'smoke' && Object.values(run.filters).every((filter) => filter === null);
 
 /** Where, when, and from what a run was produced. */
 export const BenchMeta = z.strictObject({
-	generated_at: z.iso.datetime().meta({ description: 'When the run started.' }),
+	generated_at: z.iso.datetime().meta({
+		description: 'When the run started: its first segment, for a run that was resumed.'
+	}),
 	machine: BenchMachine,
 	node: z
 		.string()
@@ -391,6 +403,10 @@ export const BenchCellValue = z.strictObject({
 	rss_peak_bytes: z.number().int().positive().meta({
 		description:
 			"The peak resident set size of the library's process, the largest across its passes. The process holds this library alone, with Node itself and the input, so it is a whole-process peak and not what the library adds."
+	}),
+	attempts: z.number().int().positive().meta({
+		description:
+			'How many times the library was measured on this cell. 1 is once. More means its rounds disagreed and it was measured again: every other number here, the spread and the percentiles included, is from the attempt whose rounds agreed best, whichever was faster, so they describe its calmest attempt. In a calibration file it counts the attempts of the first arm, which the value is from.'
 	})
 });
 export type BenchCellValue = z.infer<typeof BenchCellValue>;
@@ -517,13 +533,85 @@ const INPUT_KEYS_ON_CELL = [
 	'synthetic'
 ] as const;
 
+/** Whether a library's coverage has an own entry for a language. */
+const coverage_claims = (
+	coverage: Record<string, Record<string, unknown>>,
+	library: string,
+	lang: string
+): boolean => Object.hasOwn(coverage, library) && Object.hasOwn(coverage[library]!, lang);
+
+/** Something a results file lacks that a complete run would have, and where. */
+export interface BenchResultsGap {
+	path: Array<string | number>;
+	message: string;
+}
+
+/** The parts of a results file that say whether it has a gap. */
+export interface BenchResultsCoverage {
+	meta: { libraries: Array<{ id: string }>; excluded: Array<BenchExcluded> };
+	langs: Array<BenchLang>;
+	inputs: Array<{ file: string; lang: string }>;
+	cells: Array<Pick<BenchCell, 'id' | 'lang' | 'mode' | 'values'>>;
+	coverage: Record<string, Record<string, unknown>>;
+}
+
+/**
+ * Lists what a results file lacks to be a complete run, from the file alone:
+ *
+ * - in every cell, every library of the roster that claims the cell's language
+ *   has a value or an entry in `meta.excluded`
+ * - every listed input of a timed language that some library claims has a cell
+ *   in every mode the file's cells use
+ *
+ * It can't tell that an input is missing altogether, or a whole mode: the
+ * `inputs` roster lists what was measured, only `meta.corpus_hash` names the
+ * corpus it came from, and the modes are taken from the cells so that a file
+ * stays valid when the harness gains a mode.
+ *
+ * @returns the gaps, none for a file that covers everything it lists
+ */
+export const bench_results_find_gaps = (results: BenchResultsCoverage): Array<BenchResultsGap> => {
+	const gaps: Array<BenchResultsGap> = [];
+	const excluded = new Set(results.meta.excluded.map((e) => JSON.stringify([e.cell, e.library])));
+	for (const [i, cell] of results.cells.entries()) {
+		for (const { id } of results.meta.libraries) {
+			if (
+				coverage_claims(results.coverage, id, cell.lang) &&
+				!Object.hasOwn(cell.values, id) &&
+				!excluded.has(JSON.stringify([cell.id, id]))
+			) {
+				gaps.push({
+					path: ['cells', i, 'values'],
+					message: `library "${id}" claims lang "${cell.lang}" and has neither a value nor an excluded entry here`
+				});
+			}
+		}
+	}
+	const cell_ids = new Set(results.cells.map((cell) => cell.id));
+	const modes = new Set(results.cells.map((cell) => cell.mode));
+	const timed_langs = new Set(results.langs.filter((l) => l.timed).map((l) => l.id));
+	for (const [i, input] of results.inputs.entries()) {
+		if (!timed_langs.has(input.lang)) continue;
+		if (!results.meta.libraries.some((l) => coverage_claims(results.coverage, l.id, input.lang))) {
+			continue;
+		}
+		for (const mode of modes) {
+			if (!cell_ids.has(to_bench_cell_id(input.file, mode))) {
+				gaps.push({ path: ['inputs', i], message: `input "${input.file}" has no ${mode} cell` });
+			}
+		}
+	}
+	return gaps;
+};
+
 /**
  * One run of the benchmark. Beyond each section's shape, parsing checks that
  * the sections agree: ids are unique and refer to roster entries, every cell
  * describes its input as the `inputs` roster does and is named after it, no
  * library has numbers for a language it doesn't claim or a cell it was excluded
- * from, no cell covers an untimed language, and a run with timed numbers has an
- * anchor and its run parameters.
+ * from, no cell covers an untimed language, a run with timed numbers has an
+ * anchor and its run parameters, and a run with no filters has no gap
+ * (`bench_results_find_gaps`).
  */
 export const BenchResults = z
 	.strictObject({
@@ -587,7 +675,7 @@ export const BenchResults = z
 		const inputs = new Map(results.inputs.map((input) => [input.file, input]));
 		const untimed_langs = new Set(results.langs.filter((l) => !l.timed).map((l) => l.id));
 		const claims = (library: string, lang: string): boolean =>
-			Object.hasOwn(results.coverage, library) && Object.hasOwn(results.coverage[library]!, lang);
+			coverage_claims(results.coverage, library, lang);
 
 		// rosters
 		for (const [i, set] of results.sets.entries()) {
@@ -628,7 +716,7 @@ export const BenchResults = z
 			if (!cell) issue([...path, 'cell'], `unknown cell "${entry.cell}"`);
 			if (!library_ids.has(entry.library)) {
 				issue([...path, 'library'], `unknown library "${entry.library}"`);
-			} else if (cell && !claims(entry.library, cell.lang)) {
+			} else if (cell && lang_ids.has(cell.lang) && !claims(entry.library, cell.lang)) {
 				issue(
 					path,
 					`library "${entry.library}" doesn't claim lang "${cell.lang}", so it is unsupported there, not excluded`
@@ -682,7 +770,8 @@ export const BenchResults = z
 					const at = [...path, section, library];
 					if (!library_ids.has(library)) {
 						issue(at, `unknown library "${library}"`);
-					} else if (!claims(library, cell.lang)) {
+					} else if (lang_ids.has(cell.lang) && !claims(library, cell.lang)) {
+						// an unknown lang is one issue on the cell, not one for every library
 						issue(at, `library "${library}" doesn't claim lang "${cell.lang}"`);
 					} else if (excluded.has(JSON.stringify([cell.id, library]))) {
 						issue(at, `library "${library}" is excluded from this cell`);
@@ -740,6 +829,23 @@ export const BenchResults = z
 			}
 			if (run.kind === 'smoke' && results.meta.noise_floor !== null) {
 				issue(['meta', 'noise_floor'], 'a smoke run carries no noise floor');
+			}
+			if (run.kind === 'smoke' && (run.retries !== 0 || run.segments !== 1)) {
+				issue(['meta', 'run'], 'a smoke run is neither retried nor resumed');
+			}
+			for (const [i, cell] of results.cells.entries()) {
+				for (const [library, value] of Object.entries(cell.values)) {
+					if (value.attempts > run.retries + 1) {
+						issue(
+							['cells', i, 'values', library, 'attempts'],
+							`more attempts than the run's ${run.retries} retries allow`
+						);
+					}
+				}
+			}
+			// a run that says it covered everything has no gap
+			if (cells_timed && bench_run_is_complete(run)) {
+				for (const gap of bench_results_find_gaps(results)) issue(gap.path, gap.message);
 			}
 		}
 
@@ -822,9 +928,11 @@ export const BenchResults = z
 export type BenchResults = z.infer<typeof BenchResults>;
 
 /**
- * Whether a run's numbers can be published as results: a complete `full` run,
- * from a commit that records everything that ran, on a machine that held still.
- * A site shows anything else as what it is, never as a result.
+ * Whether a run's numbers can be published as results: a complete `full` run
+ * with no gap (`bench_results_find_gaps`), from a commit that records everything
+ * that ran, on a machine that held still. A run that was stopped and resumed
+ * qualifies like any other: its anchor covers every segment. A site shows
+ * anything else as what it is, never as a result.
  */
 export const bench_results_is_publishable = (results: BenchResults): boolean => {
 	const { run, anchor, commit } = results.meta;
@@ -834,7 +942,8 @@ export const bench_results_is_publishable = (results: BenchResults): boolean => 
 		bench_run_is_complete(run) &&
 		anchor !== null &&
 		anchor.stable &&
-		!commit.endsWith('-dirty')
+		!commit.endsWith('-dirty') &&
+		bench_results_find_gaps(results).length === 0
 	);
 };
 

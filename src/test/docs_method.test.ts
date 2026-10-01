@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 import { BenchCellValue, BenchRunKind } from '$lib/results_schema.ts';
 import { ANCHOR_STABLE_BELOW } from '../../bench/anchor.ts';
+import { DISTURBED_SPREAD } from '../../bench/run.ts';
 import { FULL_PARAMS, RUN_FLAGS } from '../../bench/run_options.ts';
 
 // these docs state by hand what the harness defines, because the site never imports it
@@ -42,5 +43,13 @@ test('the method docs state the parameters of a full run and the anchor threshol
 	for (const [name, text] of Object.entries(docs)) {
 		assert.ok(unwrap(text).includes(parameters), `${name} lacks "${parameters}"`);
 		assert.ok(text.includes(threshold), `${name} lacks ${threshold}`);
+	}
+});
+
+test('the method docs state the retry threshold and how many retries a full run allows', () => {
+	const retries = `is over ${DISTURBED_SPREAD} again, every pass of it, up to \`--retries\` more times (${FULL_PARAMS.retries} by default`;
+	for (const [name, text] of Object.entries(docs)) {
+		const plain = unwrap(text.replace(/<\/?code>/g, '`'));
+		assert.ok(plain.includes(retries), `${name} lacks "${retries}"`);
 	}
 });

@@ -16,7 +16,8 @@
 			"rounds": 4,
 			"target_ms": 20,
 			"warmup_ms": 100,
-			"rewarm_ms": 100,
+			"rewarm_ms": 300,
+			"retries": 2,
 			"loaded_langs": "cell",
 			"filters": {
 				"libraries": null,
@@ -25,6 +26,7 @@
 				"modes": null,
 				"sources": null
 			},
+			"segments": 1,
 			"duration_ms": 1200000
 		},
 		"anchor": {
@@ -89,6 +91,11 @@
 		"excluded": [
 			{
 				"cell": "shiki/rust/rust.sample:tokenize",
+				"library": "prism",
+				"reason": "produced no tokens"
+			},
+			{
+				"cell": "shiki/rust/rust.sample:html",
 				"library": "prism",
 				"reason": "produced no tokens"
 			}
@@ -402,7 +409,8 @@
 					"p90_ns": 188006,
 					"spread": 1.03,
 					"iterations": 109,
-					"rss_peak_bytes": 90409600
+					"rss_peak_bytes": 90409600,
+					"attempts": 1
 				},
 				"twinkleplop": {
 					"ns_per_op": 239616,
@@ -412,7 +420,8 @@
 					"p90_ns": 244408,
 					"spread": 1.03,
 					"iterations": 83,
-					"rss_peak_bytes": 90532480
+					"rss_peak_bytes": 90532480,
+					"attempts": 1
 				},
 				"prism": {
 					"ns_per_op": 571392,
@@ -422,7 +431,8 @@
 					"p90_ns": 582820,
 					"spread": 1.03,
 					"iterations": 35,
-					"rss_peak_bytes": 91269760
+					"rss_peak_bytes": 91269760,
+					"attempts": 1
 				},
 				"shiki_js": {
 					"ns_per_op": 2580480,
@@ -432,7 +442,8 @@
 					"p90_ns": 2632090,
 					"spread": 1.03,
 					"iterations": 8,
-					"rss_peak_bytes": 95734400
+					"rss_peak_bytes": 95734400,
+					"attempts": 2
 				},
 				"shiki_wasm": {
 					"ns_per_op": 2027520,
@@ -442,7 +453,8 @@
 					"p90_ns": 2068070,
 					"spread": 1.03,
 					"iterations": 10,
-					"rss_peak_bytes": 94505600
+					"rss_peak_bytes": 94505600,
+					"attempts": 1
 				}
 			},
 			"tokens": {
@@ -496,7 +508,8 @@
 					"p90_ns": 282010,
 					"spread": 1.03,
 					"iterations": 72,
-					"rss_peak_bytes": 90409600
+					"rss_peak_bytes": 90409600,
+					"attempts": 1
 				},
 				"twinkleplop": {
 					"ns_per_op": 359424,
@@ -506,7 +519,8 @@
 					"p90_ns": 366612,
 					"spread": 1.03,
 					"iterations": 56,
-					"rss_peak_bytes": 90532480
+					"rss_peak_bytes": 90532480,
+					"attempts": 1
 				},
 				"prism": {
 					"ns_per_op": 857088,
@@ -516,7 +530,8 @@
 					"p90_ns": 874230,
 					"spread": 1.03,
 					"iterations": 23,
-					"rss_peak_bytes": 91269760
+					"rss_peak_bytes": 91269760,
+					"attempts": 1
 				},
 				"shiki_js": {
 					"ns_per_op": 3870720,
@@ -526,7 +541,8 @@
 					"p90_ns": 3948134,
 					"spread": 1.03,
 					"iterations": 5,
-					"rss_peak_bytes": 95734400
+					"rss_peak_bytes": 95734400,
+					"attempts": 1
 				},
 				"shiki_wasm": {
 					"ns_per_op": 3041280,
@@ -536,7 +552,8 @@
 					"p90_ns": 3102106,
 					"spread": 1.03,
 					"iterations": 7,
-					"rss_peak_bytes": 94505600
+					"rss_peak_bytes": 94505600,
+					"attempts": 1
 				}
 			},
 			"tokens": {
@@ -590,7 +607,8 @@
 					"p90_ns": 21665,
 					"spread": 1.03,
 					"iterations": 942,
-					"rss_peak_bytes": 90047200
+					"rss_peak_bytes": 90047200,
+					"attempts": 1
 				},
 				"twinkleplop": {
 					"ns_per_op": 27612,
@@ -600,7 +618,8 @@
 					"p90_ns": 28164,
 					"spread": 1.03,
 					"iterations": 724,
-					"rss_peak_bytes": 90061360
+					"rss_peak_bytes": 90061360,
+					"attempts": 1
 				},
 				"shiki_js": {
 					"ns_per_op": 297360,
@@ -610,7 +629,8 @@
 					"p90_ns": 303307,
 					"spread": 1.03,
 					"iterations": 67,
-					"rss_peak_bytes": 90660800
+					"rss_peak_bytes": 90660800,
+					"attempts": 1
 				},
 				"shiki_wasm": {
 					"ns_per_op": 233640,
@@ -620,7 +640,8 @@
 					"p90_ns": 238313,
 					"spread": 1.03,
 					"iterations": 86,
-					"rss_peak_bytes": 90519200
+					"rss_peak_bytes": 90519200,
+					"attempts": 1
 				}
 			},
 			"tokens": {
@@ -649,6 +670,188 @@
 			}
 		},
 		{
+			"id": "shiki/rust/rust.sample:html",
+			"metric": "throughput",
+			"lang": "rust",
+			"size": "small",
+			"mode": "html",
+			"source": "shiki",
+			"home": null,
+			"file": "shiki/rust/rust.sample",
+			"bytes": 1180,
+			"lines": 44,
+			"synthetic": false,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 29736,
+					"ops_per_sec": 33629.27,
+					"mb_per_sec": 39.68,
+					"p10_ns": 29439,
+					"p90_ns": 30331,
+					"spread": 1.03,
+					"iterations": 942,
+					"rss_peak_bytes": 90047200,
+					"attempts": 1
+				},
+				"twinkleplop": {
+					"ns_per_op": 38657,
+					"ops_per_sec": 25868.54,
+					"mb_per_sec": 30.52,
+					"p10_ns": 38270,
+					"p90_ns": 39430,
+					"spread": 1.03,
+					"iterations": 724,
+					"rss_peak_bytes": 90061360,
+					"attempts": 1
+				},
+				"shiki_js": {
+					"ns_per_op": 416304,
+					"ops_per_sec": 2402.09,
+					"mb_per_sec": 2.83,
+					"p10_ns": 412140,
+					"p90_ns": 424630,
+					"spread": 1.03,
+					"iterations": 67,
+					"rss_peak_bytes": 90660800,
+					"attempts": 1
+				},
+				"shiki_wasm": {
+					"ns_per_op": 327096,
+					"ops_per_sec": 3057.21,
+					"mb_per_sec": 3.61,
+					"p10_ns": 323826,
+					"p90_ns": 333638,
+					"spread": 1.03,
+					"iterations": 86,
+					"rss_peak_bytes": 90519200,
+					"attempts": 1
+				}
+			},
+			"tokens": {
+				"fuz_code": 197,
+				"twinkleplop": 275,
+				"shiki_js": 118,
+				"shiki_wasm": 118
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 3776,
+					"spans": 169
+				},
+				"twinkleplop": {
+					"html_bytes": 3776,
+					"spans": 236
+				},
+				"shiki_js": {
+					"html_bytes": 6018,
+					"spans": 101
+				},
+				"shiki_wasm": {
+					"html_bytes": 6018,
+					"spans": 101
+				}
+			}
+		},
+		{
+			"id": "home/fuz_code/svelte/sample.svelte:tokenize",
+			"metric": "throughput",
+			"lang": "svelte",
+			"size": "micro",
+			"mode": "tokenize",
+			"source": "home",
+			"home": "fuz_code",
+			"file": "home/fuz_code/svelte/sample.svelte",
+			"bytes": 212,
+			"lines": 9,
+			"synthetic": false,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 4007,
+					"ops_per_sec": 249563.26,
+					"mb_per_sec": 52.91,
+					"p10_ns": 3967,
+					"p90_ns": 4087,
+					"spread": 1.03,
+					"iterations": 3494,
+					"rss_peak_bytes": 90008480,
+					"attempts": 1
+				},
+				"twinkleplop": {
+					"ns_per_op": 5209,
+					"ops_per_sec": 191975.43,
+					"mb_per_sec": 40.7,
+					"p10_ns": 5157,
+					"p90_ns": 5313,
+					"spread": 1.03,
+					"iterations": 2688,
+					"rss_peak_bytes": 90011024,
+					"attempts": 1
+				},
+				"prism": {
+					"ns_per_op": 12421,
+					"ops_per_sec": 80508.82,
+					"mb_per_sec": 17.07,
+					"p10_ns": 12297,
+					"p90_ns": 12669,
+					"spread": 1.03,
+					"iterations": 1127,
+					"rss_peak_bytes": 90026288,
+					"attempts": 1
+				},
+				"shiki_js": {
+					"ns_per_op": 56095,
+					"ops_per_sec": 17826.9,
+					"mb_per_sec": 3.78,
+					"p10_ns": 55534,
+					"p90_ns": 57217,
+					"spread": 1.03,
+					"iterations": 250,
+					"rss_peak_bytes": 90118720,
+					"attempts": 1
+				},
+				"shiki_wasm": {
+					"ns_per_op": 44075,
+					"ops_per_sec": 22688.6,
+					"mb_per_sec": 4.81,
+					"p10_ns": 43634,
+					"p90_ns": 44956,
+					"spread": 1.03,
+					"iterations": 318,
+					"rss_peak_bytes": 90093280,
+					"attempts": 1
+				}
+			},
+			"tokens": {
+				"fuz_code": 35,
+				"twinkleplop": 49,
+				"prism": 28,
+				"shiki_js": 21,
+				"shiki_wasm": 21
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 678,
+					"spans": 30
+				},
+				"twinkleplop": {
+					"html_bytes": 678,
+					"spans": 42
+				},
+				"prism": {
+					"html_bytes": 678,
+					"spans": 24
+				},
+				"shiki_js": {
+					"html_bytes": 1081,
+					"spans": 18
+				},
+				"shiki_wasm": {
+					"html_bytes": 1081,
+					"spans": 18
+				}
+			}
+		},
+		{
 			"id": "home/fuz_code/svelte/sample.svelte:html",
 			"metric": "throughput",
 			"lang": "svelte",
@@ -669,7 +872,8 @@
 					"p90_ns": 5838,
 					"spread": 1.03,
 					"iterations": 3494,
-					"rss_peak_bytes": 90008480
+					"rss_peak_bytes": 90008480,
+					"attempts": 1
 				},
 				"twinkleplop": {
 					"ns_per_op": 7441,
@@ -679,7 +883,8 @@
 					"p90_ns": 7590,
 					"spread": 1.03,
 					"iterations": 2688,
-					"rss_peak_bytes": 90011024
+					"rss_peak_bytes": 90011024,
+					"attempts": 1
 				},
 				"prism": {
 					"ns_per_op": 17744,
@@ -689,7 +894,8 @@
 					"p90_ns": 18099,
 					"spread": 1.03,
 					"iterations": 1127,
-					"rss_peak_bytes": 90026288
+					"rss_peak_bytes": 90026288,
+					"attempts": 1
 				},
 				"shiki_js": {
 					"ns_per_op": 80136,
@@ -699,7 +905,8 @@
 					"p90_ns": 81739,
 					"spread": 1.03,
 					"iterations": 250,
-					"rss_peak_bytes": 90118720
+					"rss_peak_bytes": 90118720,
+					"attempts": 1
 				},
 				"shiki_wasm": {
 					"ns_per_op": 62964,
@@ -709,7 +916,8 @@
 					"p90_ns": 64223,
 					"spread": 1.03,
 					"iterations": 318,
-					"rss_peak_bytes": 90093280
+					"rss_peak_bytes": 90093280,
+					"attempts": 1
 				}
 			},
 			"tokens": {
@@ -763,7 +971,8 @@
 					"p90_ns": 1880064,
 					"spread": 1.03,
 					"iterations": 11,
-					"rss_peak_bytes": 94096000
+					"rss_peak_bytes": 94096000,
+					"attempts": 1
 				},
 				"twinkleplop": {
 					"ns_per_op": 2396160,
@@ -773,7 +982,8 @@
 					"p90_ns": 2444083,
 					"spread": 1.03,
 					"iterations": 8,
-					"rss_peak_bytes": 95324800
+					"rss_peak_bytes": 95324800,
+					"attempts": 1
 				},
 				"prism": {
 					"ns_per_op": 5713920,
@@ -783,7 +993,8 @@
 					"p90_ns": 5828198,
 					"spread": 1.03,
 					"iterations": 4,
-					"rss_peak_bytes": 102697600
+					"rss_peak_bytes": 102697600,
+					"attempts": 1
 				},
 				"shiki_js": {
 					"ns_per_op": 25804800,
@@ -793,7 +1004,8 @@
 					"p90_ns": 26320896,
 					"spread": 1.03,
 					"iterations": 1,
-					"rss_peak_bytes": 147344000
+					"rss_peak_bytes": 147344000,
+					"attempts": 1
 				},
 				"shiki_wasm": {
 					"ns_per_op": 20275200,
@@ -803,7 +1015,107 @@
 					"p90_ns": 20680704,
 					"spread": 1.03,
 					"iterations": 1,
-					"rss_peak_bytes": 135056000
+					"rss_peak_bytes": 135056000,
+					"attempts": 1
+				}
+			},
+			"tokens": {
+				"fuz_code": 17067,
+				"twinkleplop": 23893,
+				"prism": 13653,
+				"shiki_js": 10240,
+				"shiki_wasm": 10240
+			},
+			"output": {
+				"fuz_code": {
+					"html_bytes": 327680,
+					"spans": 14629
+				},
+				"twinkleplop": {
+					"html_bytes": 327680,
+					"spans": 20480
+				},
+				"prism": {
+					"html_bytes": 327680,
+					"spans": 11703
+				},
+				"shiki_js": {
+					"html_bytes": 522240,
+					"spans": 8777
+				},
+				"shiki_wasm": {
+					"html_bytes": 522240,
+					"spans": 8777
+				}
+			}
+		},
+		{
+			"id": "neutral/json/package_lock.json:html",
+			"metric": "throughput",
+			"lang": "json",
+			"size": "large",
+			"mode": "html",
+			"source": "neutral",
+			"home": null,
+			"file": "neutral/json/package_lock.json",
+			"bytes": 102400,
+			"lines": 2980,
+			"synthetic": true,
+			"values": {
+				"fuz_code": {
+					"ns_per_op": 2396160,
+					"ops_per_sec": 417.33,
+					"mb_per_sec": 42.74,
+					"p10_ns": 2372198,
+					"p90_ns": 2444083,
+					"spread": 1.03,
+					"iterations": 11,
+					"rss_peak_bytes": 94096000,
+					"attempts": 1
+				},
+				"twinkleplop": {
+					"ns_per_op": 3115008,
+					"ops_per_sec": 321.03,
+					"mb_per_sec": 32.87,
+					"p10_ns": 3083857,
+					"p90_ns": 3177308,
+					"spread": 1.03,
+					"iterations": 8,
+					"rss_peak_bytes": 95324800,
+					"attempts": 1
+				},
+				"prism": {
+					"ns_per_op": 7428096,
+					"ops_per_sec": 134.62,
+					"mb_per_sec": 13.79,
+					"p10_ns": 7353815,
+					"p90_ns": 7576657,
+					"spread": 1.03,
+					"iterations": 4,
+					"rss_peak_bytes": 102697600,
+					"attempts": 1
+				},
+				"shiki_js": {
+					"ns_per_op": 33546240,
+					"ops_per_sec": 29.81,
+					"mb_per_sec": 3.05,
+					"p10_ns": 33210778,
+					"p90_ns": 34217165,
+					"spread": 1.03,
+					"iterations": 1,
+					"rss_peak_bytes": 147344000,
+					"attempts": 1
+				},
+				"shiki_wasm": {
+					"ns_per_op": 26357760,
+					"ops_per_sec": 37.94,
+					"mb_per_sec": 3.89,
+					"p10_ns": 26094182,
+					"p90_ns": 26884915,
+					"spread": 1.03,
+					"iterations": 1,
+					"rss_peak_bytes": 135056000,
+					"attempts": 1
 				}
 			},
 			"tokens": {

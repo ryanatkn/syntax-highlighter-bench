@@ -26,7 +26,7 @@ const SNIPPET = 'harness/json/snippet.json';
 const INPUT = manifest.inputs.find((i) => i.lang === 'json' && i.source === 'neutral')!.file;
 const snippet_src = read_corpus_input(manifest.inputs.find((i) => i.file === SNIPPET)!);
 
-const { passes: _, ...SMOKE_MEASURE } = SMOKE_PARAMS;
+const { passes: _, retries: _retries, ...SMOKE_MEASURE } = SMOKE_PARAMS;
 
 const create_spec = (overrides: Partial<CellSpec> = {}): CellSpec => ({
 	file: SNIPPET,

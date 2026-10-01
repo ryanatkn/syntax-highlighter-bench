@@ -21,14 +21,18 @@ import {
 	carry_noise_floor,
 	combine_passes,
 	format_run_summary,
+	passes_are_disturbed,
 	read_cell_result,
 	read_commit,
 	read_machine,
+	run_cells_in_turn,
+	select_attempt,
 	to_cell_spec,
 	to_deviation,
 	to_geomean,
 	to_noise_floor,
 	type ChildOutcome,
+	type ProcessResult,
 	type RunRecord
 } from '../../../bench/run.ts';
 import {
@@ -54,6 +58,8 @@ const create_options = (overrides: Partial<RunOptions> = {}): RunOptions => ({
 	...FULL_PARAMS,
 	machine: 'box',
 	out: null,
+	resume: false,
+	plan: false,
 	...overrides
 });
 
@@ -105,6 +111,7 @@ const create_record = (overrides: Partial<RunRecord> = {}): RunRecord => {
 		options,
 		generated_at: '2026-01-01T00:00:00.000Z',
 		duration_ms: 1234,
+		segments: 1,
 		machine: MACHINE,
 		node: 'v24.14.1',
 		commit: '0'.repeat(40),
@@ -233,12 +240,22 @@ describe('read_cell_result', () => {
 describe('combine_passes', () => {
 	const pass = (ns: Array<number>, tokens = 10): CellResult =>
 		create_cell_result(PLANNED!, { ns, tokens });
+	/** A library's passes, numbered in order, as one attempt. */
+	const attempt = (results: Array<CellResult>, n = 0): Array<ProcessResult> =>
+		results.map((result, i) => ({ planned: { ...PLANNED!, pass: i, attempt: n }, result }));
+	const full = (passes: number) => ({ kind: 'full' as const, passes });
 
 	test('pools the rounds of every pass into one value', () => {
-		const outcome = combine_passes('x', [pass([900, 1000]), pass([1100, 1200])], 1000, false);
+		const outcome = combine_passes(
+			'x',
+			attempt([pass([900, 1000]), pass([1100, 1200])]),
+			1000,
+			full(2)
+		);
 		assert.ok(outcome.excluded === null);
 		assert.strictEqual(outcome.value.ns_per_op, 1050);
 		assert.closeTo(outcome.value.spread, 1200 / 900, 1e-12);
+		assert.strictEqual(outcome.value.attempts, 1);
 		assert.strictEqual(outcome.tokens, 10);
 		assert.strictEqual(outcome.ratio, null);
 	});
@@ -246,9 +263,9 @@ describe('combine_passes', () => {
 	test('a calibration splits the passes alternately into two arms', () => {
 		const outcome = combine_passes(
 			'x',
-			[pass([1000, 1000]), pass([800, 800]), pass([1000, 1000]), pass([800, 800])],
+			attempt([pass([1000, 1000]), pass([800, 800]), pass([1000, 1000]), pass([800, 800])]),
 			1000,
-			true
+			{ kind: 'calibrate', passes: 2 }
 		);
 		assert.ok(outcome.excluded === null);
 		// the value is the first arm's alone, as a full run with these passes would measure
@@ -257,9 +274,57 @@ describe('combine_passes', () => {
 		assert.closeTo(outcome.ratio!, 1000 / 800, 1e-12);
 	});
 
+	test('of several attempts it keeps the one whose rounds agreed best, not the fastest', () => {
+		const outcome = combine_passes(
+			'x',
+			[
+				...attempt([pass([1000, 1500])], 0),
+				// the steadiest, and the slowest
+				...attempt([pass([2000, 2600])], 1),
+				// the fastest
+				...attempt([pass([500, 700])], 2)
+			],
+			1000,
+			full(1)
+		);
+		assert.ok(outcome.excluded === null);
+		assert.strictEqual(outcome.value.ns_per_op, 2300);
+		assert.closeTo(outcome.value.spread, 1.3, 1e-12);
+		assert.strictEqual(outcome.value.attempts, 3);
+	});
+
+	test('select_attempt takes the lowest spread, and the earliest of a tie', () => {
+		assert.strictEqual(select_attempt([1.5]), 0);
+		assert.strictEqual(select_attempt([1.5, 1.3, 1.4]), 1);
+		assert.strictEqual(select_attempt([1.3, 1.3, 1.3]), 0);
+		assert.strictEqual(select_attempt([1.5, 1.2, 1.2]), 1);
+	});
+
+	test('each arm of a calibration keeps its own best attempt', () => {
+		const arm = (results: Array<CellResult>, which: number, n: number): Array<ProcessResult> =>
+			results.map((result, i) => ({
+				planned: { ...PLANNED!, pass: which + 2 * i, attempt: n },
+				result
+			}));
+		const outcome = combine_passes(
+			'x',
+			[
+				...arm([pass([1000, 1400])], 0, 0),
+				...arm([pass([800, 800])], 1, 0),
+				...arm([pass([1000, 1000])], 0, 1)
+			],
+			1000,
+			{ kind: 'calibrate', passes: 1 }
+		);
+		assert.ok(outcome.excluded === null);
+		assert.strictEqual(outcome.value.ns_per_op, 1000);
+		assert.strictEqual(outcome.value.attempts, 2);
+		assert.closeTo(outcome.ratio!, 1000 / 800, 1e-12);
+	});
+
 	test('an excluded library is excluded with its reason', () => {
 		const excluded = create_cell_result(PLANNED!, { excluded: 'produced no tokens' });
-		assert.deepStrictEqual(combine_passes('x', [excluded, excluded], 1000, false), {
+		assert.deepStrictEqual(combine_passes('x', attempt([excluded, excluded]), 1000, full(2)), {
 			excluded: 'produced no tokens'
 		});
 	});
@@ -280,10 +345,168 @@ describe('combine_passes', () => {
 			[pass([1000], 10), pass([1000], 11)]
 		]) {
 			assert.throws(
-				() => combine_passes('cell x (lib)', passes, 1000, false),
+				() => combine_passes('cell x (lib)', attempt(passes), 1000, full(2)),
 				/cell x \(lib\) came out differently from one process to the next/
 			);
+			// and so do two attempts
+			assert.throws(
+				() =>
+					combine_passes(
+						'cell x (lib)',
+						[...attempt([passes[0]!], 0), ...attempt([passes[1]!], 1)],
+						1000,
+						full(1)
+					),
+				/came out differently/
+			);
 		}
+	});
+
+	test('an attempt that lacks a pass fails the run', () => {
+		assert.throws(
+			() => combine_passes('cell x (lib)', attempt([pass([1000])]), 1000, full(2)),
+			/has 1 of 2 passes/
+		);
+		assert.throws(() => combine_passes('cell x (lib)', [], 1000, full(1)), /was not measured/);
+	});
+});
+
+describe('run_cells_in_turn', () => {
+	const cells = plan_cells(manifest.inputs, SMALL_TS, ADAPTERS).slice(0, 2);
+	const [cell] = cells;
+	const steady = [1000, 1000];
+	const noisy = [1000, 1000 * (DISTURBED_SPREAD + 0.1)];
+
+	/** Runs the cells with each process answered by `answer`, and lists what was asked for. */
+	const run = async (
+		options: { kind: 'full' | 'calibrate'; passes: number; retries: number },
+		answer: (planned: PlannedProcess) => CellResult,
+		run_cells = cells
+	): Promise<{ results: Array<ProcessResult>; asked: Array<PlannedProcess> }> => {
+		const asked: Array<PlannedProcess> = [];
+		const results = await run_cells_in_turn(run_cells, options, {
+			measure: (planned) => {
+				asked.push(planned);
+				return answer(planned);
+			}
+		});
+		return { results, asked };
+	};
+
+	test('passes_are_disturbed compares the pooled spread to the threshold', () => {
+		const result = (ns: Array<number>): CellResult => create_cell_result(PLANNED!, { ns });
+		assert.ok(!passes_are_disturbed([result(steady), result(steady)], 1000));
+		assert.ok(passes_are_disturbed([result(noisy)], 1000));
+		// across passes too
+		assert.ok(passes_are_disturbed([result([1000]), result([1300])], 1000));
+		assert.ok(!passes_are_disturbed([result([1000, 1000 * DISTURBED_SPREAD])], 1000));
+		// an excluded library has no rounds to disagree
+		assert.ok(!passes_are_disturbed([create_cell_result(PLANNED!, { excluded: 'x' })], 1000));
+		assert.ok(!passes_are_disturbed([], 1000));
+	});
+
+	test('with nothing disturbed it is the planned processes, in order', async () => {
+		const { results, asked } = await run({ kind: 'full', passes: 2, retries: 2 }, (planned) =>
+			create_cell_result(planned)
+		);
+		assert.deepStrictEqual(asked, plan_processes(cells, 2));
+		assert.deepStrictEqual(
+			results.map((r) => r.planned),
+			asked
+		);
+	});
+
+	test('a disturbed library is measured again on that cell, before the next cell', async () => {
+		const { asked } = await run({ kind: 'full', passes: 2, retries: 2 }, (planned) =>
+			create_cell_result(planned, {
+				ns:
+					planned.cell === cell && planned.library === 'prism' && planned.attempt === 0
+						? noisy
+						: steady
+			})
+		);
+		const retries = asked.filter((p) => p.attempt > 0);
+		// every pass of that library, once: the second attempt was steady
+		assert.deepStrictEqual(
+			retries.map((p) => [p.cell.id, p.library, p.pass, p.attempt]),
+			[
+				[cell!.id, 'prism', 0, 1],
+				[cell!.id, 'prism', 1, 1]
+			]
+		);
+		const first_of_next = asked.findIndex((p) => p.cell !== cell);
+		assert.ok(asked.indexOf(retries[1]!) < first_of_next);
+		assert.strictEqual(asked.length, plan_processes(cells, 2).length + 2);
+	});
+
+	test('retries are bounded, and 0 turns them off', async () => {
+		const always_noisy = (planned: PlannedProcess): CellResult =>
+			create_cell_result(planned, { ns: noisy });
+		for (const retries of [0, 1, 2]) {
+			const { asked } = await run({ kind: 'full', passes: 2, retries }, always_noisy, [cell!]);
+			assert.strictEqual(asked.length, cell!.libraries.length * 2 * (1 + retries));
+			assert.strictEqual(Math.max(...asked.map((p) => p.attempt)), retries);
+		}
+	});
+
+	test('an excluded library is not measured again', async () => {
+		const { asked } = await run({ kind: 'full', passes: 2, retries: 2 }, (planned) =>
+			create_cell_result(planned, { excluded: 'produced no tokens' })
+		);
+		assert.ok(asked.every((p) => p.attempt === 0));
+	});
+
+	test('in a calibration only the disturbed arm of a library is measured again', async () => {
+		const { asked } = await run(
+			{ kind: 'calibrate', passes: 2, retries: 2 },
+			(planned) =>
+				create_cell_result(planned, {
+					// the second arm of one library, in its first attempt
+					ns:
+						planned.library === 'prism' && planned.pass % 2 === 1 && planned.attempt === 0
+							? noisy
+							: steady
+				}),
+			[cell!]
+		);
+		assert.strictEqual(asked.filter((p) => p.attempt === 0).length, cell!.libraries.length * 4);
+		assert.deepStrictEqual(
+			asked.filter((p) => p.attempt > 0).map((p) => [p.library, p.pass, p.attempt]),
+			[
+				['prism', 1, 1],
+				['prism', 3, 1]
+			]
+		);
+	});
+
+	test('a result that disagrees with an earlier one stops the run as it arrives', async () => {
+		const asked: Array<PlannedProcess> = [];
+		const kept: Array<PlannedProcess> = [];
+		let error: unknown;
+		try {
+			await run_cells_in_turn(
+				cells,
+				{ kind: 'full', passes: 2, retries: 0 },
+				{
+					measure: (planned) => {
+						asked.push(planned);
+						return create_cell_result(planned, {
+							tokens: planned.library === 'prism' && planned.pass === 1 ? 11 : 10
+						});
+					},
+					on_result: (planned) => kept.push(planned)
+				}
+			);
+		} catch (caught) {
+			error = caught;
+		}
+		assert.ok(error instanceof RunError);
+		assert.match(error.message, /prism\) came out differently/);
+		// it stopped at that process, and the result was not handed on
+		const last = asked.at(-1)!;
+		assert.deepStrictEqual([last.library, last.pass], ['prism', 1]);
+		assert.ok(asked.length < plan_processes(cells, 2).length);
+		assert.deepStrictEqual(kept, asked.slice(0, -1));
 	});
 });
 
@@ -346,6 +569,7 @@ describe('assemble_results', () => {
 			...FULL_PARAMS,
 			loaded_langs: 'cell',
 			filters: SMALL_TS,
+			segments: 1,
 			duration_ms: 1234
 		});
 		assert.deepStrictEqual(results.meta.machine, MACHINE);
@@ -373,7 +597,40 @@ describe('assemble_results', () => {
 				);
 			}
 			assert.strictEqual(cell.values.fuz_code!.rss_peak_bytes, 50_000_000);
+			assert.strictEqual(cell.values.fuz_code!.attempts, 1);
 		}
+	});
+
+	test('a retried library carries the attempt whose rounds agreed best, and how many it took', () => {
+		const options = create_options({ filters: SMALL_TS });
+		const planned_processes = create_processes(options, (planned) =>
+			create_cell_result(planned, { ns: planned.library === 'prism' ? [500, 900] : [1000] })
+		);
+		const processes = [
+			...planned_processes,
+			// measured again: slower, and steadier
+			...planned_processes
+				.filter(({ planned }) => planned.library === 'prism')
+				.map(({ planned }) => ({ ...planned, attempt: 1 }))
+				.map((planned) => ({ planned, result: create_cell_result(planned, { ns: [2000] }) }))
+		];
+		const { results } = assemble_results(create_record({ options, processes, segments: 2 }));
+		for (const cell of results.cells) {
+			assert.strictEqual(cell.values.prism!.attempts, 2);
+			assert.strictEqual(cell.values.prism!.ns_per_op, 2000);
+			assert.strictEqual(cell.values.fuz_code!.attempts, 1);
+		}
+		assert.strictEqual(results.meta.run!.retries, FULL_PARAMS.retries);
+		assert.strictEqual(results.meta.run!.segments, 2);
+		// a resumed run is a result like any other
+		assert.match(format_run_summary(results), /resumed: measured in 2 segments/);
+		assert.match(format_run_summary(results), /retried: \d+ library-cells were measured again/);
+		// and each library's line says how many of its cells were
+		assert.match(
+			format_run_summary(results),
+			new RegExp(`prism +\\d+ cells, .*, ${results.cells.length} retried`)
+		);
+		assert.match(format_run_summary(results), /fuz_code +\d+ cells, .*, 0 retried/);
 	});
 
 	test('a value pools every pass, in whatever order the processes ran', () => {
@@ -587,7 +844,14 @@ describe('carry_noise_floor', () => {
 	});
 
 	test('not measured with other parameters', () => {
-		for (const key of ['passes', 'rounds', 'target_ms', 'warmup_ms', 'rewarm_ms'] as const) {
+		for (const key of [
+			'passes',
+			'rounds',
+			'target_ms',
+			'warmup_ms',
+			'rewarm_ms',
+			'retries'
+		] as const) {
 			const options = create_options({ kind: 'calibrate', [key]: FULL_PARAMS[key] + 1 });
 			assert_not_carried(create_calibration({ options }), new RegExp(`measured with ${key}`));
 		}
@@ -655,6 +919,8 @@ describe('format_run_summary', () => {
 		assert.match(summary, /uncommitted changes/);
 		assert.match(summary, /noise floor: none/);
 		assert.match(summary, /disturbed: none/);
+		assert.match(summary, /retried: none/);
+		assert.ok(!summary.includes('resumed'));
 	});
 
 	test('lists the cells whose rounds disagreed, so a loaded machine shows', () => {
@@ -675,7 +941,11 @@ describe('format_run_summary', () => {
 			(p) =>
 				p.planned.library === 'shiki_js' && p.planned.cell.mode === 'html' && p.planned.pass === 0
 		);
-		assert.ok(summary.includes(`disturbed: ${html_cells.length} library-cells`));
+		assert.ok(
+			summary.includes(
+				`disturbed: ${html_cells.length} library-cells still have a spread over ${DISTURBED_SPREAD} after ${FULL_PARAMS.retries} more attempt(s)`
+			)
+		);
 		for (const { planned } of html_cells) {
 			assert.ok(summary.includes(`shiki_js in ${planned.cell.id}: ${noisy.toFixed(3)}`));
 		}

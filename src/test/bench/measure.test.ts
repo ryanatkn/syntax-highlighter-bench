@@ -178,7 +178,7 @@ describe('summarize_passes', () => {
 		assert.strictEqual(value.iterations, 50);
 		// the largest peak of any pass
 		assert.strictEqual(value.rss_peak_bytes, 123_456_789);
-		BenchCellValue.parse(value);
+		BenchCellValue.parse({ ...value, attempts: 1 });
 	});
 
 	test('one round of one pass has no spread', () => {
@@ -189,7 +189,7 @@ describe('summarize_passes', () => {
 		assert.strictEqual(value.spread, 1);
 		assert.strictEqual(value.p10_ns, 5000);
 		assert.strictEqual(value.p90_ns, 5000);
-		BenchCellValue.parse(value);
+		BenchCellValue.parse({ ...value, attempts: 1 });
 	});
 
 	test('an even number of passes still records a whole count', () => {
@@ -201,7 +201,7 @@ describe('summarize_passes', () => {
 			100
 		);
 		assert.ok(Number.isInteger(value.iterations));
-		BenchCellValue.parse(value);
+		BenchCellValue.parse({ ...value, attempts: 1 });
 	});
 });
 

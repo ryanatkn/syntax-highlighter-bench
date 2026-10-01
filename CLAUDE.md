@@ -25,6 +25,8 @@ npm run corpus:manifest # regenerate the manifest and the inputs table
 npm run bench:smoke     # every library on every cell once, in parallel
 npm run bench -- --machine <name>           # a full timed run, written to results/
 npm run bench:calibrate -- --machine <name> # the machine's noise floor
+node bench/run.ts --machine <name> --plan   # what a run would do, measuring nothing
+node bench/run.ts --machine <name> --resume # continue a timed run that was stopped
 ```
 
 IMPORTANT for AI agents: Do NOT run `gro dev` — the developer manages the
@@ -51,6 +53,7 @@ bench/                       the Node harness; never imported by the site
   run.ts                     CLI: a timed run — spawns the processes, assembles and writes the results file
   run_options.ts             a run's flags, parameters, cell and process plan, and output path (pure)
   cell.ts                    one library on one cell, in a process of its own: setup, output check, measurement
+  journal.ts                 the journal of a timed run: header, entries, read, append, header diff
   measure.ts                 the timing engine: calibration, collections, timed batches, pooled stats
   anchor.ts                  the reference workload that detects machine drift
   lock.ts                    the machine-wide lock
@@ -61,7 +64,7 @@ bench/                       the Node harness; never imported by the site
   corpus/                    the inputs, by source then language; manifest.json, INPUTS.md
   langs.ts                   the language ids every adapter maps onto
   sets.ts                    the feature sets bundle size is measured over
-results/                     where runs are written; `scratch/` (git-ignored) holds smoke and filtered ones
+results/                     where runs are written; `scratch/` (git-ignored) holds smoke and filtered ones; a journal (git-ignored) sits beside an unfinished run
 src/lib/results_schema.ts    zod strict schemas for a results file
 src/routes/                  the static SvelteKit site
   docs/                      tomes (overview, adapters, corpus, languages, method, results, design) + API docs
@@ -166,12 +169,30 @@ Two classes of number, kept apart:
 until the machine is calibrated, and `meta.anchor` may be null only when the run
 timed nothing (no cell `values`, no `startup`). `meta.run` (`BenchRun`) says
 how the timed cells were measured — the kind of run (`full`, `smoke`,
-`calibrate`), passes, rounds and durations, the loaded-language rule, the
-filters, and the duration — and may be null only when no cell has `values`.
-`bench_run_is_complete` is a run that isn't smoke and has no filter;
-`bench_results_is_publishable` adds that it is `full`, its anchor is stable, and
-its commit isn't dirty. The site should use the latter and never restate it. `meta.commit` is a full hash,
-with `-dirty` appended when the working tree had uncommitted changes.
+`calibrate`), passes, rounds and durations, the retries allowed, the
+loaded-language rule, the filters, how many segments it was measured in, and
+the duration — and may be null only when no cell has `values`.
+`bench_run_is_complete` is a run that isn't smoke and has no filter: what it
+set out to cover. `bench_results_find_gaps` lists what a file lacks to have
+covered it, and `BenchResults` rejects a complete run with timed cells that has
+a gap. `bench_results_is_publishable` adds that it is `full`, has no gap, its
+anchor is stable, and its commit isn't dirty. The site should use the latter
+and never restate it. `meta.commit` is a full hash, with `-dirty` appended when
+the working tree had uncommitted changes.
+
+A gap, checked from the file alone: a roster library that claims a cell's
+language and has neither a value nor a `meta.excluded` entry there, or a listed
+input of a timed language without a cell in every mode the file's cells use.
+The modes come from the cells, not from `BenchMode`, so adding a mode to the
+harness doesn't make earlier files unparseable. What the file can't show is an
+input missing altogether, or a whole mode: `inputs` lists what was measured,
+and only `corpus_hash` names the corpus. The harness plans from the manifest,
+so its own runs have neither.
+
+A cell value's `attempts` is how many times the library was measured there (1
+unless retried), and is at most `meta.run.retries + 1`. The value's spread and
+percentiles are the kept attempt's alone. In a calibration file the values, and
+so their `attempts`, are the first arm's.
 
 A cell's id is `<file>:<mode>`, built by `to_bench_cell_id` and enforced by the
 schema; `meta.excluded` refers to cells by it. `BenchResults` also checks that
@@ -185,7 +206,9 @@ the sections agree with each other:
   input as that entry does
 - the filters in `meta.run` describe the file: no repeated id, every cell
   inside them, `meta.libraries` exactly the libraries filter when it is set
-- a smoke run carries no noise floor
+- a smoke run carries no noise floor, no retries, and one segment
+- no value has more attempts than the run's retries allow
+- a run with no filters and timed cells has no gap (above)
 - the unsupported/excluded rules above; a bundle entry holds sizes only when
   the library claims every language of the set, and otherwise names exactly the
   missing ones
@@ -376,11 +399,13 @@ and optimised. In
    result; after the clock stops the result is counted, and a count unlike the
    checked one throws (Shiki stops silently at its per-line time limit).
 
-The rewarm is as long as the warmup because a shorter one left a library still
-recovering from the forced collection when it was timed. Shiki recovers more
-slowly than the others, and at this length its times still read a few percent
-high. `MeasureDeps` (clock, collector) is injected so the engine is tested with
-a fake clock; `create_measure_deps` throws without `--expose-gc`.
+The rewarm is longer than the warmup because libraries recover from a forced
+collection at different speeds, Shiki more slowly than the others, and a
+library still recovering when its batch is timed reads slow. It is long enough
+that every library in the roster has recovered: don't shorten it without
+checking the slowest recoverer. `MeasureDeps` (clock, collector) is injected so
+the engine is tested with a fake clock; `create_measure_deps` throws without
+`--expose-gc`.
 
 **A run** (`bench/run.ts`, `run_bench`):
 
@@ -389,13 +414,20 @@ a fake clock; `create_measure_deps` throws without `--expose-gc`.
   cell, `passes` passes each, every library once per pass, with the library a
   pass starts with rotating from pass to pass and cell to cell. An unknown flag
   or id exits 2.
-- Everything that could fail is tried before measuring: the output path is
-  resolved and its directory made, an empty or directory `--out` and an
-  existing `results/<date>_<machine>.json` are refused, and the machine's
-  calibration file is parsed. Then it takes the machine lock.
-- `read_commit` runs before the first anchor reading on purpose: the anchor
-  reads several percent slower after a process's first spawn, so both readings
-  must come after one.
+- `plan_run` decides everything before measuring and changes nothing on disk:
+  the cells and processes, the machine, the commit, the output and journal
+  paths, the journal to resume, and the noise floor to carry. It refuses, with
+  exit 2, an unnamed machine, an empty or directory `--out`, an output or
+  journal directory that isn't writable, an existing
+  `results/<date>_<machine>.json`, a journal without `--resume` (saying what
+  the journal records) or `--resume` without a journal, a journal whose header
+  differs or that holds a result the plan could never ask for
+  (`find_unplanned_result`), and a calibration file that doesn't parse. `--plan` prints it (`format_run_plan`, with
+  `estimate_run_ms`) and stops there. `run_bench` then makes the directory and
+  takes the machine lock.
+- `read_commit` runs in `plan_run`, before any anchor reading, on purpose: the
+  anchor reads several percent slower after a process's first spawn, so every
+  reading must come after one.
 - A timed run spawns one process at a time with `spawnSync`, so the parent has
   no timers and does no work while a process measures. It yields to the event
   loop between processes so a signal can stop the run. A smoke run alone spawns
@@ -404,22 +436,84 @@ a fake clock; `create_measure_deps` throws without `--expose-gc`.
   `RunError` naming the cell and library: failed, timed out, interrupted,
   or printed anything but one valid result. A process's stderr is logged even
   when it succeeds.
+- `run_cells_in_turn` drives a timed run cell by cell: the planned passes, then
+  the retries (below). Each result is checked against the library's earlier
+  ones on the cell as it arrives (`assert_passes_agree`: excluded or not, the
+  token count, the output size, across passes, arms, and attempts), so a
+  disagreement stops the run at that cell. What it asks for next depends only
+  on the results so far, which is what lets a journal be replayed through it.
 - `assemble_results` groups the results by cell and library and
-  `combine_passes` pools them: `summarize_passes` takes the median, p10/p90,
-  and spread over the rounds of every pass, the median of the passes'
-  iterations, and the largest peak RSS. Passes that disagree on something
-  deterministic (excluded or not, the token count, the output size) fail the
-  run, as each result arrives, so it stops at that cell. The file is written atomically, and it is the value `BenchResults`
+  `combine_passes` pools them: for each attempt `summarize_passes` takes the
+  median, p10/p90, and spread over the rounds of every pass, the median of the
+  passes' iterations, and the largest peak RSS, and `select_attempt` keeps one
+  attempt. The file is written atomically, and it is the value `BenchResults`
   parsed.
 - `RunError.exit_code` is 2 when the caller must change something (flags, a
-  missing `--machine`, a held lock, an output path, filters matching nothing),
-  the signal's code when interrupted (`SIGNAL_EXIT`), and 1 otherwise.
+  missing `--machine`, a held lock, an output path, a journal, filters matching
+  nothing), the signal's code when interrupted (`SIGNAL_EXIT`), and 1
+  otherwise.
+- `RunBenchOptions` lets tests pass a lock path, a results directory, a logger,
+  and for a timed run `spawn_cell` and `measure_anchor`, so the journal, resume,
+  and retry paths are tested end to end with invented process results
+  (`src/test/bench/run.journal.test.ts`).
+
+**The journal and `--resume`** (`bench/journal.ts`, `measure_segment` in
+`bench/run.ts`). A timed run appends each process's result to a JSON-lines file
+beside its output (`to_journal_path`: `<out>.journal.jsonl`, or
+`<kind>_<machine>.journal.jsonl` in the results directory, which carries no
+date so a run resumed on a later day finds it). Smoke runs keep none.
+
+- The first line is a `JournalHeader`: the kind, the parameters with retries,
+  the filters, the corpus hash, each library's id, version, and extra packages,
+  the machine's name, CPU, and governor, the OS release, the Node version, the
+  `NODE_OPTIONS` the processes inherit, the commit with its dirty marker, and
+  `generated_at`. Two dirty trees at one commit look the same to it, so a resume
+  from a dirty tree logs that it can't vouch for the changes. `diff_journal_header` compares every field
+  but `generated_at`, and any difference refuses the resume by name. Add a
+  field there whenever something new can change what is measured; a test fails
+  if a header field goes uncompared.
+- Then, for each segment (one stretch of measuring): a `segment` line with the
+  opening anchor reading, a `result` line per process (pass, attempt, the
+  `CellResult`), and an `anchor` line with the closing reading. Every line
+  carries milliseconds since its segment started, so duration survives a stop.
+- A line is one `appendFileSync` plus `fsyncSync`, between processes only. A result
+  is journaled after it passes the agreement check, so a disagreeing result is
+  never kept.
+- A resume replays the journaled results through `run_cells_in_turn` in place
+  of their processes and spawns the rest.
+- A last line with no newline is a crash mid-append: it is dropped and the file
+  cut back to its last whole line before appending. A whole line that doesn't
+  parse refuses the journal.
+- However a segment ends (finished, a `RunError`, or the `exit` a signal handler
+  causes) one `close()` takes its closing anchor reading, closes the journal,
+  and releases the lock, and a stopped one says how to resume. A SIGKILL leaves
+  no closing reading.
+- A segment whose `lock.release()` reports the lock was lost may have overlapped
+  another run. On every path `close()` renames its journal to
+  `<journal>.overlapped` (`OVERLAPPED_SUFFIX`), which no run resumes, the
+  message says so, and no results file is written.
+- The assembled file records `segments`, `generated_at` from the first segment
+  (so a full run's dated name is the day it started), `duration_ms` summed over
+  segments, and an anchor over every reading.
+- The journal is removed after the results file is renamed into place. If that
+  write fails, the temp file is removed, the journal stays, and a resume writes
+  the file without measuring anything.
+
+**Retries.** After a cell's planned passes, each library whose pooled `spread`
+there exceeds `DISTURBED_SPREAD` (`passes_are_disturbed`) is measured again,
+every pass (`plan_retry`), up to `retries` times and until an attempt isn't
+disturbed. `select_attempt` keeps the attempt with the lowest spread, the
+earliest on a tie, and never looks at the times: selecting on speed would bias
+retried numbers toward fast and favour whichever library is noisier. `attempts`
+on the value says how many there were, and the summary counts them for each
+library. Retries are journaled like any result, with their attempt number.
+Smoke runs don't retry.
 
 **Kinds of run and where they are written** (`to_results_path`):
 
 | run | parameters | written to |
 | --- | --- | --- |
-| `full`, no filters | `FULL_PARAMS` | `results/<UTC date>_<machine>.json` |
+| `full`, no filters | `FULL_PARAMS` | `results/<UTC date it started>_<machine>.json` |
 | `--calibrate`, no filters | `FULL_PARAMS`, twice the passes | `results/calibration_<machine>.json` |
 | `--smoke`, or any filtered run | `SMOKE_PARAMS` for smoke | `results/scratch/<kind>_<machine>.json` |
 
@@ -436,21 +530,28 @@ the deviation `max(r, 1/r) − 1` over cells and libraries, and `geomean` is the
 deviation of a library's geometric mean of ratios, for the library where it is
 largest. The arms are separate processes, so the floor includes
 process-to-process variation. The cells of a calibration file carry the first
-arm, and `meta.run.passes` is one arm's passes. A `full` run carries the floor
-of `results/calibration_<machine>.json` when `carry_noise_floor` accepts it:
-unfiltered, anchor stable, same machine name, CPU, governor, Node version,
-corpus hash, and parameters. Otherwise `meta.noise_floor` is null and the run
-logs why.
+arm, and `meta.run.passes` is one arm's passes. Each arm is retried on its own
+(`to_arm_count`, `PassUnit`), by the rule a full run applies to a library: the
+rule reads only that arm's rounds, never the distance between the arms, so it
+can't steer the floor, and the floor describes a full run with the same
+retries. Retrying both arms together on their pooled spread would select for
+the arms agreeing, which is the thing being measured. A `full` run carries the
+floor of `results/calibration_<machine>.json` when `carry_noise_floor` accepts
+it: unfiltered, anchor stable, same machine name, CPU, governor, Node version,
+corpus hash, and parameters, retries included. Otherwise `meta.noise_floor` is
+null and the run logs why.
 
 **The anchor** (`bench/anchor.ts`): a deterministic workload with no measured
-library in it, read before the first process and after the last. `drift` is
-the relative change and `stable` is a drift under `ANCHOR_STABLE_BELOW`. It
-only brackets the run, so the summary also lists every library-cell whose
-`spread` exceeds `DISTURBED_SPREAD`.
+library in it, read before the first process and after the last of every
+segment. `to_anchor_drift` takes every reading: `drift` is the relative change
+between the two that differ most, earlier to later, and `stable` is a drift
+under `ANCHOR_STABLE_BELOW`. With two readings that is the plain change. It
+only brackets what was measured, so the summary also lists every library-cell
+whose `spread` still exceeds `DISTURBED_SPREAD` after its retries.
 
 **The lock** (`bench/lock.ts`): an exclusively created file in the OS temp
-directory naming the holder's process, held until the results are ready to
-write. A second run is refused with exit 2 and the holder's pid. A lock whose
+directory naming the holder's process, held for as long as a segment
+measures. A second run is refused with exit 2 and the holder's pid. A lock whose
 process is gone is taken over. `release` reports whether the lock was still
 this process's, and a run that lost it writes nothing. Tests pass their own
 lock path and results directory to `run_bench`, so `gro check` neither takes
@@ -458,7 +559,8 @@ nor waits on the machine's.
 
 **Keep the spawning tests few.** `src/test/bench/run.spawn.test.ts` is the only
 file that starts processes, and each costs a Node start. How a process's ending
-is read is tested without one, through `read_cell_result`.
+is read is tested without one, through `read_cell_result`, and a whole timed
+run through the `spawn_cell` seam.
 
 ## Planned
 

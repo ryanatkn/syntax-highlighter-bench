@@ -13,6 +13,8 @@
 npm run bench:calibrate -- --machine <name>  # the noise floor: results/calibration_<name>.json
 npm run bench:smoke                          # everything once, briefly and in parallel
 node bench/run.ts --langs ts --sizes small   # part of a run, to results/scratch/
+npm run bench -- --machine <name> --plan     # what a run would do, measuring nothing
+npm run bench -- --machine <name> --resume   # continue a run that was stopped
 node bench/run.ts --help`;
 </script>
 
@@ -120,7 +122,13 @@ node bench/run.ts --help`;
 		</p>
 		<p>
 			A full run measures each library in 3 processes per cell, each timing 4 rounds of 20ms
-			batches, after a 100ms warmup, with a 100ms rewarm before each batch.
+			batches, after a 100ms warmup, with a 300ms rewarm before each batch.
+		</p>
+		<p>
+			The rewarm is longer than the warmup on purpose. A forced collection leaves code cold, and
+			libraries recover from it at different speeds, Shiki more slowly than the others. A library
+			still recovering when its batch is timed reads slow, so the rewarm is long enough that every
+			library in the roster has recovered.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -168,6 +176,13 @@ node bench/run.ts --help`;
 					<td><code>rss_peak_bytes</code></td>
 					<td>the peak resident size of the library's process, the largest across its passes</td>
 				</tr>
+				<tr>
+					<td><code>attempts</code></td>
+					<td>
+						how many times the library was measured on the cell: 1 unless it was retried, as
+						described below
+					</td>
+				</tr>
 			</tbody>
 		</table>
 		<p>
@@ -190,7 +205,9 @@ node bench/run.ts --help`;
 		</p>
 		<ul>
 			<li>
-				<code>full</code> — the real measurement. Only a full run with no filters is publishable.
+				<code>full</code> — the real measurement. Only a full run with no filters is publishable,
+				and such a file must be whole: every library has a number or an exclusion in every cell
+				whose language it claims.
 			</li>
 			<li>
 				<code>smoke</code> — every library on every cell, in one process each, for one round of the
@@ -233,6 +250,24 @@ node bench/run.ts --help`;
 					</td>
 				</tr>
 				<tr>
+					<td><code>--retries</code></td>
+					<td>
+						how many times a library whose rounds on a cell disagreed is measured again there. 0
+						turns it off
+					</td>
+				</tr>
+				<tr>
+					<td><code>--resume</code></td>
+					<td>continue the run its journal records, which must be this same run</td>
+				</tr>
+				<tr>
+					<td><code>--plan</code></td>
+					<td>
+						print what the run would measure, where it would write, and an estimate of how long it
+						would take, and measure nothing
+					</td>
+				</tr>
+				<tr>
 					<td><code>--machine</code></td>
 					<td>
 						the name the machine is recorded under. Required for an unfiltered full or calibration
@@ -250,11 +285,100 @@ node bench/run.ts --help`;
 			</tbody>
 		</table>
 		<p>
-			A full run with no filters is written to <code>results/</code>, named by its UTC date and
-			machine, and it won't overwrite a run already there. A smoke run or a filtered one is written
-			to <code>results/scratch/</code>, which git ignores, so it can't be committed as if it were a
-			result. A failed process fails the run, and nothing is written.
+			A full run with no filters is written to <code>results/</code>, named by the UTC date it
+			started and its machine, and it won't overwrite a run already there. A smoke run or a filtered
+			one is written to <code>results/scratch/</code>, which git ignores, so it can't be committed
+			as if it were a result. A failed process fails the run, and no results file is written.
 		</p>
+		<p>
+			<code>--plan</code> makes every check a run makes before it measures, then prints the cells,
+			libraries, and processes, the parameters, where the results and the journal would go, and an
+			estimate of the time, worked out from the parameters and not measured. It is refused where the
+			run would be.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Stopping and resuming" />
+		<p>
+			A full run is one process for each library, pass, and cell, one at a time, so it is long, and
+			a calibration is twice as long. A timed run keeps a journal beside its results file: each
+			process's result is appended and synced to disk before the next process starts. The parent
+			writes only between processes, never while one is measuring. When a run stops, whether by a
+			signal, a failed process, or a crash, the journal stays, and <code>--resume</code> continues
+			the run from it.
+		</p>
+		<ul>
+			<li>
+				<strong>What is recorded.</strong> A first line describing the run, then for each stretch of
+				measuring, a segment, its opening anchor reading, one line for every process result, and its
+				closing anchor reading.
+			</li>
+			<li>
+				<strong>What must match.</strong> The kind of run, its parameters and filters, the corpus
+				hash, every library's version, the machine's name, CPU, and governor, the OS release, the
+				Node version, the <code>NODE_OPTIONS</code> the processes inherit, and the commit with its
+				dirty marker. A resume with any of them different is refused, naming what differs, so
+				results from two setups are never mixed. With a dirty working tree the journal can't tell
+				whether the uncommitted changes are the ones it started with, and a resume says so.
+			</li>
+			<li>
+				<strong>Never by accident.</strong> A journal already there stops a run that wasn't given
+				<code>--resume</code>: it is neither overwritten nor continued until you say which, and the
+				refusal says what run the journal records. A journal holding a result the run would never
+				ask for is refused too.
+			</li>
+			<li>
+				<strong>Never after an overlap.</strong> A run that lost the machine lock sets its journal
+				aside as <code>&lt;journal&gt;.overlapped</code>, since another run may have overlapped it.
+				It writes no results, and the journal can't be resumed.
+			</li>
+			<li>
+				<strong>What is skipped.</strong> The processes the journal holds are not run again. The
+				rest run in the order planned, and the results are assembled exactly as an uninterrupted run
+				assembles them.
+			</li>
+			<li>
+				<strong>What the file says.</strong> <code>segments</code>, in
+				<DeclarationLink name="BenchRun" />, counts the stretches the run was measured in: 1 for an
+				uninterrupted run. <code>generated_at</code>, and the date in a full run's file name, are
+				when the first segment started. <code>duration_ms</code> is the time spent measuring,
+				without the time between segments.
+			</li>
+			<li>
+				<strong>A crash in the middle of a write.</strong> A last line with no newline is a write
+				that didn't finish. It is dropped, and that process is measured again. A complete line that
+				isn't a journal line is not a crash, and the journal is refused.
+			</li>
+		</ul>
+		<p>
+			The journal is removed once the results file is written. A smoke run is short and keeps none.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Retries" />
+		<p>
+			A library whose rounds on a cell are far apart was disturbed by something: another program, or
+			its own processes disagreeing. Once a cell's passes are done, a timed run measures each
+			library whose <code>spread</code> there is over 1.25 again, every pass of it, up to
+			<code>--retries</code> more times (2 by default) and until an attempt is under the threshold.
+		</p>
+		<p>
+			The attempt kept is the one with the lowest spread, the earliest if they tie. It is never
+			chosen by its time. Keeping the fastest attempt would pull every retried number toward fast,
+			and would favour a noisier library, which is retried more often. Choosing on agreement alone
+			takes the measurement that was least disturbed, whichever way it moved the number.
+		</p>
+		<p>
+			<code>attempts</code> records how many times a library was measured on a cell, so the numbers
+			that needed a retry can be told from the rest. A retried value's spread and percentiles are
+			those of the attempt that was kept, so they describe its calmest attempt, not everything that
+			was measured, and <code>attempts</code> is what marks it. The summary a run prints counts the
+			retried cells of each library, and lists the library-cells still over the threshold after the
+			last attempt. What should be the same every time, the token count, the output size, and
+			whether the library passed the check, must agree across attempts as it must across passes, or
+			the run fails at that cell.
+		</p>
+		<p>A smoke run doesn't retry.</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="The noise floor" />
@@ -284,7 +408,14 @@ node bench/run.ts --help`;
 			A calibration is written to <code>results/calibration_&lt;machine&gt;.json</code>. A later
 			full run copies its noise floor if the calibration describes that run: unfiltered, with a
 			stable anchor, and on the same machine name, CPU, governor, Node version, corpus, and
-			parameters. Otherwise the run records no noise floor and says why.
+			parameters, retries included. Otherwise the run records no noise floor and says why.
+		</p>
+		<p>
+			A calibration retries too, each arm of a library on its own and by the same rule, so an arm
+			stays exactly what a full run would measure and the floor describes a full run with the same
+			retries. The rule looks only at an arm's own rounds, never at how far apart the two arms are,
+			so it can't steer the floor. A calibration file's values are the first arm's, and so are their
+			<code>attempts</code>.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -301,14 +432,22 @@ node bench/run.ts --help`;
 			<code>spread</code>, and the summary a run prints lists every library whose rounds on a cell
 			disagreed.
 		</p>
+		<p>
+			A run that was stopped and resumed takes a reading at the start and end of every segment, and
+			its drift is that of the two readings furthest apart. A machine that changed state between
+			segments, or within one, is then flagged and not hidden by readings that happen to agree at
+			the two ends. A segment stopped by a signal or a failed process still takes its closing
+			reading. One that was killed outright can't, and the next segment's opening reading stands in
+			for it.
+		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="One run at a time" />
 		<p>
 			Two measurement runs at once make each other wrong, not just noisy. A run takes a machine-wide
-			lock, a file in the OS temp directory that names its process, and holds it until its results
-			are ready to write. A second run is refused and told who holds the lock. A lock whose process
-			is gone is taken over.
+			lock, a file in the OS temp directory that names its process, and holds it for as long as it
+			measures, as does each segment of a resumed run. A second run is refused and told who holds
+			the lock. A lock whose process is gone is taken over.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -332,9 +471,9 @@ node bench/run.ts --help`;
 				costs is cold start, which is a separate measurement and not built.
 			</li>
 			<li>
-				<strong>Forced collections.</strong> Every batch follows a forced collection and a rewarm.
-				Shiki recovers from a forced collection more slowly than the other libraries; at 100ms its
-				times read a few percent high.
+				<strong>Forced collections.</strong> Every batch follows a forced collection and a rewarm,
+				so a library is timed just after it has recovered from one, which is not how every
+				application runs it.
 			</li>
 			<li>
 				<strong>Measured alone.</strong> A page that loads several highlighters, or a busy
@@ -355,7 +494,8 @@ node bench/run.ts --help`;
 			A quiet machine matters more than a fast one: close other programs, and prefer a fixed CPU
 			frequency governor. Before trusting a run, check that its anchor is stable, that
 			<code>spread</code> is near 1 for every library in every cell, and that nothing unexpected is
-			excluded. <code>bench/run.ts</code> prints all three when it finishes.
+			excluded. <code>bench/run.ts</code> prints all three when it finishes, with how many
+			library-cells were retried and whether the run was resumed.
 		</p>
 	</TomeSection>
 </TomeContent>

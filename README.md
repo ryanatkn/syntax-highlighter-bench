@@ -25,6 +25,7 @@ are designed but not built, and no numbers are published.
   - `bench/check_output.ts` — the check each library passes before it is measured
   - `bench/run.ts` — the timed harness: a run, written as one results file
   - `bench/cell.ts` — one library on one cell, measured in a process of its own
+  - `bench/journal.ts` — the journal a timed run keeps, so it can be resumed
   - `bench/corpus/` — the inputs, with their manifest
   - `bench/langs.ts` — the language ids every adapter maps onto
   - `bench/sets.ts` — the feature sets bundle size is measured over
@@ -135,6 +136,8 @@ npm run bench -- --machine <name>            # a full run: results/<date>_<name>
 npm run bench:calibrate -- --machine <name>  # the noise floor: results/calibration_<name>.json
 npm run bench:smoke                          # everything once, briefly and in parallel
 node bench/run.ts --langs ts --sizes small   # part of a run, to results/scratch/
+npm run bench -- --machine <name> --plan     # what a run would do, measuring nothing
+npm run bench -- --machine <name> --resume   # continue a run that was stopped
 node bench/run.ts --help
 ```
 
@@ -173,8 +176,13 @@ language. The method, and why each part is there:
   the output, not on the library, so it weighs most on the fastest one.
 
 A full run measures each library in 3 processes per cell, each timing 4 rounds
-of 20ms batches, after a 100ms warmup, with a 100ms rewarm before each batch.
+of 20ms batches, after a 100ms warmup, with a 300ms rewarm before each batch.
 One process runs at a time, and the parent does nothing while it measures.
+
+The rewarm is longer than the warmup on purpose. A forced collection leaves
+code cold, and libraries recover from it at different speeds, Shiki more slowly
+than the others. A library still recovering when its batch is timed reads slow,
+so the rewarm is long enough that every library in the roster has recovered.
 
 ### What the numbers mean
 
@@ -186,6 +194,7 @@ One process runs at a time, and the parent does nothing while it measures.
 | `spread` | the slowest round over the fastest, across passes too; near 1 means they agreed |
 | `iterations` | calls per batch, as calibrated: the median across passes |
 | `rss_peak_bytes` | the peak resident size of the library's process, the largest across passes |
+| `attempts` | how many times the library was measured on the cell: 1 unless it was retried |
 
 `rss_peak_bytes` is a whole process: Node itself, the library as its adapter
 imports it, with one language set up, and the input. It is not what the library adds. Compare it between libraries on
@@ -194,7 +203,10 @@ the same cell.
 ### Kinds of run
 
 - `full` — the real measurement. Only a full run with no filters is publishable,
-  and it needs `--machine`.
+  and it needs `--machine`. Such a file must also be whole: every library has a
+  number or an exclusion in every cell whose language it claims, and every
+  input it lists has a cell in each mode the file measures. A file with a gap
+  doesn't parse.
 - `--smoke` — every library on every cell, in one process each, for one round
   of the shortest batches, several processes at a time. It proves the harness
   and every adapter work, and its numbers mean nothing.
@@ -202,11 +214,92 @@ the same cell.
 
 `--libraries`, `--langs`, `--sizes`, `--modes`, and `--sources` restrict a run
 to comma-separated ids, and an unknown id is an error. `--passes`, `--rounds`,
-and `--target-ms` change how long it measures. `--out` chooses the file. A full
-run is named by its UTC date and machine, and won't overwrite one already
-there. A smoke or filtered run is written to `results/scratch/`, which git
-ignores. The results file records the kind of run, its parameters, and its
-filters, and nothing is written if a process fails.
+and `--target-ms` change how long it measures, and `--retries` how often a
+disturbed library is measured again. `--out` chooses the file. A full run is
+named by the UTC date it started and its machine, and won't overwrite one
+already there. A smoke or filtered run is written to `results/scratch/`, which
+git ignores. The results file records the kind of run, its parameters, and its
+filters. No results file is written if a process fails.
+
+`--plan` prints what a run would do and measures nothing: the cells, libraries,
+and processes, the parameters, where the results and the journal would go, and
+an estimate of how long it would take, worked out from the parameters. It makes
+the same checks a run makes before it measures, so it is refused where the run
+would be.
+
+### Stopping and resuming
+
+A full run is one process for each library, pass, and cell, one at a time, so
+it is long, and a calibration is twice as long. A timed run therefore keeps a
+**journal** beside its results file: every process's result is appended and
+synced to disk before the next process starts. When a run stops, whether by a
+signal, a failed process, or a crash, the journal stays and the run says how to
+continue:
+
+```bash
+npm run bench -- --machine <name> --resume
+```
+
+- **What must match.** The journal's first line records the kind of run, its
+  parameters and filters, the corpus hash, every library's version, the
+  machine's name, CPU, and governor, the OS release, the Node version, the
+  `NODE_OPTIONS` the processes inherit, and the commit, with its dirty marker.
+  `--resume` continues only when all of them are the same for the new command,
+  and otherwise is refused, naming what differs. Results from two different
+  setups are never mixed. One thing the journal can't see: with a dirty working
+  tree it can't tell whether the uncommitted changes are the ones it started
+  with, and a resume says so.
+- **Never by accident.** A journal already there stops a run that wasn't given
+  `--resume`: it is neither overwritten nor continued until you say which, and
+  the refusal says what run the journal records. `--resume` with no journal is
+  refused too, as is a journal holding a result the run would never ask for.
+- **Never after an overlap.** A run that lost the machine lock sets its journal
+  aside as `<journal>.overlapped`, since another run may have overlapped it. It
+  writes no results, and the journal can't be resumed.
+- **What is skipped.** The processes the journal holds are not run again, the
+  rest run in the order planned, and the results are assembled exactly as an
+  uninterrupted run assembles them.
+- **What the file says.** `meta.run.segments` counts the stretches the run was
+  measured in: 1 for an uninterrupted run. `generated_at`, and the date in a
+  full run's file name, are when the first segment started. `duration_ms` is
+  the time spent measuring, without the time between segments.
+- **A crash mid-write.** A last line with no newline is a write that didn't
+  finish. It is dropped and that process is measured again. A complete line
+  that isn't a journal line is not a crash, and the journal is refused.
+
+The journal is `<out>.journal.jsonl` with `--out`, and otherwise
+`<kind>_<machine>.journal.jsonl` in the directory the results go to. It is
+removed once the results file is written. A smoke run is short and keeps none.
+
+### Retries
+
+A library whose rounds on a cell are far apart was disturbed by something:
+another program, or its own processes disagreeing. Once a cell's passes are
+done, a timed run measures each library whose `spread` there is over 1.25
+again, every pass of it, up to `--retries` more times (2 by default; 0 turns it
+off) and until an attempt is under the threshold.
+
+The attempt kept is the one with the **lowest spread**, the earliest if they
+tie. It is never chosen by its time. Keeping the fastest attempt would pull
+every retried number toward fast, and would favour a noisier library, which is
+retried more often. Choosing on agreement alone takes the measurement that was
+least disturbed, whichever way it moved the number.
+
+`attempts` records how many times a library was measured on a cell, so the
+numbers that needed a retry can be told from the rest. A retried value's spread
+and percentiles are those of the attempt that was kept, so they describe its
+calmest attempt, not everything that was measured, and `attempts` is what marks
+it. The summary counts the retried cells of each library, and lists the
+library-cells still over the threshold after the last attempt. What should
+be the same every time (the token count, the output size, and whether the
+library passed the check) must agree across attempts as it must across passes.
+
+In a calibration each arm of a library is retried on its own, by the same rule,
+so an arm stays exactly what a full run would measure, and the noise floor
+describes a full run with the same retries. The rule looks only at an arm's own
+rounds, never at how far the two arms are apart, so it can't steer the floor.
+A calibration file's values are the first arm's, and so are their `attempts`.
+A smoke run doesn't retry.
 
 ### The noise floor, the anchor, and the lock
 
@@ -218,18 +311,24 @@ percentile across cells and libraries is the floor for one cell, and the largest
 gap between a library's two geometric means is the floor for a geometric mean.
 A later full run carries the floor in its results file if the calibration
 describes it: unfiltered, steady, and on the same machine, governor, Node
-version, corpus, and parameters. A difference smaller than the floor is not a
-result.
+version, corpus, and parameters, retries included. A difference smaller than
+the floor is not a result.
 
 **The anchor.** A run measures a fixed workload, involving no measured library,
 before its first process and after its last. A drift past 3% means the machine
 changed state during the run, and the absolute times are then suspect. The
 anchor only brackets the run, so the summary also lists every library whose
-rounds on a cell disagreed.
+rounds on a cell disagreed. A run that was stopped and resumed takes a reading
+at the start and end of every segment, and its drift is that of the two
+readings furthest apart, so a machine that changed between segments is flagged
+and not hidden. A segment stopped by a signal or a failure still takes its
+closing reading; one killed outright can't, and the next segment's opening
+reading stands in.
 
 **The lock.** One measurement run at a time, machine-wide: a run holds a lock
-file in the OS temp directory until its results are ready to write, and a second
-run is refused and told who holds it.
+file in the OS temp directory for as long as it measures, and a second
+run is refused and told who holds it. Each segment of a resumed run holds it
+for as long as it measures.
 
 ### Caveats
 
@@ -240,16 +339,17 @@ run is refused and told who holds it.
   faster work.
 - Every library is warm when timed. What a first call costs is cold start, which
   is not built.
-- Every batch follows a forced collection and a rewarm. Shiki recovers from a
-  forced collection more slowly than the other libraries; at 100ms its times
-  read a few percent high.
+- Every batch follows a forced collection and a rewarm, so a library is timed
+  just after it has recovered from one, which is not how every application
+  runs it.
 - A library is measured alone. A page that loads several highlighters, or a
   busy application, gives the engine a different history.
 
 To reproduce a run, check out the commit its file records, `npm ci`, and run
 the same command. Close other programs first: before trusting a run, check that
 its anchor is stable, that `spread` is near 1 everywhere, and that nothing
-unexpected is excluded. `bench/run.ts` prints all three.
+unexpected is excluded. `bench/run.ts` prints all three, with how many
+library-cells were retried and whether the run was resumed.
 
 ## Neutrality
 

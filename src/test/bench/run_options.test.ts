@@ -10,11 +10,16 @@ import {
 	FULL_PARAMS,
 	RUN_FLAGS,
 	SMOKE_PARAMS,
+	PROCESS_OVERHEAD_MS,
+	estimate_run_ms,
 	format_run_help,
 	parse_run_args,
 	plan_cells,
 	plan_processes,
+	plan_retry,
+	to_arm_count,
 	to_calibration_path,
+	to_journal_path,
 	to_machine_name,
 	to_results_path,
 	type RunOptions
@@ -48,7 +53,9 @@ describe('parse_run_args', () => {
 			filters: NO_FILTERS,
 			...FULL_PARAMS,
 			machine: null,
-			out: null
+			out: null,
+			resume: false,
+			plan: false
 		});
 	});
 
@@ -73,6 +80,13 @@ describe('parse_run_args', () => {
 
 	test('a full run measures each library in more than one process', () => {
 		assert.ok(FULL_PARAMS.passes >= 2);
+	});
+
+	test('a full run rewarms for longer than it warms up', () => {
+		// a library that recovers slowly from a forced collection must have recovered when timed
+		assert.ok(FULL_PARAMS.rewarm_ms > FULL_PARAMS.warmup_ms);
+		assert.strictEqual(parse('--calibrate').rewarm_ms, FULL_PARAMS.rewarm_ms);
+		assert.ok(SMOKE_PARAMS.rewarm_ms < FULL_PARAMS.target_ms);
 	});
 
 	test('filters are validated lists, kept in roster order', () => {
@@ -157,9 +171,28 @@ describe('parse_run_args', () => {
 	});
 
 	test('--smoke sets its own parameters', () => {
-		for (const flag of ['--passes', '--rounds', '--target-ms']) {
+		for (const flag of ['--passes', '--rounds', '--target-ms', '--retries']) {
 			assert_usage_error(['--smoke', flag, '3'], /--smoke sets its own/);
 		}
+		assert.strictEqual(parse('--smoke').retries, 0);
+	});
+
+	test('--retries is a whole number, and 0 turns retrying off', () => {
+		assert.strictEqual(parse().retries, FULL_PARAMS.retries);
+		assert.ok(FULL_PARAMS.retries > 0);
+		assert.strictEqual(parse('--retries', '0').retries, 0);
+		assert.strictEqual(parse('--calibrate', '--retries', '5').retries, 5);
+		for (const value of ['-1', '1.5', 'many', '']) {
+			assert_usage_error(['--retries', value], /--retries: .* is not a whole number/);
+		}
+	});
+
+	test('--resume and --plan are switches', () => {
+		assert.ok(parse('--resume').resume);
+		assert.ok(parse('--calibrate', '--resume').resume);
+		assert.ok(parse('--plan').plan);
+		assert.ok(parse('--smoke', '--plan').plan);
+		assert_usage_error(['--smoke', '--resume'], /--smoke keeps no journal/);
 	});
 
 	test('--machine is a name usable in a file name', () => {
@@ -245,6 +278,32 @@ describe('to_results_path', () => {
 				'/r'
 			),
 			join('/r', 'scratch', 'calibrate_box.json')
+		);
+	});
+});
+
+describe('to_journal_path', () => {
+	const run = { machine: 'box', out: null };
+
+	test('beside --out when it is given', () => {
+		assert.strictEqual(
+			to_journal_path({ ...run, kind: 'full', filters: NO_FILTERS, out: '/x/run.json' }, '/r'),
+			'/x/run.json.journal.jsonl'
+		);
+	});
+
+	test('otherwise in the directory the results go to, named without a date', () => {
+		assert.strictEqual(
+			to_journal_path({ ...run, kind: 'full', filters: NO_FILTERS }, '/r'),
+			join('/r', 'full_box.journal.jsonl')
+		);
+		assert.strictEqual(
+			to_journal_path({ ...run, kind: 'calibrate', filters: NO_FILTERS }, '/r'),
+			join('/r', 'calibrate_box.journal.jsonl')
+		);
+		assert.strictEqual(
+			to_journal_path({ ...run, kind: 'full', filters: { ...NO_FILTERS, langs: ['ts'] } }, '/r'),
+			join('/r', 'scratch', 'full_box.journal.jsonl')
 		);
 	});
 });
@@ -398,5 +457,76 @@ describe('plan_processes', () => {
 		const pass = processes.filter((p) => p.cell === cells[0] && p.pass === 1).map((p) => p.library);
 		const start = ids.indexOf(pass[0]!);
 		assert.deepStrictEqual(pass, [...ids.slice(start), ...ids.slice(0, start)]);
+	});
+});
+
+describe('plan_retry', () => {
+	const { inputs } = load_corpus_manifest();
+	const [cell] = plan_cells(inputs, { ...NO_FILTERS, langs: ['ts'], sizes: ['small'] }, ADAPTERS);
+
+	test('a full run has one arm and a calibration two', () => {
+		assert.strictEqual(to_arm_count('full'), 1);
+		assert.strictEqual(to_arm_count('smoke'), 1);
+		assert.strictEqual(to_arm_count('calibrate'), 2);
+	});
+
+	test('measures every pass of each library again, pass by pass', () => {
+		const units = [
+			{ library: 'prism', arm: 0 },
+			{ library: 'shiki_js', arm: 0 }
+		];
+		const processes = plan_retry(cell!, units, 3, 1, 2);
+		assert.strictEqual(processes.length, 6);
+		assert.ok(processes.every((p) => p.cell === cell && p.attempt === 2));
+		assert.deepStrictEqual(
+			processes.map((p) => p.pass),
+			[0, 0, 1, 1, 2, 2]
+		);
+		// the library a pass starts with rotates
+		assert.notStrictEqual(processes[0]!.library, processes[2]!.library);
+		for (let pass = 0; pass < 3; pass++) {
+			assert.deepStrictEqual(
+				processes
+					.filter((p) => p.pass === pass)
+					.map((p) => p.library)
+					.toSorted(),
+				['prism', 'shiki_js']
+			);
+		}
+	});
+
+	test('an arm of a calibration is measured again on its own passes', () => {
+		const first = plan_retry(cell!, [{ library: 'prism', arm: 0 }], 3, 2, 1);
+		assert.deepStrictEqual(
+			first.map((p) => p.pass),
+			[0, 2, 4]
+		);
+		const second = plan_retry(cell!, [{ library: 'prism', arm: 1 }], 3, 2, 1);
+		assert.deepStrictEqual(
+			second.map((p) => p.pass),
+			[1, 3, 5]
+		);
+	});
+
+	test('the planned passes are attempt zero', () => {
+		assert.ok(plan_processes([cell!], 2).every((p) => p.attempt === 0));
+	});
+});
+
+describe('estimate_run_ms', () => {
+	test('is the loops of every process plus an overhead, divided by how many run at once', () => {
+		const per_process =
+			PROCESS_OVERHEAD_MS +
+			FULL_PARAMS.warmup_ms +
+			FULL_PARAMS.rounds * (FULL_PARAMS.rewarm_ms + FULL_PARAMS.target_ms);
+		assert.strictEqual(estimate_run_ms(10, FULL_PARAMS), 10 * per_process);
+		assert.strictEqual(estimate_run_ms(10, FULL_PARAMS, 5), 2 * per_process);
+		assert.ok(estimate_run_ms(10, SMOKE_PARAMS) < estimate_run_ms(10, FULL_PARAMS));
+		// a longer rewarm is paid before every batch of every process
+		assert.strictEqual(
+			estimate_run_ms(10, { ...FULL_PARAMS, rewarm_ms: FULL_PARAMS.rewarm_ms + 200 }) -
+				estimate_run_ms(10, FULL_PARAMS),
+			10 * FULL_PARAMS.rounds * 200
+		);
 	});
 });

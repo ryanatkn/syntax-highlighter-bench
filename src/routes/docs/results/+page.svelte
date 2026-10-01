@@ -28,9 +28,9 @@
 		<ul>
 			<li>
 				<DeclarationLink name="BenchMeta" /> — the machine, Node version, commit, and corpus hash;
-				what kind of run it was and how it measured, in <DeclarationLink name="BenchRun" />; the
-				roster of libraries with their versions; the excluded list; the anchor's drift; the
-				machine's noise floor
+				what kind of run it was and how it measured, in <DeclarationLink name="BenchRun" />, with
+				the retries it allowed and how many segments it was measured in; the roster of libraries
+				with their versions; the excluded list; the anchor's drift; the machine's noise floor
 			</li>
 			<li>
 				<DeclarationLink name="BenchLang" /> and <DeclarationLink name="BenchSet" /> — the language
@@ -43,7 +43,10 @@
 			</li>
 			<li>
 				<DeclarationLink name="BenchCell" /> — one input measured in one mode, with each library's
-				numbers. Its id is <code>&lt;file&gt;:&lt;mode&gt;</code>
+				numbers. Its id is <code>&lt;file&gt;:&lt;mode&gt;</code>. Each value carries
+				<code>attempts</code>: how many times the library was measured there, more than 1 when its
+				rounds disagreed and it was retried. A retried value's spread and percentiles are those of
+				the attempt that was kept
 			</li>
 			<li>
 				<DeclarationLink name="BenchStartup" /> — cold-start measurements, which no run fills yet
@@ -86,7 +89,30 @@
 		</p>
 		<p>
 			<DeclarationLink name="bench_results_is_publishable" /> is the test for a result: a full run
-			with no filters, a stable anchor, and a commit that records everything that ran.
+			with no filters and no gap, a stable anchor, and a commit that records everything that ran.
+		</p>
+		<p>
+			No filters is what a run set out to cover. Whether the file then holds all of it is checked by
+			<DeclarationLink name="bench_results_find_gaps" />, from the file alone:
+		</p>
+		<ul>
+			<li>
+				in every cell, each library of the roster that claims the cell's language has a value, or an
+				entry in the excluded list for that cell
+			</li>
+			<li>every listed input of a timed language has a cell in each mode the file's cells use</li>
+		</ul>
+		<p>
+			A file with no filters and a gap doesn't parse, whether it is a full run or a calibration, so
+			a run that silently lost a library can't pass as complete. A filtered or smoke run lists what
+			it has and may have gaps. Two things the file can't show are an input missing altogether and a
+			whole mode missing: its inputs and modes are the ones that were measured, and only the corpus
+			hash names the corpus they came from.
+		</p>
+		<p>
+			A run that was stopped and resumed is a result like any other. <code>meta.run.segments</code>
+			says how many stretches it was measured in, and its anchor covers every one of them, as
+			<TomeLink slug="method" /> describes.
 		</p>
 		<p>
 			<code>meta.commit</code> ends in <code>-dirty</code> when the working tree had changes the
@@ -120,7 +146,9 @@
 				a run's filters describe the file: every cell is inside them, the libraries listed are
 				exactly the ones filtered to, and no id repeats
 			</li>
-			<li>a smoke run carries no noise floor</li>
+			<li>a smoke run carries no noise floor, allows no retries, and is one segment</li>
+			<li>no value has more attempts than the run's retries allow</li>
+			<li>a run with no filters has no gap, as above</li>
 			<li>
 				each startup entry carries the fields its scenario needs and no others, for languages the
 				library claims, and appears once
