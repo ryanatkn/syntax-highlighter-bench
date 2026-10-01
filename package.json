@@ -1,5 +1,5 @@
 {
-  "name": "@fuzdev/fuz_template",
+  "name": "@ryanatkn/syntax-highlighter-bench",
   "version": "0.0.1",
   "description": "a web app template with TypeScript + SvelteKit + optional Rust for the fuz-stack",
   "glyph": "❄",
