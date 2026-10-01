@@ -41,7 +41,9 @@ brings `@twinkleplop/javascript`, which brings HTML and CSS.
 
 `TokenizeResult.tokens` is a `Uint32Array` holding a type, a start, and an end
 for each token, so the count is its length over three. Whitespace between tokens
-is not a token.
+is not a token. A token is one of those entries of three, which is what
+twinkleplop's own `TokenView.count` reports, so the count is a third of the
+array's length and not the length itself.
 
 ## Synchronous
 

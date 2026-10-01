@@ -10,6 +10,23 @@
 		"node": "v24.14.1",
 		"commit": "0000000000000000000000000000000000000000",
 		"corpus_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+		"run": {
+			"kind": "full",
+			"passes": 3,
+			"rounds": 4,
+			"target_ms": 20,
+			"warmup_ms": 100,
+			"rewarm_ms": 100,
+			"loaded_langs": "cell",
+			"filters": {
+				"libraries": null,
+				"langs": null,
+				"sizes": null,
+				"modes": null,
+				"sources": null
+			},
+			"duration_ms": 1200000
+		},
 		"anchor": {
 			"drift": 0.002,
 			"stable": true
@@ -71,7 +88,7 @@
 		],
 		"excluded": [
 			{
-				"cell": "rust/small/tokenize/shiki/rust.sample",
+				"cell": "shiki/rust/rust.sample:tokenize",
 				"library": "prism",
 				"reason": "produced no tokens"
 			}
@@ -365,7 +382,7 @@
 	],
 	"cells": [
 		{
-			"id": "ts/medium/tokenize/neutral/checker_excerpt.ts",
+			"id": "neutral/ts/checker_excerpt.ts:tokenize",
 			"metric": "throughput",
 			"lang": "ts",
 			"size": "medium",
@@ -385,7 +402,6 @@
 					"p90_ns": 188006,
 					"spread": 1.03,
 					"iterations": 109,
-					"heap_delta_bytes": 122880,
 					"rss_peak_bytes": 90409600
 				},
 				"twinkleplop": {
@@ -396,7 +412,6 @@
 					"p90_ns": 244408,
 					"spread": 1.03,
 					"iterations": 83,
-					"heap_delta_bytes": 159744,
 					"rss_peak_bytes": 90532480
 				},
 				"prism": {
@@ -407,7 +422,6 @@
 					"p90_ns": 582820,
 					"spread": 1.03,
 					"iterations": 35,
-					"heap_delta_bytes": 380928,
 					"rss_peak_bytes": 91269760
 				},
 				"shiki_js": {
@@ -418,7 +432,6 @@
 					"p90_ns": 2632090,
 					"spread": 1.03,
 					"iterations": 8,
-					"heap_delta_bytes": 1720320,
 					"rss_peak_bytes": 95734400
 				},
 				"shiki_wasm": {
@@ -429,7 +442,6 @@
 					"p90_ns": 2068070,
 					"spread": 1.03,
 					"iterations": 10,
-					"heap_delta_bytes": 1351680,
 					"rss_peak_bytes": 94505600
 				}
 			},
@@ -464,7 +476,7 @@
 			}
 		},
 		{
-			"id": "ts/medium/html/neutral/checker_excerpt.ts",
+			"id": "neutral/ts/checker_excerpt.ts:html",
 			"metric": "throughput",
 			"lang": "ts",
 			"size": "medium",
@@ -484,7 +496,6 @@
 					"p90_ns": 282010,
 					"spread": 1.03,
 					"iterations": 72,
-					"heap_delta_bytes": 122880,
 					"rss_peak_bytes": 90409600
 				},
 				"twinkleplop": {
@@ -495,7 +506,6 @@
 					"p90_ns": 366612,
 					"spread": 1.03,
 					"iterations": 56,
-					"heap_delta_bytes": 159744,
 					"rss_peak_bytes": 90532480
 				},
 				"prism": {
@@ -506,7 +516,6 @@
 					"p90_ns": 874230,
 					"spread": 1.03,
 					"iterations": 23,
-					"heap_delta_bytes": 380928,
 					"rss_peak_bytes": 91269760
 				},
 				"shiki_js": {
@@ -517,7 +526,6 @@
 					"p90_ns": 3948134,
 					"spread": 1.03,
 					"iterations": 5,
-					"heap_delta_bytes": 1720320,
 					"rss_peak_bytes": 95734400
 				},
 				"shiki_wasm": {
@@ -528,7 +536,6 @@
 					"p90_ns": 3102106,
 					"spread": 1.03,
 					"iterations": 7,
-					"heap_delta_bytes": 1351680,
 					"rss_peak_bytes": 94505600
 				}
 			},
@@ -563,7 +570,7 @@
 			}
 		},
 		{
-			"id": "rust/small/tokenize/shiki/rust.sample",
+			"id": "shiki/rust/rust.sample:tokenize",
 			"metric": "throughput",
 			"lang": "rust",
 			"size": "small",
@@ -583,7 +590,6 @@
 					"p90_ns": 21665,
 					"spread": 1.03,
 					"iterations": 942,
-					"heap_delta_bytes": 14160,
 					"rss_peak_bytes": 90047200
 				},
 				"twinkleplop": {
@@ -594,7 +600,6 @@
 					"p90_ns": 28164,
 					"spread": 1.03,
 					"iterations": 724,
-					"heap_delta_bytes": 18408,
 					"rss_peak_bytes": 90061360
 				},
 				"shiki_js": {
@@ -605,7 +610,6 @@
 					"p90_ns": 303307,
 					"spread": 1.03,
 					"iterations": 67,
-					"heap_delta_bytes": 198240,
 					"rss_peak_bytes": 90660800
 				},
 				"shiki_wasm": {
@@ -616,7 +620,6 @@
 					"p90_ns": 238313,
 					"spread": 1.03,
 					"iterations": 86,
-					"heap_delta_bytes": 155760,
 					"rss_peak_bytes": 90519200
 				}
 			},
@@ -646,7 +649,7 @@
 			}
 		},
 		{
-			"id": "svelte/micro/html/home/fuz_code/sample.svelte",
+			"id": "home/fuz_code/svelte/sample.svelte:html",
 			"metric": "throughput",
 			"lang": "svelte",
 			"size": "micro",
@@ -666,7 +669,6 @@
 					"p90_ns": 5838,
 					"spread": 1.03,
 					"iterations": 3494,
-					"heap_delta_bytes": 2544,
 					"rss_peak_bytes": 90008480
 				},
 				"twinkleplop": {
@@ -677,7 +679,6 @@
 					"p90_ns": 7590,
 					"spread": 1.03,
 					"iterations": 2688,
-					"heap_delta_bytes": 3307,
 					"rss_peak_bytes": 90011024
 				},
 				"prism": {
@@ -688,7 +689,6 @@
 					"p90_ns": 18099,
 					"spread": 1.03,
 					"iterations": 1127,
-					"heap_delta_bytes": 7886,
 					"rss_peak_bytes": 90026288
 				},
 				"shiki_js": {
@@ -699,7 +699,6 @@
 					"p90_ns": 81739,
 					"spread": 1.03,
 					"iterations": 250,
-					"heap_delta_bytes": 35616,
 					"rss_peak_bytes": 90118720
 				},
 				"shiki_wasm": {
@@ -710,7 +709,6 @@
 					"p90_ns": 64223,
 					"spread": 1.03,
 					"iterations": 318,
-					"heap_delta_bytes": 27984,
 					"rss_peak_bytes": 90093280
 				}
 			},
@@ -745,7 +743,7 @@
 			}
 		},
 		{
-			"id": "json/large/tokenize/neutral/package_lock.json",
+			"id": "neutral/json/package_lock.json:tokenize",
 			"metric": "throughput",
 			"lang": "json",
 			"size": "large",
@@ -765,7 +763,6 @@
 					"p90_ns": 1880064,
 					"spread": 1.03,
 					"iterations": 11,
-					"heap_delta_bytes": 1228800,
 					"rss_peak_bytes": 94096000
 				},
 				"twinkleplop": {
@@ -776,7 +773,6 @@
 					"p90_ns": 2444083,
 					"spread": 1.03,
 					"iterations": 8,
-					"heap_delta_bytes": 1597440,
 					"rss_peak_bytes": 95324800
 				},
 				"prism": {
@@ -787,7 +783,6 @@
 					"p90_ns": 5828198,
 					"spread": 1.03,
 					"iterations": 4,
-					"heap_delta_bytes": 3809280,
 					"rss_peak_bytes": 102697600
 				},
 				"shiki_js": {
@@ -798,7 +793,6 @@
 					"p90_ns": 26320896,
 					"spread": 1.03,
 					"iterations": 1,
-					"heap_delta_bytes": 17203200,
 					"rss_peak_bytes": 147344000
 				},
 				"shiki_wasm": {
@@ -809,7 +803,6 @@
 					"p90_ns": 20680704,
 					"spread": 1.03,
 					"iterations": 1,
-					"heap_delta_bytes": 13516800,
 					"rss_peak_bytes": 135056000
 				}
 			},

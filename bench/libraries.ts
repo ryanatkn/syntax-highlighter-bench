@@ -20,16 +20,3 @@ export const ADAPTERS: ReadonlyArray<HighlighterAdapter> = [
 	shiki_js_adapter,
 	shiki_wasm_adapter
 ];
-
-/**
- * Looks up an adapter by its library id.
- *
- * @throws if no adapter has the id
- */
-export const get_adapter = (id: string): HighlighterAdapter => {
-	const adapter = ADAPTERS.find((a) => a.id === id);
-	if (!adapter) {
-		throw new Error(`unknown library "${id}" (have: ${ADAPTERS.map((a) => a.id).join(', ')})`);
-	}
-	return adapter;
-};

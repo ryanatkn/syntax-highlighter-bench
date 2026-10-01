@@ -11,63 +11,60 @@
 <TomeContent {tome}>
 	<section>
 		<aside>
-			This page describes what is designed and not built: the timed harness, the bundle and
-			cold-start measurements, and the results pages. The details may change as they are built. The
-			<TomeLink slug="adapters" /> and the <TomeLink slug="corpus" /> exist.
+			This page describes what is designed and not built: the bundle and cold-start measurements,
+			the results pages, and a published run. The details may change as they are built. The
+			<TomeLink slug="adapters" />, the <TomeLink slug="corpus" />, and the timed harness described
+			in <TomeLink slug="method" /> exist.
 		</aside>
 	</section>
 	<TomeSection>
-		<TomeSectionHeader text="Metrics" />
-		<p>Machine-dependent, published only from one named machine:</p>
-		<ul>
-			<li>throughput for each language, input size, and mode</li>
-			<li>cold start, from a bare import through to the first highlight</li>
-			<li>memory around the timed loop</li>
-		</ul>
-		<p>Deterministic, the same anywhere:</p>
-		<ul>
-			<li>
-				bundle size for each feature set, minified and compressed, with wasm and theme CSS reported
-				separately
-			</li>
-			<li>output size and element count</li>
-			<li>token counts</li>
-			<li>the coverage matrix</li>
-		</ul>
-	</TomeSection>
-	<TomeSection>
-		<TomeSectionHeader text="Cells" />
+		<TomeSectionHeader text="Bundle size" />
 		<p>
-			A cell is one input of the <TomeLink slug="corpus" /> measured in one mode,
-			<code>tokenize</code> or <code>html</code>, across the libraries that claim its language. A
-			cell carries its input's source and size tier, so a reader can compare on the neutral inputs
-			alone, or see whether a result holds on a library's home turf.
+			How many bytes a library adds to a page, measured over each feature set of
+			<TomeLink slug="languages" />: a build of the module each adapter writes for the set, minified
+			and compressed. Two things are reported apart from the JavaScript, because folding them in
+			would hide a real difference: the wasm a library loads, and the stylesheet a library with
+			class-based output needs for its default theme.
+		</p>
+		<p>
+			Because one set holds no languages and one holds each language alone, the cost of adding a
+			language is their difference, with no extra measurement.
+		</p>
+		<p>
+			Bundle size is deterministic, like the token counts and output sizes the timed harness already
+			records, so it can be regenerated anywhere and kept current on every change.
 		</p>
 	</TomeSection>
 	<TomeSection>
-		<TomeSectionHeader text="Method" />
+		<TomeSectionHeader text="Cold start" />
 		<p>
-			The timing method follows the comparison harness of
-			<a href="https://github.com/pngwn/twinkleplop">twinkleplop</a> (MIT):
+			What a first highlight costs: the time from a bare process through importing a library,
+			loading a language, and highlighting a short snippet, with each sample in a fresh process. The
+			timed harness measures only warm libraries, so this is the other half of a library's speed,
+			and the half a short-lived process or a first page load feels.
 		</p>
-		<ul>
-			<li>each cell runs in a process of its own</li>
-			<li>libraries alternate within a round, and the starting library rotates</li>
-			<li>iteration counts are calibrated for each library, since speeds differ widely</li>
-			<li>garbage is collected and each library rewarmed before a round</li>
-			<li>
-				a reference workload runs at the start and end, and its drift says whether the machine
-				changed state during the run
-			</li>
-			<li>
-				before measuring, every adapter's output is checked for every language it claims, with the
-				check described in <TomeLink slug="adapters" />, and a failure is recorded as excluded
-				rather than measured
-			</li>
-			<li>
-				a machine is calibrated before its numbers are trusted, by measuring one adapter as two
-				libraries; the deviation is its noise floor
-			</li>
-		</ul>
+		<p>
+			What a library adds to a process's memory belongs here too: the timed harness records each
+			process's peak size, which includes Node itself, and a cold-start process has a bare baseline
+			to subtract.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Results pages" />
+		<p>
+			The site will render a results file as a matrix: cells as rows, libraries as columns, each
+			value beside its ratio to the best, with filters for the libraries, languages, sizes, sources,
+			and modes, so a reader compares the subset they care about. A summary is a geometric mean over
+			only the cells every selected library was measured in, and differences inside the machine's
+			noise floor are shown as such.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="A published run" />
+		<p>
+			Timed numbers will be published from one named machine, calibrated first, with the machine,
+			the commands, and the checks a run must pass written beside them. Until then the harness can
+			be run by anyone, and <TomeLink slug="method" /> says how.
+		</p>
 	</TomeSection>
 </TomeContent>

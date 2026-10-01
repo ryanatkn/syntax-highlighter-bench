@@ -7,7 +7,7 @@ import { LangNotSetUpError, type HighlighterAdapter } from '../../../bench/adapt
 import { MIN_SNIPPET_SPAN_KINDS, analyze_html, check_output } from '../../../bench/check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from '../../../bench/corpus.ts';
 import { LANGS, TIMED_LANGS, is_lang, type Lang } from '../../../bench/langs.ts';
-import { ADAPTERS, get_adapter } from '../../../bench/libraries.ts';
+import { ADAPTERS } from '../../../bench/libraries.ts';
 import {
 	resolve_package_version,
 	resolve_theme_css,
@@ -48,11 +48,6 @@ describe('roster', () => {
 				...(directory === 'prism' ? ['prism_modules.d.ts'] : [])
 			]);
 		}
-	});
-
-	test('get_adapter finds each adapter and rejects an unknown id', () => {
-		for (const adapter of ADAPTERS) assert.strictEqual(get_adapter(adapter.id), adapter);
-		assert.throws(() => get_adapter('highlight_js'), /unknown library "highlight_js"/);
 	});
 
 	test('every timed language is claimed by every adapter', () => {

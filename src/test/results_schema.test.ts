@@ -1,7 +1,14 @@
 import { assert, describe, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { BenchInput, BenchResults, parse_bench_results } from '$lib/results_schema.ts';
+import {
+	BenchInput,
+	BenchResults,
+	bench_results_is_publishable,
+	bench_run_is_complete,
+	parse_bench_results,
+	to_bench_cell_id
+} from '$lib/results_schema.ts';
 
 const FIXTURE_URL = new URL('./fixtures/results/fixture_run.json', import.meta.url);
 
@@ -21,7 +28,7 @@ const assert_rejects = (data: unknown, expected: string): void => {
 	);
 };
 
-const EXCLUDED_CELL = 'rust/small/tokenize/shiki/rust.sample';
+const EXCLUDED_CELL = 'shiki/rust/rust.sample:tokenize';
 
 describe('round trip', () => {
 	test('the fixture parses and serializes back to itself', () => {
@@ -282,6 +289,168 @@ describe('anchor', () => {
 	});
 });
 
+describe('run', () => {
+	test('a run with timed cells records how they were measured', () => {
+		const data = load_fixture();
+		data.meta.run = null;
+		assert_rejects(data, 'a run with timed cells records how they were measured');
+	});
+
+	test('a run that timed no cell needs no run parameters', () => {
+		const data = load_deterministic_fixture();
+		data.meta.run = null;
+		data.meta.anchor = null;
+		BenchResults.parse(data);
+		// cold start alone is timed, and has parameters of its own
+		const data2 = load_fixture();
+		for (const cell of data2.cells) cell.values = {};
+		data2.meta.run = null;
+		BenchResults.parse(data2);
+	});
+
+	test('the kinds of run are told apart', () => {
+		for (const kind of ['full', 'calibrate'] as const) {
+			const data = load_fixture();
+			data.meta.run!.kind = kind;
+			BenchResults.parse(data);
+		}
+		const data = load_fixture();
+		(data.meta.run as any).kind = 'partial';
+		assert_rejects(data, 'meta.run.kind');
+	});
+
+	test('a smoke run carries no noise floor', () => {
+		const data = load_fixture();
+		data.meta.run!.kind = 'smoke';
+		assert_rejects(data, 'meta.noise_floor: a smoke run carries no noise floor');
+		data.meta.noise_floor = null;
+		BenchResults.parse(data);
+	});
+
+	/** The fixture narrowed to one of its cells, with the filters that describe exactly that. */
+	const load_filtered_fixture = (): BenchResults => {
+		const data = load_fixture();
+		const cell = data.cells[0]!;
+		const libraries = Object.keys(cell.values);
+		data.cells = [cell];
+		data.meta.excluded = [];
+		data.startup = [];
+		data.bundle = {};
+		data.meta.libraries = data.meta.libraries.filter((l) => libraries.includes(l.id));
+		data.coverage = Object.fromEntries(
+			data.meta.libraries.map((l) => [l.id, data.coverage[l.id]!])
+		);
+		data.meta.run!.filters = {
+			libraries: data.meta.libraries.map((l) => l.id),
+			langs: [cell.lang],
+			sizes: [cell.size],
+			modes: [cell.mode],
+			sources: [cell.source]
+		};
+		return data;
+	};
+
+	test('filters are null, or describe what the file holds', () => {
+		BenchResults.parse(load_filtered_fixture());
+	});
+
+	test('rejects a cell outside a filter', () => {
+		for (const [key, value] of [
+			['langs', 'rust'],
+			['sizes', 'micro'],
+			['modes', 'html'],
+			['sources', 'shiki']
+		] as const) {
+			const data = load_filtered_fixture();
+			const inside = (data.meta.run!.filters[key] as Array<string>)[0]!;
+			assert.notStrictEqual(inside, value);
+			(data.meta.run!.filters as any)[key] = [value];
+			assert_rejects(data, `cells.0: "${inside}" is outside the run's ${key} filter`);
+		}
+	});
+
+	test('a run filtered by library lists exactly those libraries', () => {
+		const message = 'a run filtered by library lists exactly those libraries';
+		const data = load_filtered_fixture();
+		data.meta.run!.filters.libraries!.pop();
+		assert_rejects(data, message);
+		const data2 = load_filtered_fixture();
+		data2.meta.run!.filters.libraries = ['highlight_js'];
+		assert_rejects(data2, message);
+		const data3 = load_filtered_fixture();
+		data3.meta.run!.filters.libraries!.reverse();
+		assert_rejects(data3, message);
+		// the fixture's own roster, named in full, is a filter too
+		const data4 = load_fixture();
+		data4.meta.run!.filters.libraries = data4.meta.libraries.map((l) => l.id);
+		BenchResults.parse(data4);
+	});
+
+	test('rejects a filter that is empty, misnamed, or repeats an id', () => {
+		const data = load_filtered_fixture();
+		data.meta.run!.filters.langs = ['tsx'];
+		assert_rejects(data, 'meta.run.filters.langs.0: unknown lang "tsx"');
+		for (const key of ['libraries', 'langs', 'sizes', 'modes', 'sources'] as const) {
+			const data2 = load_filtered_fixture();
+			(data2.meta.run!.filters as any)[key] = [];
+			assert_rejects(data2, `meta.run.filters.${key}`);
+			const data3 = load_filtered_fixture();
+			(data3.meta.run!.filters as any)[key] = ['nope!'];
+			assert_rejects(data3, `meta.run.filters.${key}`);
+			const data4 = load_filtered_fixture();
+			const filter = data4.meta.run!.filters[key] as Array<string>;
+			filter.push(filter[0]!);
+			assert_rejects(
+				data4,
+				`meta.run.filters.${key}.${filter.length - 1}: duplicate "${filter[0]}" in the filter`
+			);
+		}
+	});
+
+	test('what is publishable is a complete, steady, clean full run', () => {
+		assert.ok(bench_results_is_publishable(load_fixture()));
+		assert.ok(bench_run_is_complete(load_fixture().meta.run!));
+		const changes: Array<(data: BenchResults) => void> = [
+			(data) => (data.meta.run = null),
+			(data) => (data.meta.run!.kind = 'calibrate'),
+			(data) => (data.meta.run!.kind = 'smoke'),
+			(data) => (data.meta.run!.filters.sizes = ['medium']),
+			(data) => (data.meta.run!.filters.libraries = data.meta.libraries.map((l) => l.id)),
+			(data) => (data.meta.anchor = { drift: 0.5, stable: false }),
+			(data) => (data.meta.anchor = null),
+			(data) => (data.meta.commit += '-dirty')
+		];
+		for (const [i, change] of changes.entries()) {
+			const data = load_fixture();
+			change(data);
+			assert.ok(!bench_results_is_publishable(data), `change ${i}`);
+		}
+		assert.ok(!bench_run_is_complete(load_filtered_fixture().meta.run!));
+	});
+
+	test('rejects parameters that are not positive', () => {
+		for (const key of ['passes', 'rounds', 'target_ms'] as const) {
+			const data = load_fixture();
+			data.meta.run![key] = 0;
+			assert_rejects(data, `meta.run.${key}`);
+		}
+		const data = load_fixture();
+		data.meta.run!.rounds = 1.5;
+		assert_rejects(data, 'meta.run.rounds');
+	});
+
+	test('the commit is a full hash, marked when the tree was dirty', () => {
+		const data = load_fixture();
+		data.meta.commit = `${data.meta.commit}-dirty`;
+		BenchResults.parse(data);
+		for (const commit of ['abc123', 'main', `${'0'.repeat(40)}-changed`, `${'0'.repeat(40)} `]) {
+			const data2 = load_fixture();
+			data2.meta.commit = commit;
+			assert_rejects(data2, 'meta.commit');
+		}
+	});
+});
+
 describe('startup', () => {
 	const find_startup = (data: BenchResults, scenario: string) =>
 		data.startup.find((s) => s.scenario === scenario)!;
@@ -386,16 +555,35 @@ describe('cells', () => {
 		assert_rejects(data, 'lang "xml" is not timed');
 	});
 
-	test('rejects two cells measuring the same input, even with distinct ids', () => {
+	test('rejects two cells measuring the same input', () => {
 		const data = load_fixture();
-		data.cells.push({ ...data.cells[0]!, id: 'another' });
+		data.cells.push({ ...data.cells[0]! });
 		assert_rejects(data, 'duplicate cell');
+		assert_rejects(data, 'duplicate cell id');
+	});
+
+	test('a cell is named after its file and mode', () => {
+		const data = load_fixture();
+		for (const cell of data.cells) {
+			assert.strictEqual(cell.id, to_bench_cell_id(cell.file, cell.mode));
+			assert.strictEqual(cell.id, `${cell.file}:${cell.mode}`);
+		}
+		const cell = data.cells[0]!;
+		cell.id = 'another';
+		assert_rejects(data, `cells.0.id: expected "${cell.file}:${cell.mode}"`);
 	});
 
 	test('accepts the same input in another mode', () => {
 		const data = load_fixture();
 		const cell = data.cells.find((c) => c.id === EXCLUDED_CELL)!;
-		data.cells.push({ ...cell, id: 'another', mode: 'html', values: {}, tokens: {}, output: {} });
+		data.cells.push({
+			...cell,
+			id: to_bench_cell_id(cell.file, 'html'),
+			mode: 'html',
+			values: {},
+			tokens: {},
+			output: {}
+		});
 		BenchResults.parse(data);
 	});
 });
@@ -502,7 +690,16 @@ describe('inputs', () => {
 			'java' + 'script:alert(1)',
 			'http://github.com/a/b',
 			'git@github.com:a/b',
-			'a/b'
+			'a/b',
+			// only the host and a path: no userinfo, query, fragment, or trailing slash
+			'https://user@github.com/a/b',
+			'https://user:token@github.com/a/b',
+			'https://github.com/a/b?tab=readme',
+			'https://github.com/a/b#readme',
+			'https://github.com/a/b/',
+			'https://github.com',
+			'https://github.com/',
+			'https://github.com/a b'
 		]) {
 			assert.ok(!parses({ repo }), repo);
 		}
@@ -510,6 +707,24 @@ describe('inputs', () => {
 			assert.ok(!parses({ path }), path);
 		}
 		assert.ok(parses({ path: 'src/.config/a..b.ts' }));
+	});
+
+	test("an input's file is a relative path that stays inside the corpus", () => {
+		const input = load_fixture().inputs[0]!;
+		const parses = (file: string): boolean => BenchInput.safeParse({ ...input, file }).success;
+		assert.ok(parses(input.file));
+		assert.ok(parses('neutral/ts/.config/a..b.ts'));
+		for (const file of [
+			'/etc/passwd',
+			'../outside.ts',
+			'neutral/../../outside.ts',
+			'./neutral/ts/a.ts',
+			'neutral/./ts/a.ts',
+			'neutral//a.ts',
+			'neutral/ts/'
+		]) {
+			assert.ok(!parses(file), file);
+		}
 	});
 
 	test('the corpus hash is a full SHA-256', () => {

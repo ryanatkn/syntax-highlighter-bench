@@ -1,0 +1,331 @@
+import { afterAll, assert, beforeAll, describe, test } from 'vitest';
+import { spawnSync } from 'node:child_process';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { BenchResults, parse_bench_results } from '$lib/results_schema.ts';
+import { load_corpus_manifest } from '../../../bench/corpus.ts';
+import { ADAPTERS } from '../../../bench/libraries.ts';
+import { RunError, run_bench } from '../../../bench/run.ts';
+import { parse_run_args, type RunOptions } from '../../../bench/run_options.ts';
+
+// The tests that start real processes: one small smoke run through real cell
+// processes, and the commands' exit codes. Keep them few: each costs a process.
+
+const REPO_DIR = fileURLToPath(new URL('../../../', import.meta.url));
+
+let dir: string;
+
+beforeAll(() => {
+	dir = mkdtempSync(join(tmpdir(), 'bench_run_spawn_test_'));
+});
+
+afterAll(() => {
+	rmSync(dir, { recursive: true, force: true });
+});
+
+const parse = (...args: Array<string>): RunOptions => {
+	const parsed = parse_run_args(args, ADAPTERS);
+	assert.ok(parsed.ok && !parsed.help);
+	return parsed.options;
+};
+
+describe('run_bench', () => {
+	test(
+		'a smoke run over a narrow filter writes a valid results file',
+		{ timeout: 60_000 },
+		async () => {
+			const out = join(dir, 'smoke.json');
+			const lock_path = join(dir, 'smoke.lock');
+			const log: Array<string> = [];
+			const options = parse(
+				'--smoke',
+				'--langs',
+				'json',
+				'--sizes',
+				'micro',
+				'--libraries',
+				'fuz_code,prism',
+				'--out',
+				out
+			);
+			const { results, path, pairs } = await run_bench(options, {
+				lock_path,
+				log: (line) => log.push(line)
+			});
+
+			assert.strictEqual(path, out);
+			// the file is the parsed value, and reads back as itself
+			const text = readFileSync(out, 'utf8');
+			assert.strictEqual(text, JSON.stringify(results, null, '\t') + '\n');
+			assert.deepStrictEqual(parse_bench_results(JSON.parse(text)), results);
+
+			const inputs = load_corpus_manifest().inputs.filter(
+				(i) => i.lang === 'json' && i.size === 'micro'
+			);
+			assert.ok(inputs.length > 0);
+			assert.deepStrictEqual(
+				results.cells.map((cell) => cell.id),
+				inputs.flatMap((i) => [`${i.file}:tokenize`, `${i.file}:html`])
+			);
+			assert.deepStrictEqual(results.inputs, inputs);
+			for (const cell of results.cells) {
+				for (const section of [cell.values, cell.tokens, cell.output]) {
+					assert.deepStrictEqual(Object.keys(section), ['fuz_code', 'prism']);
+				}
+				for (const value of Object.values(cell.values)) {
+					assert.ok(value.ns_per_op > 0);
+					// a whole process of its own
+					assert.ok(value.rss_peak_bytes > 10_000_000);
+				}
+			}
+			assert.deepStrictEqual(results.meta.excluded, []);
+			assert.deepStrictEqual(
+				results.meta.libraries.map((l) => l.id),
+				['fuz_code', 'prism']
+			);
+
+			const { meta } = results;
+			assert.strictEqual(meta.run!.kind, 'smoke');
+			assert.strictEqual(meta.run!.rounds, 1);
+			assert.strictEqual(meta.run!.passes, 1);
+			assert.deepStrictEqual(meta.run!.filters, options.filters);
+			assert.ok(meta.run!.duration_ms > 0);
+			assert.ok(meta.anchor !== null);
+			assert.strictEqual(meta.noise_floor, null);
+			assert.strictEqual(meta.node, process.version);
+			assert.match(meta.commit, /^[0-9a-f]{40}(-dirty)?$/);
+			assert.strictEqual(meta.corpus_hash, load_corpus_manifest().corpus_hash);
+			assert.ok(meta.machine.name.length > 0);
+			assert.deepStrictEqual(results.startup, []);
+			assert.deepStrictEqual(results.bundle, {});
+			assert.deepStrictEqual(pairs, []);
+
+			// the lock was held for the run and is free again, and no temp file is left
+			assert.ok(!existsSync(lock_path));
+			assert.deepStrictEqual(
+				readdirSync(dir).filter((name) => name.endsWith('.tmp')),
+				[]
+			);
+			assert.ok(log.some((line) => line.includes('smoke run')));
+			BenchResults.parse(results);
+		}
+	);
+
+	test('refuses to run while the machine lock is held, and writes nothing', async () => {
+		const out = join(dir, 'refused.json');
+		const lock_path = join(dir, 'held.lock');
+		writeFileSync(
+			lock_path,
+			JSON.stringify({ pid: process.pid, label: 'full run', cwd: '/elsewhere', started_at: 'now' })
+		);
+		let error: unknown;
+		try {
+			await run_bench(parse('--smoke', '--langs', 'json', '--sizes', 'micro', '--out', out), {
+				lock_path,
+				log: () => {}
+			});
+		} catch (caught) {
+			error = caught;
+		}
+		assert.ok(error instanceof RunError);
+		assert.strictEqual(error.exit_code, 2);
+		assert.match(error.message, new RegExp(`held by pid ${process.pid} \\(full run`));
+		assert.ok(!existsSync(out));
+		// the holder's lock is untouched
+		assert.ok(existsSync(lock_path));
+	});
+
+	const assert_refused = async (
+		args: Array<string>,
+		expected: RegExp,
+		bench_options: { results_dir?: string } = {}
+	): Promise<void> => {
+		let error: unknown;
+		try {
+			await run_bench(parse(...args), {
+				lock_path: join(dir, 'unused.lock'),
+				log: () => {},
+				...bench_options
+			});
+		} catch (caught) {
+			error = caught;
+		}
+		assert.ok(error instanceof RunError, args.join(' '));
+		assert.strictEqual(error.exit_code, 2);
+		assert.match(error.message, expected);
+		// refused before anything was measured: the lock was never taken
+		assert.ok(!existsSync(join(dir, 'unused.lock')));
+	};
+
+	test('a complete run needs the machine named, whatever --out says', async () => {
+		for (const args of [[], ['--calibrate'], ['--out', join(dir, 'x.json')]]) {
+			await assert_refused(args, /--machine/);
+		}
+	});
+
+	test('an output path that could not be written is refused before measuring', async () => {
+		const filtered = ['--langs', 'json', '--sizes', 'micro'];
+		await assert_refused([...filtered, '--out', ''], /--out needs a file path/);
+		await assert_refused([...filtered, '--out', dir], /is a directory/);
+		// a path under a file can't have its directory made
+		const file = join(dir, 'a_file.json');
+		writeFileSync(file, '');
+		await assert_refused([...filtered, '--out', join(file, 'x.json')], /can't write to/);
+	});
+
+	test('a full run does not overwrite the run of the same UTC date and machine', async () => {
+		const results_dir = join(dir, 'dated');
+		mkdirSync(results_dir);
+		const today = new Date().toISOString().slice(0, 10);
+		const existing = join(results_dir, `${today}_box.json`);
+		writeFileSync(existing, 'an earlier run');
+		await assert_refused(['--machine', 'box'], /exists: move it or pass --out/, { results_dir });
+		assert.strictEqual(readFileSync(existing, 'utf8'), 'an earlier run');
+	});
+
+	test('a calibration file that does not parse stops a full run before it measures', async () => {
+		const results_dir = join(dir, 'calibrated');
+		mkdirSync(results_dir);
+		writeFileSync(join(results_dir, 'calibration_box.json'), '{"meta": {}}');
+		await assert_refused(
+			['--machine', 'box', '--langs', 'json', '--sizes', 'micro'],
+			/calibration_box\.json is not a results file/,
+			{ results_dir }
+		);
+	});
+
+	test('filters that match no cell are a usage error', async () => {
+		await assert_refused(['--sizes', 'large', '--sources', 'harness'], /no cell matches/);
+	});
+});
+
+const run_node = (
+	...args: Array<string>
+): { status: number | null; stdout: string; stderr: string } =>
+	spawnSync(process.execPath, args, { cwd: REPO_DIR, encoding: 'utf8' });
+
+describe('the commands', { timeout: 30_000 }, () => {
+	test('bench/run.ts exits 2 for an unknown flag or id, before doing anything', () => {
+		for (const args of [['--bogus']]) {
+			const run = run_node('bench/run.ts', ...args);
+			assert.strictEqual(run.status, 2, args.join(' '));
+			assert.match(run.stderr, /--help/);
+			assert.strictEqual(run.stdout, '');
+		}
+	});
+
+	test('bench/run.ts --help prints the flags and exits 0', () => {
+		const run = run_node('bench/run.ts', '--help');
+		assert.strictEqual(run.status, 0);
+		for (const flag of ['--smoke', '--calibrate', '--libraries', '--machine']) {
+			assert.ok(run.stdout.includes(flag), flag);
+		}
+	});
+
+	test('bench/cell.ts fails loudly without --expose-gc, and prints no result', () => {
+		const spec = JSON.stringify({
+			file: 'harness/json/snippet.json',
+			mode: 'tokenize',
+			library: 'fuz_code',
+			rounds: 1,
+			target_ms: 1,
+			warmup_ms: 1,
+			rewarm_ms: 1
+		});
+		const run = run_node('bench/cell.ts', spec);
+		assert.notStrictEqual(run.status, 0);
+		assert.match(run.stderr, /--expose-gc/);
+		assert.strictEqual(run.stdout, '');
+		// and with the flag, it prints exactly one JSON result
+		const with_gc = run_node('--expose-gc', 'bench/cell.ts', spec);
+		assert.strictEqual(with_gc.status, 0, with_gc.stderr);
+		assert.strictEqual(JSON.parse(with_gc.stdout).cell, 'harness/json/snippet.json:tokenize');
+		assert.strictEqual(with_gc.stdout.trim().split('\n').length, 1);
+	});
+
+	test('bench/cell.ts fails on a spec it does not understand', () => {
+		for (const spec of ['{}']) {
+			const run = run_node('--expose-gc', 'bench/cell.ts', spec);
+			assert.notStrictEqual(run.status, 0);
+			assert.strictEqual(run.stdout, '');
+		}
+	});
+
+	test('the html call hands back a flat string from every library, cold and optimised', () => {
+		// some libraries return a rope, and the timed call must pay to flatten it as a
+		// consumer would. Only the engine can say whether a string is flat, and an
+		// optimised call is where a read whose result goes nowhere would be dropped.
+		const script = `
+			import { create_timed_call, load_adapter, read_html_sink } from './bench/cell.ts';
+			const src = 'const a: number = 1;\\nexport const b = [a, "two"];\\n'.repeat(40);
+			const flat = {};
+			for (const id of ${JSON.stringify(ADAPTERS.map((a) => a.id))}) {
+				const adapter = await load_adapter(id);
+				await adapter.setup(['ts']);
+				const raw = %StringIsFlat(adapter.html(src, 'ts'));
+				const run = create_timed_call(adapter, 'html', src, 'ts');
+				const cold = %StringIsFlat(run());
+				%PrepareFunctionForOptimization(run);
+				run();
+				run();
+				%OptimizeFunctionOnNextCall(run);
+				const optimised = %StringIsFlat(run());
+				let hot = true;
+				for (let i = 0; i < 2000; i++) hot = %StringIsFlat(run()) && hot;
+				flat[id] = { raw, cold, optimised, hot };
+			}
+			console.log(JSON.stringify({ flat, sink: read_html_sink() }));
+		`;
+		const run = run_node('--allow-natives-syntax', '--input-type=module', '-e', script);
+		assert.strictEqual(run.status, 0, run.stderr);
+		const {
+			flat,
+			sink
+		}: {
+			flat: Record<string, { raw: boolean; cold: boolean; optimised: boolean; hot: boolean }>;
+			sink: number;
+		} = JSON.parse(run.stdout);
+		assert.deepStrictEqual(
+			Object.keys(flat),
+			ADAPTERS.map((a) => a.id)
+		);
+		for (const [id, { cold, optimised, hot }] of Object.entries(flat)) {
+			assert.ok(cold, `${id} cold`);
+			assert.ok(optimised, `${id} optimised`);
+			assert.ok(hot, `${id} after many calls`);
+		}
+		// the case this guards is real: at least one library returns a rope
+		assert.ok(Object.values(flat).some(({ raw }) => !raw));
+		// and every read reached the sink
+		assert.ok(sink > 0);
+	});
+
+	test('importing the corpus commands does nothing', () => {
+		const run = run_node(
+			'--input-type=module',
+			'-e',
+			"await import('./bench/corpus_manifest.ts'); await import('./bench/corpus_harvest_svelte.ts');"
+		);
+		assert.strictEqual(run.status, 0, run.stderr);
+		assert.strictEqual(run.stdout, '');
+	});
+
+	test('bench/corpus_harvest_svelte.ts does not take a flag as its directory', () => {
+		for (const args of [['--repos', '--check'], ['--check']]) {
+			const run = run_node('bench/corpus_harvest_svelte.ts', ...args);
+			assert.strictEqual(run.status, 2, args.join(' '));
+			assert.match(run.stderr, /usage:/);
+		}
+	});
+});

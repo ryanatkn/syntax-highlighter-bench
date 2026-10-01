@@ -3,6 +3,7 @@ import OverviewPage from './overview/+page.svelte';
 import AdaptersPage from './adapters/+page.svelte';
 import CorpusPage from './corpus/+page.svelte';
 import LanguagesPage from './languages/+page.svelte';
+import MethodPage from './method/+page.svelte';
 import ResultsPage from './results/+page.svelte';
 import DesignPage from './design/+page.svelte';
 import ApiPage from './api/+page.svelte';
@@ -13,7 +14,7 @@ export const tomes: Array<Tome> = [
 		slug: 'overview',
 		category: 'guide',
 		Component: OverviewPage,
-		related_tomes: ['adapters', 'corpus', 'languages', 'results', 'design'],
+		related_tomes: ['adapters', 'corpus', 'languages', 'method', 'results', 'design'],
 		related_modules: [],
 		related_declarations: []
 	},
@@ -21,7 +22,7 @@ export const tomes: Array<Tome> = [
 		slug: 'adapters',
 		category: 'guide',
 		Component: AdaptersPage,
-		related_tomes: ['corpus', 'languages', 'results'],
+		related_tomes: ['corpus', 'languages', 'method', 'results'],
 		related_modules: [],
 		related_declarations: ['BenchLibrary', 'BenchCoverageEntry']
 	},
@@ -29,7 +30,7 @@ export const tomes: Array<Tome> = [
 		slug: 'corpus',
 		category: 'guide',
 		Component: CorpusPage,
-		related_tomes: ['adapters', 'results'],
+		related_tomes: ['adapters', 'method', 'results'],
 		related_modules: [],
 		related_declarations: ['BenchInput', 'BenchProvenance']
 	},
@@ -43,19 +44,27 @@ export const tomes: Array<Tome> = [
 		related_declarations: ['BenchLang', 'BenchSet']
 	},
 	{
+		slug: 'method',
+		category: 'guide',
+		Component: MethodPage,
+		related_tomes: ['adapters', 'corpus', 'results', 'design'],
+		related_modules: [],
+		related_declarations: ['BenchCellValue', 'BenchRun', 'BenchNoiseFloor', 'BenchAnchor']
+	},
+	{
 		slug: 'results',
 		title: 'results file',
 		category: 'guide',
 		Component: ResultsPage,
-		related_tomes: ['languages', 'corpus', 'design'],
+		related_tomes: ['languages', 'corpus', 'method', 'design'],
 		related_modules: ['results_schema.ts'],
-		related_declarations: ['BenchResults', 'parse_bench_results']
+		related_declarations: ['BenchResults', 'parse_bench_results', 'bench_results_is_publishable']
 	},
 	{
 		slug: 'design',
 		category: 'guide',
 		Component: DesignPage,
-		related_tomes: ['overview', 'results'],
+		related_tomes: ['overview', 'method', 'results'],
 		related_modules: [],
 		related_declarations: []
 	},

@@ -129,20 +129,98 @@ export const BenchExcluded = z.strictObject({
 export type BenchExcluded = z.infer<typeof BenchExcluded>;
 
 /**
- * The machine's noise floor, from measuring one adapter as two libraries in
- * every cell. A difference smaller than this is not a result.
+ * The machine's noise floor, from a calibration run: every library is measured
+ * as two, in separate processes, which should come out equal. A difference
+ * smaller than this is not a result.
  */
 export const BenchNoiseFloor = z.strictObject({
-	per_cell: z
-		.number()
-		.nonnegative()
-		.meta({ description: 'The deviation a single cell can show by chance; 0.01 is 1%.' }),
-	geomean: z
-		.number()
-		.nonnegative()
-		.meta({ description: 'The deviation of the geometric mean across cells; 0.01 is 1%.' })
+	per_cell: z.number().nonnegative().meta({
+		description:
+			'The deviation a single cell can show by chance: the 95th percentile, over cells and libraries, of how far two measurements of the same library were apart, as the larger over the smaller less one; 0.01 is 1%.'
+	}),
+	geomean: z.number().nonnegative().meta({
+		description:
+			"The deviation of a geometric mean across cells: how far apart the two measurements' geometric means were, for the library where they differed most; 0.01 is 1%."
+	})
 });
 export type BenchNoiseFloor = z.infer<typeof BenchNoiseFloor>;
+
+/** An input's size tier, by real file size. */
+export const BenchSize = z.enum(['micro', 'small', 'medium', 'large']);
+export type BenchSize = z.infer<typeof BenchSize>;
+
+/** The stage a cell runs: tokens out, or the HTML string consumers ship. */
+export const BenchMode = z.enum(['tokenize', 'html']);
+export type BenchMode = z.infer<typeof BenchMode>;
+
+/**
+ * Who an input came from: `neutral` is real code no measured library authored,
+ * `shiki` is Shiki's upstream benchmark samples, `home` is one library's own
+ * samples, and `harness` is a snippet written for this benchmark.
+ */
+export const BenchSource = z.enum(['neutral', 'shiki', 'home', 'harness']);
+export type BenchSource = z.infer<typeof BenchSource>;
+
+/**
+ * What a run is: `full` measures with the published parameters, `smoke` runs
+ * every cell once to prove the harness works and its numbers mean nothing, and
+ * `calibrate` measures every library twice in every cell to find the noise floor.
+ */
+export const BenchRunKind = z.enum(['full', 'smoke', 'calibrate']);
+export type BenchRunKind = z.infer<typeof BenchRunKind>;
+
+/**
+ * The filters a run was restricted by. Each is null when the run was not
+ * restricted on that axis.
+ */
+export const BenchRunFilters = z.strictObject({
+	libraries: z.array(LibraryId).min(1).nullable(),
+	langs: z.array(LangId).min(1).nullable(),
+	sizes: z.array(BenchSize).min(1).nullable(),
+	modes: z.array(BenchMode).min(1).nullable(),
+	sources: z.array(BenchSource).min(1).nullable()
+});
+export type BenchRunFilters = z.infer<typeof BenchRunFilters>;
+
+/**
+ * How the timed cells of a run were measured. It tells a complete `full` run
+ * from a smoke, calibration, or partial run: see `bench_results_is_publishable`.
+ */
+export const BenchRun = z.strictObject({
+	kind: BenchRunKind,
+	passes: z.number().int().positive().meta({
+		description: 'How many processes measured each library in each cell. Their rounds are pooled.'
+	}),
+	rounds: z.number().int().positive().meta({ description: 'How many batches each process timed.' }),
+	target_ms: z
+		.number()
+		.positive()
+		.meta({ description: 'How long one timed batch aimed to run, in milliseconds.' }),
+	warmup_ms: z.number().nonnegative().meta({
+		description: 'How long each library ran untimed before calibration, in milliseconds.'
+	}),
+	rewarm_ms: z.number().nonnegative().meta({
+		description: 'How long each library ran untimed before each timed batch, in milliseconds.'
+	}),
+	loaded_langs: z.literal('cell').meta({
+		description:
+			"Which languages each cell's process set up in every library: `cell` is exactly the cell's language."
+	}),
+	filters: BenchRunFilters,
+	duration_ms: z
+		.number()
+		.int()
+		.nonnegative()
+		.meta({ description: 'How long the run took, anchor readings included.' })
+});
+export type BenchRun = z.infer<typeof BenchRun>;
+
+/**
+ * Whether a run covered everything: every library on every cell, measured for
+ * real. A smoke run never did, and neither did a run with any filter.
+ */
+export const bench_run_is_complete = (run: Pick<BenchRun, 'kind' | 'filters'>): boolean =>
+	run.kind !== 'smoke' && Object.values(run.filters).every((filter) => filter === null);
 
 /** Where, when, and from what a run was produced. */
 export const BenchMeta = z.strictObject({
@@ -152,15 +230,23 @@ export const BenchMeta = z.strictObject({
 		.string()
 		.min(1)
 		.meta({ description: 'The Node version, as `process.version` prints it.' }),
-	commit: z.string().min(1).meta({ description: 'The harness commit that ran.' }),
+	commit: z
+		.string()
+		.regex(/^[0-9a-f]{40}(-dirty)?$/)
+		.meta({
+			description:
+				'The harness commit that ran, with `-dirty` appended when the working tree had changes it does not record.'
+		}),
 	corpus_hash: Sha256.meta({
 		description: 'A hash over the corpus manifest. Runs with different hashes are not comparable.'
 	}),
+	run: BenchRun.nullable().meta({ description: 'Null when no cell was timed.' }),
 	anchor: BenchAnchor.nullable().meta({ description: 'Null when nothing was timed.' }),
 	libraries: z.array(BenchLibrary),
 	excluded: z.array(BenchExcluded),
 	noise_floor: BenchNoiseFloor.nullable().meta({
-		description: 'Null until the machine has been calibrated.'
+		description:
+			'Null until the machine has been calibrated with the parameters of this run. A calibration run carries the floor it measured.'
 	})
 });
 export type BenchMeta = z.infer<typeof BenchMeta>;
@@ -186,27 +272,15 @@ export type BenchSet = z.infer<typeof BenchSet>;
 export const BenchMetric = z.enum(['throughput']);
 export type BenchMetric = z.infer<typeof BenchMetric>;
 
-/** An input's size tier, by real file size. */
-export const BenchSize = z.enum(['micro', 'small', 'medium', 'large']);
-export type BenchSize = z.infer<typeof BenchSize>;
-
-/** The stage a cell runs: tokens out, or the HTML string consumers ship. */
-export const BenchMode = z.enum(['tokenize', 'html']);
-export type BenchMode = z.infer<typeof BenchMode>;
-
-/**
- * Who an input came from: `neutral` is real code no measured library authored,
- * `shiki` is Shiki's upstream benchmark samples, `home` is one library's own
- * samples, and `harness` is a snippet written for this benchmark.
- */
-export const BenchSource = z.enum(['neutral', 'shiki', 'home', 'harness']);
-export type BenchSource = z.infer<typeof BenchSource>;
-
 /** One file an input came from, pinned so the input can be rebuilt and checked. */
 export const BenchProvenance = z.strictObject({
 	repo: z
-		.url({ protocol: /^https$/ })
-		.meta({ description: 'The repository the file came from, as an https URL.' }),
+		.string()
+		.regex(/^https:\/\/[^\s/?#@]+(\/[^\s/?#@]+)+$/)
+		.meta({
+			description:
+				'The repository the file came from, as an https URL with a path and no userinfo, query, fragment, or trailing slash.'
+		}),
 	commit: z
 		.string()
 		.regex(/^[0-9a-f]{40}$/)
@@ -242,6 +316,11 @@ export const BenchInput = z
 		file: z
 			.string()
 			.min(1)
+			.refine(
+				(file) =>
+					file.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..'),
+				'a file is a relative path with no empty, "." or ".." segment'
+			)
 			.meta({ description: "The input's path within the corpus, which identifies it." }),
 		source: BenchSource,
 		home: LibraryId.nullable().meta({
@@ -305,16 +384,14 @@ export const BenchCellValue = z.strictObject({
 		.number()
 		.min(1)
 		.meta({ description: 'Slowest round over fastest. Near 1 means the rounds agreed.' }),
-	iterations: z
-		.number()
-		.int()
-		.positive()
-		.meta({ description: 'Calls per round, calibrated for this library.' }),
-	heap_delta_bytes: z
-		.number()
-		.int()
-		.meta({ description: 'Heap growth across the timed loop. Negative if a collection ran.' }),
-	rss_peak_bytes: z.number().int().positive()
+	iterations: z.number().int().positive().meta({
+		description:
+			'Calls per timed batch, calibrated for this library. Each process calibrates for itself, and this is the median across them.'
+	}),
+	rss_peak_bytes: z.number().int().positive().meta({
+		description:
+			"The peak resident set size of the library's process, the largest across its passes. The process holds this library alone, with Node itself and the input, so it is a whole-process peak and not what the library adds."
+	})
 });
 export type BenchCellValue = z.infer<typeof BenchCellValue>;
 
@@ -326,12 +403,21 @@ export const BenchCellOutput = z.strictObject({
 export type BenchCellOutput = z.infer<typeof BenchCellOutput>;
 
 /**
+ * The id of a cell: its input's file and its mode, which together are unique in
+ * a run.
+ */
+export const to_bench_cell_id = (file: string, mode: BenchMode): string => `${file}:${mode}`;
+
+/**
  * One input measured in one mode, across libraries. A library absent from
  * `values`, `tokens`, and `output` was not measured here: it is unsupported,
  * excluded, or outside the run's filters.
  */
 export const BenchCell = z.strictObject({
-	id: Id.meta({ description: 'Unique within the run. `meta.excluded` refers to it.' }),
+	id: Id.meta({
+		description:
+			'The file and the mode, as `<file>:<mode>`. Unique within the run, and `meta.excluded` refers to it.'
+	}),
 	metric: BenchMetric,
 	lang: LangId,
 	size: BenchSize,
@@ -434,9 +520,10 @@ const INPUT_KEYS_ON_CELL = [
 /**
  * One run of the benchmark. Beyond each section's shape, parsing checks that
  * the sections agree: ids are unique and refer to roster entries, every cell
- * describes its input as the `inputs` roster does, no library has numbers for a language it doesn't claim or a cell it was excluded from,
- * no cell covers an untimed language, and a run with timed numbers has an
- * anchor.
+ * describes its input as the `inputs` roster does and is named after it, no
+ * library has numbers for a language it doesn't claim or a cell it was excluded
+ * from, no cell covers an untimed language, and a run with timed numbers has an
+ * anchor and its run parameters.
  */
 export const BenchResults = z
 	.strictObject({
@@ -555,8 +642,12 @@ export const BenchResults = z
 		// cells
 		const cell_inputs: Set<string> = new Set();
 		let timed = results.startup.length > 0;
+		let cells_timed = false;
 		for (const [i, cell] of results.cells.entries()) {
 			const path = ['cells', i];
+			if (cell.id !== to_bench_cell_id(cell.file, cell.mode)) {
+				issue([...path, 'id'], `expected "${to_bench_cell_id(cell.file, cell.mode)}"`);
+			}
 			if (!lang_ids.has(cell.lang)) issue([...path, 'lang'], `unknown lang "${cell.lang}"`);
 			if (untimed_langs.has(cell.lang)) {
 				issue([...path, 'lang'], `lang "${cell.lang}" is not timed, so no cell covers it`);
@@ -572,7 +663,7 @@ export const BenchResults = z
 			]);
 			if (cell_inputs.has(input)) issue(path, 'duplicate cell: same input, mode, and metric');
 			cell_inputs.add(input);
-			if (Object.keys(cell.values).length > 0) timed = true;
+			if (Object.keys(cell.values).length > 0) timed = cells_timed = true;
 			if ((cell.source === 'home') !== (cell.home !== null)) {
 				issue([...path, 'home'], 'home is set exactly when the source is home');
 			}
@@ -602,6 +693,54 @@ export const BenchResults = z
 
 		if (timed && results.meta.anchor === null) {
 			issue(['meta', 'anchor'], 'a run with timed numbers needs an anchor');
+		}
+		if (cells_timed && results.meta.run === null) {
+			issue(['meta', 'run'], 'a run with timed cells records how they were measured');
+		}
+		// run: the filters describe what the file holds
+		const { run } = results.meta;
+		if (run) {
+			const { filters } = run;
+			for (const [key, ids] of Object.entries(filters) as Array<[string, Array<string> | null]>) {
+				for (const [i, id] of (ids ?? []).entries()) {
+					if (ids!.indexOf(id) !== i) {
+						issue(['meta', 'run', 'filters', key, i], `duplicate "${id}" in the filter`);
+					}
+				}
+			}
+			for (const [i, lang] of (filters.langs ?? []).entries()) {
+				if (!lang_ids.has(lang)) {
+					issue(['meta', 'run', 'filters', 'langs', i], `unknown lang "${lang}"`);
+				}
+			}
+			if (
+				filters.libraries &&
+				(filters.libraries.length !== results.meta.libraries.length ||
+					results.meta.libraries.some((library, i) => library.id !== filters.libraries![i]))
+			) {
+				issue(
+					['meta', 'run', 'filters', 'libraries'],
+					'a run filtered by library lists exactly those libraries, in the same order'
+				);
+			}
+			for (const [i, cell] of results.cells.entries()) {
+				const outside = (
+					[
+						['langs', cell.lang],
+						['sizes', cell.size],
+						['modes', cell.mode],
+						['sources', cell.source]
+					] as const
+				).filter(
+					([key, value]) => filters[key] && !(filters[key] as Array<string>).includes(value)
+				);
+				for (const [key, value] of outside) {
+					issue(['cells', i], `"${value}" is outside the run's ${key} filter`);
+				}
+			}
+			if (run.kind === 'smoke' && results.meta.noise_floor !== null) {
+				issue(['meta', 'noise_floor'], 'a smoke run carries no noise floor');
+			}
 		}
 
 		// startup
@@ -681,6 +820,23 @@ export const BenchResults = z
 		}
 	});
 export type BenchResults = z.infer<typeof BenchResults>;
+
+/**
+ * Whether a run's numbers can be published as results: a complete `full` run,
+ * from a commit that records everything that ran, on a machine that held still.
+ * A site shows anything else as what it is, never as a result.
+ */
+export const bench_results_is_publishable = (results: BenchResults): boolean => {
+	const { run, anchor, commit } = results.meta;
+	return (
+		run !== null &&
+		run.kind === 'full' &&
+		bench_run_is_complete(run) &&
+		anchor !== null &&
+		anchor.stable &&
+		!commit.endsWith('-dirty')
+	);
+};
 
 /**
  * Parses a results file, with every problem in one readable message.

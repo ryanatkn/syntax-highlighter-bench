@@ -11,10 +11,9 @@ A run produces one results file holding many metrics, and the site is a view
 over that file where a reader picks the subset to compare.
 
 **Status: early.** The adapters, the corpus, the check that guards against a
-plain-text fallback, the language ids, the feature sets, and the schema of the
-results file exist. The harness that times the libraries, the bundle and
-cold-start measurements, and the results pages are designed but not built, and
-no numbers are published.
+plain-text fallback, and the harness that times the libraries and writes a
+results file exist. The bundle and cold-start measurements and the results pages
+are designed but not built, and no numbers are published.
 
 ## Layout
 
@@ -24,10 +23,12 @@ no numbers are published.
   - `bench/libraries.ts` — the roster, and `bench/libraries/<id>/` — one
     adapter per library, with notes on the entry points it uses
   - `bench/check_output.ts` — the check each library passes before it is measured
+  - `bench/run.ts` — the timed harness: a run, written as one results file
+  - `bench/cell.ts` — one library on one cell, measured in a process of its own
   - `bench/corpus/` — the inputs, with their manifest
   - `bench/langs.ts` — the language ids every adapter maps onto
   - `bench/sets.ts` — the feature sets bundle size is measured over
-- `results/` — the committed runs, once there are any
+- `results/` — where the harness writes runs; none is committed yet
 - `src/lib/results_schema.ts` — the schema of a results file, written by the
   harness and parsed by the site
 - `src/routes/` — the site, static SvelteKit, with the docs under `/docs`
@@ -36,12 +37,15 @@ no numbers are published.
 
 Two classes of number, kept apart in the results file:
 
-- **Machine-dependent**, published only from one named machine: throughput
-  for each language, input size, and mode (`tokenize` and `html`); cold start;
-  memory.
+- **Machine-dependent**, to be published only from one named machine:
+  throughput for each input and mode (`tokenize` and `html`), with each
+  process's peak memory beside it; cold start.
 - **Deterministic**, the same anywhere: bundle size for each feature set, with
   wasm and theme CSS reported separately; output size; token counts; the
   coverage matrix.
+
+The timed harness measures throughput, memory, output size, and token counts,
+and records coverage. Bundle size and cold start are not built.
 
 **Language ids.** The harness owns them. The timed ids are the ones every
 library in the roster supports: `ts`, `js`, `css`, `html`, `json`, `svelte`,
@@ -121,6 +125,131 @@ npm run corpus:check     # the manifest matches the files, and every copy its pi
 npm run corpus:manifest  # regenerate the manifest after adding an input
 ```
 
+## The timed harness
+
+`bench/run.ts` measures every library on every input of the corpus in each mode
+and writes one results file through the schema.
+
+```bash
+npm run bench -- --machine <name>            # a full run: results/<date>_<name>.json
+npm run bench:calibrate -- --machine <name>  # the noise floor: results/calibration_<name>.json
+npm run bench:smoke                          # everything once, briefly and in parallel
+node bench/run.ts --langs ts --sizes small   # part of a run, to results/scratch/
+node bench/run.ts --help
+```
+
+A **cell** is one input in one mode, across the libraries that claim its
+language. The method, and why each part is there:
+
+- **A process for each library.** A process measures one library on one cell
+  and loads no other, so no library can move another's number. Two effects made
+  that necessary. Libraries that share code, as Shiki's two engines do, change
+  how the JavaScript engine optimises that code for each other. And the engine
+  sizes its young generation from what has been allocating, so a library's time
+  depended on which libraries ran beside it.
+- **Several passes, with a rotating start.** A cell is measured in passes, each
+  a process for every library, one after another. The same code can settle at a
+  slightly different speed from one process to the next, so a library's number
+  pools the rounds of all its passes. The library a pass starts with changes
+  from pass to pass and cell to cell.
+- **One language loaded.** The process sets up exactly the cell's language,
+  once, before anything is timed.
+- **The output is checked first**, on the language's snippet and then on the
+  input. A library that fails is recorded as excluded and is not timed.
+- **Iterations calibrated for each library**, since speeds differ by orders of
+  magnitude. A batch makes at least a few calls while they fit a cap, and a call
+  too long for that is measured once per batch.
+- **A full collection, a rewarm, and a minor collection before every timed
+  batch.** A batch inherits no garbage from the one before it, the library runs
+  untimed to recover from the collection, and what the rewarm allocated is
+  cleared so that collection doesn't land in the batch.
+- **Results are kept and counted.** The last result of each batch is counted
+  after the clock stops, and a count that differs from the checked one fails
+  the cell: a tokenizer that silently stops early must not look fast.
+- **The HTML is read.** Some libraries return a string the engine hasn't joined
+  up yet, which is cheap to build and which every consumer pays to flatten on
+  first use. The timed call reads one character of the string, for every
+  library, so that cost is inside the clock.
+
+A full run measures each library in 3 processes per cell, each timing 4 rounds
+of 20ms batches, after a 100ms warmup, with a 100ms rewarm before each batch.
+One process runs at a time, and the parent does nothing while it measures.
+
+### What the numbers mean
+
+| number | meaning |
+| --- | --- |
+| `ns_per_op` | nanoseconds per call: the median across the rounds of every pass |
+| `ops_per_sec`, `mb_per_sec` | the same as calls, and megabytes of input, per second |
+| `p10_ns`, `p90_ns` | the 10th and 90th percentile across those rounds |
+| `spread` | the slowest round over the fastest, across passes too; near 1 means they agreed |
+| `iterations` | calls per batch, as calibrated: the median across passes |
+| `rss_peak_bytes` | the peak resident size of the library's process, the largest across passes |
+
+`rss_peak_bytes` is a whole process: Node itself, the library as its adapter
+imports it, with one language set up, and the input. It is not what the library adds. Compare it between libraries on
+the same cell.
+
+### Kinds of run
+
+- `full` — the real measurement. Only a full run with no filters is publishable,
+  and it needs `--machine`.
+- `--smoke` — every library on every cell, in one process each, for one round
+  of the shortest batches, several processes at a time. It proves the harness
+  and every adapter work, and its numbers mean nothing.
+- `--calibrate` — measures the machine's noise floor.
+
+`--libraries`, `--langs`, `--sizes`, `--modes`, and `--sources` restrict a run
+to comma-separated ids, and an unknown id is an error. `--passes`, `--rounds`,
+and `--target-ms` change how long it measures. `--out` chooses the file. A full
+run is named by its UTC date and machine, and won't overwrite one already
+there. A smoke or filtered run is written to `results/scratch/`, which git
+ignores. The results file records the kind of run, its parameters, and its
+filters, and nothing is written if a process fails.
+
+### The noise floor, the anchor, and the lock
+
+**The noise floor.** A calibration measures every library as if it were two:
+each gets twice the passes, split alternately into two arms, each arm what a
+full run would measure. The two should be equal, and how far apart they are is
+the noise, including what varies from one process to the next. The 95th
+percentile across cells and libraries is the floor for one cell, and the largest
+gap between a library's two geometric means is the floor for a geometric mean.
+A later full run carries the floor in its results file if the calibration
+describes it: unfiltered, steady, and on the same machine, governor, Node
+version, corpus, and parameters. A difference smaller than the floor is not a
+result.
+
+**The anchor.** A run measures a fixed workload, involving no measured library,
+before its first process and after its last. A drift past 3% means the machine
+changed state during the run, and the absolute times are then suspect. The
+anchor only brackets the run, so the summary also lists every library whose
+rounds on a cell disagreed.
+
+**The lock.** One measurement run at a time, machine-wide: a run holds a lock
+file in the OS temp directory until its results are ready to write, and a second
+run is refused and told who holds it.
+
+### Caveats
+
+- Shiki resolves colors while tokenizing and writes them inline; the others emit
+  classes. The `html` mode measures what each library ships, which is not the
+  same work.
+- Token counts differ between libraries, and fewer tokens is less work, not
+  faster work.
+- Every library is warm when timed. What a first call costs is cold start, which
+  is not built.
+- Every batch follows a forced collection and a rewarm. Shiki recovers from a
+  forced collection more slowly than the other libraries; at 100ms its times
+  read a few percent high.
+- A library is measured alone. A page that loads several highlighters, or a
+  busy application, gives the engine a different history.
+
+To reproduce a run, check out the commit its file records, `npm ci`, and run
+the same command. Close other programs first: before trusting a run, check that
+its anchor is stable, that `spread` is near 1 everywhere, and that nothing
+unexpected is excluded. `bench/run.ts` prints all three.
+
 ## Neutrality
 
 The maintainer of this benchmark also maintains fuz_code, so fairness has to be
@@ -136,11 +265,17 @@ structural. By design:
 
 ## Credit
 
-The measurement method follows the comparison harness of
-[twinkleplop](https://github.com/pngwn/twinkleplop) (MIT): a process per cell,
-libraries rotated within rounds, iterations calibrated per library, token
-counts recorded, and machine drift detected. The adapter rules come from the
-same harness.
+The measurement method builds on the comparison harness of
+[twinkleplop](https://github.com/pngwn/twinkleplop) (MIT). Kept from it: a
+fresh process for each cell, iterations calibrated per library, a forced
+collection and an untimed rewarm before timing, token counts recorded, machine
+drift detected, and a machine lock. Changed here: twinkleplop measures a cell's
+libraries together in one process, alternating within each round, and this
+harness gives each library a process of its own, rotates the order of the
+processes, pools several passes, collects before every batch, and reads the HTML
+inside the timed call. The anchor workload is ported from it, and the adapter
+rules come from the same harness. Statistics and formatting come from
+[fuz_util](https://github.com/fuzdev/fuz_util).
 
 The corpus holds files from other projects, each under its own license:
 see [bench/corpus/README.md](bench/corpus/README.md).
@@ -155,6 +290,7 @@ npm run dev # or `gro dev`
 gro check   # typecheck, test, lint, format check
 gro build   # build the static site
 gro format 'bench/**/*' # format the harness, which `gro format` alone doesn't reach
+npm run bench:smoke     # run every library on every cell once
 ```
 
 Built with [SvelteKit](https://github.com/sveltejs/kit),

@@ -22,39 +22,42 @@ import {
 	serialize_corpus_manifest
 } from './corpus.ts';
 
-const args = process.argv.slice(2);
-const unknown = args.filter((arg) => arg !== '--check');
-if (unknown.length > 0) {
-	console.error(`unknown argument: ${unknown.join(' ')}`);
-	console.error('usage: node bench/corpus_manifest.ts [--check]');
-	process.exit(2);
-}
-const check = args.includes('--check');
+if (import.meta.main) {
+	const args = process.argv.slice(2);
+	const unknown = args.filter((arg) => arg !== '--check');
+	if (unknown.length > 0) {
+		console.error(`unknown argument: ${unknown.join(' ')}`);
+		console.error('usage: node bench/corpus_manifest.ts [--check]');
+		process.exit(2);
+	}
+	const check = args.includes('--check');
 
-const read = (path: string): string | null =>
-	existsSync(path) ? readFileSync(path, 'utf8') : null;
+	const read = (path: string): string | null =>
+		existsSync(path) ? readFileSync(path, 'utf8') : null;
 
-const committed = read(CORPUS_MANIFEST_PATH);
-const previous = committed === null ? [] : CorpusManifestSeed.parse(JSON.parse(committed)).inputs;
+	const committed = read(CORPUS_MANIFEST_PATH);
+	const previous = committed === null ? [] : CorpusManifestSeed.parse(JSON.parse(committed)).inputs;
 
-const { manifest, problems, dropped } = build_corpus_manifest(previous);
-const serialized = serialize_corpus_manifest(manifest);
-const rendered = render_corpus_inputs(manifest);
+	const { manifest, problems, dropped } = build_corpus_manifest(previous);
+	const serialized = serialize_corpus_manifest(manifest);
+	const rendered = render_corpus_inputs(manifest);
 
-for (const problem of problems) console.error(problem);
-for (const file of dropped) console.error(`${file}: its entry is dropped, since the file is gone`);
+	for (const problem of problems) console.error(problem);
+	for (const file of dropped)
+		console.error(`${file}: its entry is dropped, since the file is gone`);
 
-if (problems.length > 0) {
-	console.error('the corpus has problems, so the manifest was left as it is');
-	process.exit(1);
-}
-if (!check) {
-	writeFileSync(CORPUS_MANIFEST_PATH, serialized);
-	writeFileSync(CORPUS_INPUTS_PATH, rendered);
-	console.log(`wrote the manifest: ${manifest.corpus_hash}`);
-} else if (serialized === committed && rendered === read(CORPUS_INPUTS_PATH)) {
-	console.log(`the manifest matches the corpus: ${manifest.corpus_hash}`);
-} else {
-	console.error('the manifest is stale: run `npm run corpus:manifest`');
-	process.exit(1);
+	if (problems.length > 0) {
+		console.error('the corpus has problems, so the manifest was left as it is');
+		process.exit(1);
+	}
+	if (!check) {
+		writeFileSync(CORPUS_MANIFEST_PATH, serialized);
+		writeFileSync(CORPUS_INPUTS_PATH, rendered);
+		console.log(`wrote the manifest: ${manifest.corpus_hash}`);
+	} else if (serialized === committed && rendered === read(CORPUS_INPUTS_PATH)) {
+		console.log(`the manifest matches the corpus: ${manifest.corpus_hash}`);
+	} else {
+		console.error('the manifest is stale: run `npm run corpus:manifest`');
+		process.exit(1);
+	}
 }

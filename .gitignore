@@ -11,6 +11,9 @@ target/
 .fuz/
 .zzz/
 
+# Benchmark runs that are not publishable: smoke and filtered ones
+/results/scratch/
+
 # Env
 .env*
 !.env.example

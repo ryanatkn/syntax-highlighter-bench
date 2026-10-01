@@ -3,7 +3,7 @@ import { assert, describe, test } from 'vitest';
 import { MIN_SNIPPET_SPAN_KINDS, check_output } from '../../../bench/check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from '../../../bench/corpus.ts';
 import { LANGS } from '../../../bench/langs.ts';
-import { get_adapter } from '../../../bench/libraries.ts';
+import { ADAPTERS } from '../../../bench/libraries.ts';
 
 /** The libraries slow enough on the large inputs to get a test file each, run in parallel. */
 export const SLOW_ADAPTER_IDS: ReadonlyArray<string> = ['shiki_js', 'shiki_wasm'];
@@ -21,7 +21,7 @@ export const describe_corpus_output_check = (adapter_ids: ReadonlyArray<string>)
 	const corpus = load_corpus_manifest();
 
 	describe.each(adapter_ids.map((id) => ({ id })))('$id', ({ id }) => {
-		const adapter = get_adapter(id);
+		const adapter = ADAPTERS.find((a) => a.id === id)!;
 		const langs = LANGS.filter((lang) => Object.hasOwn(adapter.langs, lang));
 
 		test(

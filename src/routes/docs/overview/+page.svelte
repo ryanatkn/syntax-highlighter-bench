@@ -23,7 +23,7 @@
 	</section>
 	<TomeSection>
 		<TomeSectionHeader text="What exists" />
-		<p>The pieces a measurement needs are in place, and no library has been timed yet:</p>
+		<p>The harness that times the libraries is built, and no run has been published:</p>
 		<ul>
 			<li>
 				an adapter for each library, and the check that guards against a plain-text fallback, in
@@ -39,13 +39,18 @@
 				<code>bench/sets.ts</code> — see <TomeLink slug="languages" />
 			</li>
 			<li>
+				the timed harness, which measures each library alone in a process of its own and writes a
+				results file, in <code>bench/run.ts</code> and <code>bench/cell.ts</code> — see
+				<TomeLink slug="method" />
+			</li>
+			<li>
 				the schema of the results file, in <ModuleLink module_path="results_schema.ts" /> — see
 				<TomeLink slug="results" />
 			</li>
 		</ul>
 		<p>
-			The harness that times the libraries, the bundle and cold-start measurements, and the results
-			pages are designed but not built. <TomeLink slug="design" /> describes them.
+			The bundle and cold-start measurements, the results pages, and a published run are designed
+			but not built. <TomeLink slug="design" /> describes them.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -55,7 +60,9 @@
 				<code>bench/</code> — the harness. It runs on Node directly and is never imported by the
 				site.
 			</li>
-			<li><code>results/</code> — the committed runs, once there are any.</li>
+			<li>
+				<code>results/</code> — where the harness writes runs. None is committed yet.
+			</li>
 			<li>
 				<code>src/lib/results_schema.ts</code> — the one module the harness and the site share.
 			</li>

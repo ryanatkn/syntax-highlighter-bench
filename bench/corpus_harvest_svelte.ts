@@ -199,7 +199,12 @@ if (import.meta.main) {
 	const unknown = args.filter(
 		(arg, i) => arg !== '--repos' && arg !== '--check' && args[i - 1] !== '--repos'
 	);
-	if (!args.includes('--repos') || repos_dir === undefined || unknown.length > 0) {
+	if (
+		!args.includes('--repos') ||
+		repos_dir === undefined ||
+		repos_dir.startsWith('--') ||
+		unknown.length > 0
+	) {
 		console.error('usage: node bench/corpus_harvest_svelte.ts --repos <dir> [--check]');
 		process.exit(2);
 	}
