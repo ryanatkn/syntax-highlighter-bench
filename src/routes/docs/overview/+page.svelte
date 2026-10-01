@@ -5,8 +5,14 @@
 	import TomeSection from '@fuzdev/fuz_ui/TomeSection.svelte';
 	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
+	import { resolve } from '$app/paths';
+
+	import { docs_data_context } from '$lib/docs_data.ts';
 
 	const tome = tome_get_by_slug('overview');
+
+	const get_docs = docs_data_context.get();
+	const docs = $derived(get_docs());
 </script>
 
 <TomeContent {tome}>
@@ -18,14 +24,19 @@
 		</p>
 		<p>
 			A run produces one results file holding many metrics, and the site is a view over that file
-			where a reader picks the libraries, languages, and metrics to compare.
+			where a reader picks the libraries, languages, and metrics to compare:
+			<a href={resolve('/results')}>the results page</a>.
 		</p>
 	</section>
 	<TomeSection>
 		<TomeSectionHeader text="What exists" />
 		<p>
-			The harness that times the libraries, warm and from a cold start, and the deterministic
-			measurements are built. No timed run has been published:
+			The harness that times the libraries, warm and from a cold start, the deterministic
+			measurements, and the pages that render a results file are built.
+			{#if docs.source === 'deterministic'}
+				No timed run has been published, so the pages show the deterministic numbers and say so
+				where a timed one would be.
+			{/if}
 		</p>
 		<ul>
 			<li>
@@ -60,11 +71,12 @@
 				the schema of the results file, in <ModuleLink module_path="results_schema.ts" /> — see
 				<TomeLink slug="results" />
 			</li>
+			<li>
+				the landing page and the results page, which render one validated results file, in
+				<code>src/routes/</code> and <code>src/lib/</code> — see <TomeLink slug="results" /> for
+				which file, and <TomeLink slug="design" /> for what is still to come
+			</li>
 		</ul>
-		<p>
-			The results pages and a published timed run are designed but not built.
-			<TomeLink slug="design" /> describes them.
-		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="What is measured" />
@@ -94,10 +106,12 @@
 			</li>
 			<li>
 				<code>results/</code> — where the harness writes runs. The deterministic results are
-				committed there, and no timed run is yet.
+				committed there, and a published timed run goes beside them as
+				<code>results/latest.json</code>.
 			</li>
 			<li>
-				<code>src/lib/results_schema.ts</code> — the one module the harness and the site share.
+				<code>src/lib/results_schema.ts</code> — the one module the harness and the site share. The
+				rest of <code>src/lib/</code> turns a results file into the tables of the site.
 			</li>
 			<li><code>src/routes/</code> — this site, built as static pages.</li>
 		</ul>

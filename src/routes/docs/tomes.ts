@@ -88,13 +88,14 @@ export const tomes: Array<Tome> = [
 		category: 'guide',
 		Component: ResultsPage,
 		related_tomes: ['languages', 'corpus', 'method', 'deterministic', 'design'],
-		related_modules: ['results_schema.ts'],
+		related_modules: ['results_schema.ts', 'site_results.ts'],
 		related_declarations: [
 			'BenchResults',
 			'BenchStartup',
 			'BenchStartupExcluded',
 			'parse_bench_results',
-			'bench_results_is_publishable'
+			'bench_results_is_publishable',
+			'resolve_site_results'
 		]
 	},
 	{

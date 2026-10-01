@@ -165,13 +165,14 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 		<p>
 			One set holds no languages and one holds each language alone, so the bytes a language adds to
 			a library are <code>single:&lt;lang&gt;</code> minus <code>core</code>, with no extra
-			measurement. The results pages will derive that view from the sets and never store it. They
-			are not built.
+			measurement. The results page derives that view from the sets and never stores it, so it can't
+			drift from them. It is the default view of the bundle sizes there.
 		</p>
 		<p>
 			The sum of those differences over a set and the set's measured size differ when a library
 			shares code between languages, or when one language brings another with it, as HTML brings the
-			script and style languages.
+			script and style languages. The results page shows the sum beside the measured size for that
+			reason.
 		</p>
 	</TomeSection>
 	<TomeSection>

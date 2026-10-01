@@ -76,6 +76,7 @@ import {
 	type BenchStartup,
 	type BenchStartupExcluded
 } from '../src/lib/results_schema.ts';
+import { SPREAD_DISTURBED_ABOVE } from '../src/lib/bench_constants.ts';
 import type { HighlighterAdapter } from './adapter.ts';
 import { measure_anchor, to_anchor_drift } from './anchor.ts';
 import { CellResult, type CellSpec } from './cell.ts';
@@ -156,13 +157,6 @@ export const CELL_TIMEOUT_MS = 10 * 60_000;
 
 /** The exit code for each signal that stops a run. */
 export const SIGNAL_EXIT = { SIGINT: 130, SIGTERM: 143, SIGHUP: 129 } as const;
-
-/**
- * A library whose rounds on a cell are further apart than this, slowest over
- * fastest, was disturbed by something. A timed run measures it there again, and
- * the run's summary lists the ones still past it.
- */
-export const DISTURBED_SPREAD = 1.25;
 
 /**
  * A run that can't continue. `exit_code` is 2 when the caller has to change
@@ -509,7 +503,9 @@ const run_at_once = async <TPlanned, TResult>(
 /** Whether a library's passes on a cell were disturbed: their pooled spread is past the threshold. */
 export const passes_are_disturbed = (passes: ReadonlyArray<CellResult>, bytes: number): boolean => {
 	const measurements = passes.flatMap((pass) => (pass.measurement ? [pass.measurement] : []));
-	return measurements.length > 0 && summarize_passes(measurements, bytes).spread > DISTURBED_SPREAD;
+	return (
+		measurements.length > 0 && summarize_passes(measurements, bytes).spread > SPREAD_DISTURBED_ABOVE
+	);
 };
 
 /** How a timed run gets and keeps its results. */
@@ -1179,7 +1175,7 @@ export const format_run_summary = (
 		let own_retried = 0;
 		for (const cell of measured) {
 			const { spread, attempts } = cell.values[id]!;
-			if (spread > DISTURBED_SPREAD) disturbed.push({ cell: cell.id, library: id, spread });
+			if (spread > SPREAD_DISTURBED_ABOVE) disturbed.push({ cell: cell.id, library: id, spread });
 			if (attempts > 1) own_retried++;
 		}
 		retried += own_retried;
@@ -1192,8 +1188,8 @@ export const format_run_summary = (
 		lines.push(
 			`retried: ${retried === 0 ? 'none' : `${retried} library-cells were measured again, and each keeps the attempt whose rounds agreed best, so its spread is that attempt's`}`,
 			disturbed.length === 0
-				? `disturbed: none (no spread over ${DISTURBED_SPREAD})`
-				: `disturbed: ${disturbed.length} library-cells still have a spread over ${DISTURBED_SPREAD}${after}, so something else was running or its processes disagreed`
+				? `disturbed: none (no spread over ${SPREAD_DISTURBED_ABOVE})`
+				: `disturbed: ${disturbed.length} library-cells still have a spread over ${SPREAD_DISTURBED_ABOVE}${after}, so something else was running or its processes disagreed`
 		);
 		disturbed.sort((a, b) => b.spread - a.spread);
 		for (const { cell, library, spread } of disturbed.slice(0, MAX_DISTURBED_LISTED)) {

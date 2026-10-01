@@ -1,4 +1,6 @@
 import { afterEach, assert, beforeEach, describe, test } from 'vitest';
+
+import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
 import {
 	chmodSync,
 	existsSync,
@@ -25,7 +27,6 @@ import { read_journal } from '../../../bench/journal.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { to_bench_libraries } from '../../../bench/library_info.ts';
 import {
-	DISTURBED_SPREAD,
 	OVERLAPPED_SUFFIX,
 	RunError,
 	format_run_plan,
@@ -75,7 +76,7 @@ const parse = (...args: Array<string>): RunOptions => {
 };
 
 const STEADY = [1000, 1010];
-const NOISY = [1000, 1000 * (DISTURBED_SPREAD + 0.2)];
+const NOISY = [1000, 1000 * (SPREAD_DISTURBED_ABOVE + 0.2)];
 
 /** What a process would print for a spec. */
 const to_outcome = (spec: CellSpec, ns: Array<number>, tokens: number = 10): ChildOutcome => {
@@ -510,7 +511,7 @@ describe('a timed run retries what was disturbed', () => {
 			assert.strictEqual(cell.values.prism!.attempts, 2);
 			// the slower attempt, because it is the steadier one
 			assert.strictEqual(cell.values.prism!.ns_per_op, 3015);
-			assert.ok(cell.values.prism!.spread < DISTURBED_SPREAD);
+			assert.ok(cell.values.prism!.spread < SPREAD_DISTURBED_ABOVE);
 		}
 	});
 

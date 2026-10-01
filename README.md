@@ -12,10 +12,11 @@ over that file where a reader picks the subset to compare.
 
 **Status: early.** The adapters, the corpus, the check that guards against a
 plain-text fallback, the harness that times the libraries, warm and from a cold
-start, and writes a results file, and the deterministic measurements (bundle
-size, token counts, output sizes, coverage) exist. The deterministic numbers
-are committed as `results/deterministic.json`. The results pages are designed
-but not built, and no timed numbers are published.
+start, and writes a results file, the deterministic measurements (bundle size,
+token counts, output sizes, coverage), and the site that renders a results file
+exist. The deterministic numbers are committed as `results/deterministic.json`,
+and the site shows them. No timed numbers are published, and the site says so
+wherever one would be.
 
 ## Layout
 
@@ -40,7 +41,10 @@ but not built, and no timed numbers are published.
   committed, and no timed run is yet
 - `src/lib/results_schema.ts` — the schema of a results file, written by the
   harness and parsed by the site
-- `src/routes/` — the site, static SvelteKit, with the docs under `/docs`
+- `src/lib/` — besides the schema, the modules and components that turn a
+  results file into the tables of the site
+- `src/routes/` — the site, static SvelteKit: the landing page, `/results`, and
+  the docs under `/docs`
 
 ## What is measured
 
@@ -69,6 +73,73 @@ _excluded_. The two are recorded differently and neither is ever a zero.
 exist so a set can't be chosen to flatter a result: `core` (no languages),
 `single:<lang>` for each id, `docs` (what a documentation site imports),
 `web_rust` (footnoted as fuz_code's full set), and `all`.
+
+## The site
+
+A static site, prerendered from one results file.
+
+- **`/`** — what the benchmark is, each library's headline figures (geometric
+  mean throughput over the neutral inputs, time to a first highlight from a
+  cold start, bundle size over the `docs` set as JavaScript alone and as
+  everything a page loads, with the wasm binary and the theme stylesheet beside
+  them), the coverage matrix, where the numbers came
+  from, and the libraries table.
+- **`/results`** — every number as a table with a column for each library:
+  throughput, cold start, bundle size, and token counts and output sizes. A
+  number has its ratio to the best in its row, or to a reference library the
+  reader picks. Filters choose the libraries (also by engine kind and output
+  shape), languages, input sizes, modes, and input sources, and the selection
+  is kept in the URL query, so a comparison is a link. A geometric mean covers
+  only the rows where every selected library has a number, and says how many.
+  Bundle size opens on what each language adds to a library
+  (`single:<lang>` less `core`), with the sum over a set beside the set's
+  measured size. The sum is not a bundle, so no library is ranked by it. The
+  set totals have a row for the JavaScript and a row for everything a page
+  loads: the JavaScript, the wasm binary, and the theme stylesheet, each
+  compressed on its own.
+  Cold start is shown as what a library adds over bare Node. An addition
+  smaller than the spread of bare Node itself is marked as in the noise and
+  has no ratio. The others in its row are then compared with that spread and
+  shown as at least so many times it (`≥6.1×`), and the row is left out of the
+  mean.
+- **`/docs`** — the method, the adapters, the corpus with its table of inputs,
+  the languages and sets, the deterministic metrics, and the results file.
+
+**Which file.** The pages render `results/latest.json`, the latest published
+timed run, when it is committed, and otherwise `results/deterministic.json`.
+The file is parsed through the schema when the site is built, in the server
+loads of the prerendered pages (`src/lib/server/site_results_load.ts`), so a
+malformed file fails the build and neither the file's schema nor the harness
+reaches the browser. With no published run, the timed sections say that no
+timed results are published, and show no number.
+
+**What may be published.** `results/latest.json` must pass
+`bench_results_is_publishable`, or the build fails and says why: a smoke run, a
+calibration, a filtered run, a run with a gap, a run from a commit with
+uncommitted changes, and a run whose anchor drifted are never shown as results.
+A drifted run is measured again, not published under a warning. A
+`results/deterministic.json` that holds a timed number fails the build too.
+
+**A published run beside the deterministic file.** When the two describe the
+same library versions and the same corpus, their deterministic numbers (feature
+sets, coverage, bundle sizes, and each cell's token counts and output sizes)
+must be equal, or the build fails and names the first place they differ. When a
+library's version or the corpus has moved since the run, the run is shown as
+the snapshot it is, and the line that says where the numbers came from says
+what has moved.
+
+**The fixture.** `src/test/fixtures/results/fixture_run.json` is a complete run
+with invented numbers, for the tests and for working on the timed views before
+a run exists. A build or dev server renders it only when
+`BENCH_RESULTS_FIXTURE=1` is set, and then every page carries a banner: "fixture
+data — invented numbers, not measurements". Without the variable the file is
+never read.
+
+**Unsupported and excluded** look different in every table: an unsupported
+entry names the languages the library lacks, and an excluded one carries the
+reason its output failed the check. A home input is always shown under the
+library whose samples it is, and two libraries' home inputs are never
+summarized together.
 
 ## Adapters
 
@@ -452,6 +523,17 @@ for as long as it measures.
   runs it.
 - A library is measured alone. A page that loads several highlighters, or a
   busy application, gives the engine a different history.
+- In `html` mode the timed call reads one character of the string, so a string
+  the engine hasn't joined up is flattened inside the clock. A benchmark that
+  discards the string doesn't charge for that.
+- A timed process loads only the language it measures, so a fenced code block
+  inside Markdown is not highlighted, with the exceptions the adapters section
+  lists. A site that loads several languages pays more for Markdown.
+- Some inputs are a measured library's own samples. They are labelled with that
+  library, summarized by owner, and left out of the default view and the
+  headline figures, which use the neutral inputs.
+- A few inputs were built by joining or repeating files to reach a size, and
+  are marked synthetic.
 - Shiki stops tokenizing a line after half a second and returns the rest of it
   as one token, so what a call returns depends on how fast the machine is at
   that moment. Both Shiki adapters raise that limit out of reach rather than
@@ -544,8 +626,10 @@ differ by design. The check doesn't prove a bundle is the smallest that works.
 
 **What a language costs.** One set holds no languages and one holds each
 language alone, so the bytes a language adds are `single:<lang>` minus `core`,
-with no extra measurement. The results pages will derive that view from the
-sets; they are not built.
+with no extra measurement. The results page derives that view from the sets
+and never stores it, and shows the sum over a set beside the set's measured
+size: the sum is larger when a library shares code between languages, and it
+is not a bundle anyone ships.
 
 ### Token counts and output sizes
 
@@ -661,6 +745,7 @@ npm i
 npm run dev # or `gro dev`
 gro check   # typecheck, test, lint, format check
 gro build   # build the static site
+BENCH_RESULTS_FIXTURE=1 gro build # build it over the fixture run: invented numbers, marked on every page
 gro format 'bench/**/*' # format the harness, which `gro format` alone doesn't reach
 npm run bench:smoke     # run every library on every cell and cold-start scenario once
 npm run bench:deterministic -- --check  # the committed deterministic results still regenerate

@@ -1,0 +1,23 @@
+/**
+ * The id lists and thresholds that the results schema, the harness, and the
+ * pages of the site all read. The module imports nothing, so a page can use
+ * them without loading the schema, and the harness and the site can't disagree.
+ *
+ * @module
+ */
+
+/** The size tiers of an input, smallest first. */
+export const BENCH_SIZES = ['micro', 'small', 'medium', 'large'] as const;
+
+/** The stages a cell runs, in display order. */
+export const BENCH_MODES = ['tokenize', 'html'] as const;
+
+/** Where an input came from, the primary set first. */
+export const BENCH_SOURCES = ['neutral', 'shiki', 'home', 'harness'] as const;
+
+/**
+ * A library whose rounds on a cell are further apart than this, slowest over
+ * fastest, was disturbed by something. A timed run measures it there again, the
+ * run's summary lists the ones still past it, and the site marks them.
+ */
+export const SPREAD_DISTURBED_ABOVE = 1.25;

@@ -27,6 +27,8 @@
 
 import { z } from 'zod';
 
+import { BENCH_MODES, BENCH_SIZES, BENCH_SOURCES } from './bench_constants.ts';
+
 /** An id used as a key or a cross-reference: a set or a cell. */
 const Id = z.string().min(1);
 
@@ -172,11 +174,11 @@ export const BenchNoiseFloor = z.strictObject({
 export type BenchNoiseFloor = z.infer<typeof BenchNoiseFloor>;
 
 /** An input's size tier, by real file size. */
-export const BenchSize = z.enum(['micro', 'small', 'medium', 'large']);
+export const BenchSize = z.enum(BENCH_SIZES);
 export type BenchSize = z.infer<typeof BenchSize>;
 
 /** The stage a cell runs: tokens out, or the HTML string consumers ship. */
-export const BenchMode = z.enum(['tokenize', 'html']);
+export const BenchMode = z.enum(BENCH_MODES);
 export type BenchMode = z.infer<typeof BenchMode>;
 
 /**
@@ -184,7 +186,7 @@ export type BenchMode = z.infer<typeof BenchMode>;
  * `shiki` is Shiki's upstream benchmark samples, `home` is one library's own
  * samples, and `harness` is a snippet written for this benchmark.
  */
-export const BenchSource = z.enum(['neutral', 'shiki', 'home', 'harness']);
+export const BenchSource = z.enum(BENCH_SOURCES);
 export type BenchSource = z.infer<typeof BenchSource>;
 
 /**

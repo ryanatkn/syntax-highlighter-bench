@@ -30,6 +30,7 @@ node bench/run.ts --machine <name> --resume # continue a timed run that was stop
 node bench/run.ts --metrics startup --libraries prism --langs json --startup-samples 2 # a small cold-start run, to results/scratch/
 npm run bench:deterministic             # regenerate results/deterministic.json
 npm run bench:deterministic -- --check  # fail if the committed file differs from what regenerates
+BENCH_RESULTS_FIXTURE=1 gro build       # build the site over the fixture run (invented numbers, marked on every page)
 ```
 
 IMPORTANT for AI agents: Do NOT run `gro dev` — the developer manages the
@@ -41,9 +42,12 @@ Built: the adapter contract and the adapters, the roster, the output check,
 the corpus and its manifest, the language ids, the feature sets, the results
 schema, the timed harness with its cold-start scenarios, the deterministic
 metrics (bundle size, token counts, output sizes, coverage) with their
-committed results file, and the docs that describe them. Everything under "Planned" below is design, not code. No
-timed run is committed and no timed numbers are published. The committed
+committed results file, the site that renders a results file (the landing page
+and `/results`), and the docs that describe them. No timed run is committed and
+no timed numbers are published, so the site renders the deterministic file and
+says so wherever a timed number would be. The committed
 `results/deterministic.json` is data: never put a measured number in the docs.
+A table that renders the file is data, and prose is not.
 
 ## Layout
 
@@ -77,14 +81,19 @@ bench/                       the Node harness; never imported by the site
   sets.ts                    the feature sets bundle size is measured over
 results/                     where runs are written; `deterministic.json` is committed; `scratch/` (git-ignored) holds smoke and filtered ones; a journal (git-ignored) sits beside an unfinished run
 src/lib/results_schema.ts    zod strict schemas for a results file
+src/lib/bench_constants.ts   the id lists and thresholds the schema, the harness, and the pages share; imports nothing
+src/lib/                     the site's modules and components: see Site
 src/routes/                  the static SvelteKit site
+  +layout.server.ts          tells every page where the rendered results came from
+  (site)/                    the landing page and `results/`, under one header
   docs/                      tomes (overview, adapters, corpus, languages, method, deterministic, results, design) + API docs
 src/test/                    vitest tests; `bench/` mirrors the harness
   fixtures/results/          a fixture results file with invented numbers
+static/                      the mark: `logo.svg`, `favicon.png`, and `src/lib/logo.ts` are one drawing
 ```
 
-Planned additions: committed timed runs in `results/`, and the results pages
-under `src/routes/`.
+Planned addition: committed timed runs in `results/`, the latest as
+`results/latest.json`.
 
 ## The harness runs on Node directly
 
@@ -98,7 +107,8 @@ no flags. Every module there must hold to:
 - `import type` (or inline `type`) for types
 
 The site never imports from `bench/`. The harness may import
-`src/lib/results_schema.ts`, which depends only on zod.
+`src/lib/results_schema.ts`, which depends only on zod, and
+`src/lib/bench_constants.ts`, which imports nothing.
 
 `gro check` typechecks and lints `bench/`, but `gro format` sweeps only `src/`
 and the root config files. `src/test/bench/format.test.ts` fails when a harness
@@ -340,7 +350,7 @@ more than what is callable: a language that embeds others by name highlights
 them only when they are loaded (Markdown fenced blocks in fuz_code, Prism, and
 Shiki; never in twinkleplop). Under the rule no library loads another language
 for Markdown fences, which matches the `single:<lang>` sets. Structural embeds (`<script>`
-and `<style>` in HTML and Svelte) are always loaded with their language. Two
+and `<style>` in HTML and Svelte) are always loaded with their language. The
 exceptions come from what loads with Markdown itself: Prism's Markdown depends
 on its markup grammar, so Prism still highlights a fence tagged `html`, `xml`,
 `svg`, or `markup`, and fuz_code and Prism highlight a fence tagged as Markdown.
@@ -714,7 +724,7 @@ date so a run resumed on a later day finds it). Smoke runs keep none.
   the file without measuring anything.
 
 **Retries.** After a cell's planned passes, each library whose pooled `spread`
-there exceeds `DISTURBED_SPREAD` (`passes_are_disturbed`) is measured again,
+there exceeds `SPREAD_DISTURBED_ABOVE` (`passes_are_disturbed`) is measured again,
 every pass (`plan_retry`), up to `retries` times and until an attempt isn't
 disturbed. `select_attempt` keeps the attempt with the lowest spread, the
 earliest on a tie, and never looks at the times: selecting on speed would bias
@@ -832,7 +842,7 @@ between the two that differ most, earlier to later, and `stable` is a drift
 under `BENCH_ANCHOR_STABLE_BELOW` (in the schema, which checks the two agree).
 With two readings that is the plain change. It only brackets what was measured,
 so the summary also lists every library-cell whose `spread` still exceeds
-`DISTURBED_SPREAD` after its retries.
+`SPREAD_DISTURBED_ABOVE` after its retries.
 
 **The lock** (`bench/lock.ts`): an exclusively created file in the OS temp
 directory naming the holder's process, held for as long as a segment
@@ -847,11 +857,142 @@ file that starts processes, and each costs a Node start. How a process's ending
 is read is tested without one, through `read_cell_result`, and a whole timed
 run through the `spawn_cell` seam.
 
-## Planned
+## Site
 
-Timed numbers are published from one named machine; deterministic numbers
-regenerate anywhere. The results pages render a results file, cold start
-included.
+The site is a static prerender of one results file. Timed numbers are published
+from one named machine; deterministic numbers regenerate anywhere.
+
+**Which file** (`src/lib/site_results.ts`, `resolve_site_results`):
+
+| given | rendered | `source` |
+| --- | --- | --- |
+| `BENCH_RESULTS_FIXTURE=1` | `src/test/fixtures/results/fixture_run.json` | `fixture` |
+| `results/latest.json` exists | that file | `published` |
+| otherwise | `results/deterministic.json` | `deterministic` |
+
+- Every file is parsed with `parse_bench_results`, so a malformed one fails the
+  build.
+- `results/latest.json` must pass `bench_results_is_publishable`, with no
+  exception. Anything else fails the build with the run's facts
+  (`describe_bench_run`): smoke, calibration, filtered, a gap, a dirty commit,
+  a drifted anchor, or a file with no timed run. A drifted run is measured
+  again, never rendered under a warning.
+- `results/deterministic.json` must hold no timed number, or the build fails:
+  that path is shown as "the same on any machine".
+- A published run is the one source of every number on a page, its bundle
+  sizes and token counts included, and it is held against the deterministic
+  file. `find_moved_since` compares each library's version, its extra
+  packages, and the corpus hash. With nothing moved, `sets`, `coverage`,
+  `bundle`, and each cell's `tokens` and `output` must be deep-equal, or the
+  build fails naming the first difference (`find_first_difference`). With
+  something moved, the run is rendered as a snapshot, `SiteResults.moved` says
+  what moved, and `Provenance.svelte` prints it.
+
+**Loading** (`src/lib/server/site_results_load.ts`). Only the server loads read
+a results file, with `node:fs`, at build time: `+layout.server.ts` (the
+source, for the fixture banner), `(site)/+page.server.ts` (the rosters and the
+headline rows), `(site)/results/+page.server.ts` (the file without its
+inputs), and `docs/+layout.server.ts` (`to_docs_data`: rosters, inputs, noise
+floor). So no results file, no fixture, and no zod schema is in the client
+bundle: a page gets the validated data its load returns. Keep it that way:
+modules a page imports take `import type` from `results_schema.ts`, and
+`src/test/site_imports.test.ts` fails on a runtime import of the schema, of
+`bench/`, of a JSON file, or of a server module from anything but a server
+load.
+
+**The fixture** is read only when `site_fixture_is_enabled(process.env)`, which
+is exactly `BENCH_RESULTS_FIXTURE=1`. Then `FixtureBanner.svelte` is fixed to
+the viewport on every page: "fixture data — invented numbers, not
+measurements". Never render fixture numbers any other way.
+
+**Modules in `src/lib/`**, pure, and tested in `src/test/` except `docs_data.ts`
+and `logo.ts`:
+
+| module | what it does |
+| --- | --- |
+| `bench_constants.ts` | `BENCH_SIZES`, `BENCH_MODES`, `BENCH_SOURCES`, `SPREAD_DISTURBED_ABOVE`: the schema builds its enums from the lists, and the harness and the pages import them |
+| `matrix.ts` | the table model: `MatrixEntry` (value, unsupported, excluded, none, unmeasured), `MatrixRow`, `MatrixGroup`; baseline, ratios, completeness, `to_geomean_row` |
+| `ratio.ts` | `to_ratio`, the shared color scale (`to_ratio_level`, `to_ratio_color`), `ratio_is_within_floor`, `to_geomean` |
+| `cell_groups.ts` | cells grouped by language and source; source keys (`home:<library>`); why a library has no number in a cell |
+| `throughput_matrix.ts` | timed cells as rows, a geomean per mode closing each group, the per-source summary, the disturbed and retried marks |
+| `startup_matrix.ts` | cold-start scenarios as rows: what a library added over the bare baseline, and whether that is inside the baseline's own noise |
+| `bundle_matrix.ts` | the incremental-cost view, the set totals, everything a page loads, sets with the same languages merged, the wasm and stylesheet rows |
+| `output_matrix.ts` | token counts and output sizes as rows |
+| `results_filters.ts` | the selection on `/results` and its URL query form |
+| `headline.ts` | the landing page's rows |
+| `coverage_matrix.ts` | the coverage matrix with numbered footnotes |
+| `corpus_inputs.ts` | the inputs grouped by source, and links to their pins |
+| `docs_data.ts` | what the tomes read from the results file, and its context |
+| `bench_format.ts` | number formatting, pinned to one locale |
+| `site_results.ts`, `server/site_results_load.ts` | which file is rendered, and reading it |
+| `logo.ts` | the mark, as the icon the breadcrumb shows |
+
+Components: `MatrixTable.svelte` and `MatrixCell.svelte` render every results
+table, `FilterGroup.svelte` and `FilterSelect.svelte` are the controls,
+`Provenance.svelte` the provenance line with the anchor's drift, the noise
+floor, and what has moved since the run, and `CoverageTable.svelte`, `LibrariesTable.svelte`,
+`InputsTable.svelte`, `LibraryLabel.svelte` (the maintainer's-library mark),
+and `FixtureBanner.svelte` the rest.
+
+**Rules the tables hold to:**
+
+- **Unsupported, excluded, none, and unmeasured are entries, never numbers.**
+  Only a `value` entry enters a ratio or a mean. Unsupported names the missing
+  languages, and excluded carries its reason.
+- **A geometric mean covers only the rows complete for every selected
+  library** (`matrix_row_is_complete`), and its note says how many of how many.
+  A row with fewer than two numbers has no ratios.
+- **A number that can't be ranked never hands "best" to the runner-up.** A
+  value that isn't positive, or one marked `unranked`, has no ratio, and its
+  row is left out of the mean. The rest of the row is then compared with the
+  row's `resolution` (`matrix_row_baseline`, `matrix_row_is_bounded`), printed
+  as lower bounds (`≥6.1×`): the best is under the resolution, so the true
+  ratio to it is at least that. A rankable reference library, when chosen,
+  gives exact ratios instead, and a reference that is itself unrankable is
+  treated as no reference. A row with no `resolution` has no ratios at all.
+  Only a cold-start row has one: the bare baseline's own p10 to p90 band.
+- **A geometric mean over no complete row has no number**: the row says so in
+  `empty`, across the columns.
+- **Sources are never pooled in a mean.** A home input is keyed by its owner
+  (`to_source_key`), so a group, a summary, and a filter always name whose home
+  turf it is. Libraries' home sets are very different in size.
+- **One color scale** (`ratio.ts`). The color tints the cell, and the ratio is
+  always printed beside the number, so color is never the only signal. A ratio
+  that is only a lower bound never takes the color of a number level with the
+  baseline (`to_bound_color`). The token and output tables turn the tint off: a
+  smaller count is not a better one.
+- **A noise floor is a row's own** (`MatrixRow.floor`): the per-cell floor on a
+  throughput cell, the geomean floor on a throughput mean, and none anywhere
+  else. Cold start has no calibrated floor and a byte count has no noise, so a
+  ratio there is never marked `≈`.
+- **The sets are found by what they hold**, not by their ids
+  (`find_core_set`, `find_single_set`): the incremental cost is the
+  single-language set less the set with none, derived and never stored. The
+  sum over a set is not a bundle, so its row is `compared: false`: no ratio,
+  no tint.
+- **"Everything loaded"** (`to_bundle_loaded_entry`) is the JavaScript plus the
+  wasm binary plus the theme stylesheet in one compression, each compressed on
+  its own. It is ranked, so a library whose engine ships as wasm is not
+  compared on its JavaScript alone.
+- **Cold start is shown as time added over `bare`**, and the whole time is in
+  the row's details. An addition smaller than the bare baseline's own p10 to
+  p90 band (`to_startup_noise_ms`) is `unranked` and marked "in the noise", and
+  one at or under zero prints as "≈ bare", never as a negative time. That band
+  is the row's `resolution`.
+- **A set shown under another id** (`all`, which holds what `web_rust` holds)
+  decodes to the id it is shown under (`set_aliases`).
+
+**Filter state is the URL query** on `/results`. The page prerenders with the
+defaults and reads `page.url.searchParams` only after it has mounted, since
+reading it while prerendering throws. A control calls `goto` with
+`replaceState`, and the selection is derived back from the URL.
+`decode_results_filters` never throws: unknown keys are ignored, unknown ids
+dropped, and a parameter with nothing valid falls back to its default.
+
+**The docs read the same file.** The languages and sets tables and the inputs
+table are rendered from `docs_data_context`, not written by hand. `/docs`
+renders every tome inline, so the data comes from the docs layout's load, not
+from a page's.
 
 ## Neutrality
 

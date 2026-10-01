@@ -7,7 +7,13 @@
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 	import Code from '@fuzdev/fuz_code/Code.svelte';
 
+	import { docs_data_context } from '$lib/docs_data.ts';
+	import InputsTable from '$lib/InputsTable.svelte';
+
 	const tome = tome_get_by_slug('corpus');
+
+	const get_docs = docs_data_context.get();
+	const docs = $derived(get_docs());
 
 	const REPO_URL = 'https://github.com/ryanatkn/syntax-highlighter-bench/blob/main/bench/corpus';
 
@@ -22,8 +28,7 @@ npm run corpus:harvest -- --repos <dir> --check   # the synthetic Svelte input m
 		<p>
 			The corpus is the set of files the libraries are run on. It lives in
 			<code>bench/corpus/</code>, and its manifest records what each input is and where it came
-			from. <a href="{REPO_URL}/INPUTS.md">The table of inputs</a> is generated from the manifest
-			and lists every file with its upstream commit.
+			from. Every input is listed at the end of this page, with its upstream commit.
 		</p>
 	</section>
 	<TomeSection>
@@ -67,7 +72,9 @@ npm run corpus:harvest -- --repos <dir> --check   # the synthetic Svelte input m
 		<p>
 			The neutral set has a small, a medium, and a large file for each timed language. The other
 			sources are kept so a reader can see whether a result holds on inputs a library chose for
-			itself, and the site can filter by source.
+			itself, and the results page filters by source. A home input is always shown under the library
+			whose samples it is, and libraries' home inputs are never summarized together: they
+			contributed very different amounts.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -161,6 +168,21 @@ npm run corpus:harvest -- --repos <dir> --check   # the synthetic Svelte input m
 			The corpus is data: no formatter, linter, or type checker runs on it, since a reformatted file
 			is no longer the upstream file.
 		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Inputs" />
+		<p>
+			Every input of the results this site renders, by source. The corpus hash of those results is
+			<code>{docs.corpus_hash}</code>.
+			{#if docs.corpus_current}
+				The repository holds the same list as
+				<a href="{REPO_URL}/INPUTS.md">a table generated from the manifest</a>.
+			{:else}
+				The repository's corpus is not this one: <a href="{REPO_URL}/INPUTS.md">its own list</a> is
+				generated from its manifest.
+			{/if}
+		</p>
+		<InputsTable inputs={docs.inputs} />
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Licenses" />

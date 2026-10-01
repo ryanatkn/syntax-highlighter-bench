@@ -1,10 +1,10 @@
-<svg
-	xmlns="http://www.w3.org/2000/svg"
-	viewBox="0 0 100 100"
-	aria-label="a friendly pixelated spider facing you"
->
-	<path
-		fill="#f4672f"
-		d="m 25,81.200002 h 6.2 v -12.5 h 6.3 v -18.7 h -6.3 v 6.2 H 12.5 v 6.3 H 0 v -6.3 h 6.2 v -6.2 H 25 v -6.3 h 12.5 v -6.2 h -6.3 v -6.3 H 18.7 v -6.2 H 6.2 v -6.3 H 25 v 6.3 h 12.5 v -6.3 H 31.2 V 6.2 h 6.3 v 6.300002 h 6.2 V 31.200001 H 56.2 V 12.500002 h 6.3 V 6.2 h 6.2 v 12.500001 h -6.2 v 18.800001 h 6.2 v -12.5 h 12.5 v -12.5 h 12.5 v 6.2 h -6.2 v 12.5 H 75 v 12.5 h 6.2 v 6.3 h 12.5 v 6.2 h 6.299997 v 6.3 H 87.5 v -6.3 H 75 v -6.2 h -6.3 v 12.5 H 75 v 12.5 h 6.2 V 99.99999 H 75 V 81.200002 h -6.3 v -12.5 h -6.2 v -12.5 H 43.7 v 18.8 h -6.2 v 12.5 H 31.2 V 99.99999 H 25 Z"
-	/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-label="four lines of highlighted code, drawn as the bars of a chart">
+	<path fill="#6199d1" d="M6.25 15.625h31.25v12.5h-31.25z" />
+	<path fill="#f4672f" d="M43.75 15.625h50v12.5h-50z" />
+	<path fill="#3db33d" d="M18.75 34.375h37.5v12.5h-37.5z" />
+	<path fill="#8866cc" d="M62.5 34.375h18.75v12.5h-18.75z" />
+	<path fill="#f4672f" d="M18.75 53.125h12.5v12.5h-12.5z" />
+	<path fill="#6199d1" d="M37.5 53.125h37.5v12.5h-37.5z" />
+	<path fill="#8866cc" d="M6.25 71.875h18.75v12.5h-18.75z" />
+	<path fill="#3db33d" d="M31.25 71.875h25v12.5h-25z" />
 </svg>

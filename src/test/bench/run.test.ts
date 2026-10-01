@@ -1,4 +1,6 @@
 import { assert, describe, test } from 'vitest';
+
+import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,7 +17,6 @@ import { plan_startup_round, plan_startup_scenarios } from '../../../bench/colds
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import {
-	DISTURBED_SPREAD,
 	RunError,
 	SIGNAL_EXIT,
 	assemble_results,
@@ -411,7 +412,7 @@ describe('run_cells_in_turn', () => {
 	const cells = plan_cells(manifest.inputs, SMALL_TS, ADAPTERS).slice(0, 2);
 	const [cell] = cells;
 	const steady = [1000, 1000];
-	const noisy = [1000, 1000 * (DISTURBED_SPREAD + 0.1)];
+	const noisy = [1000, 1000 * (SPREAD_DISTURBED_ABOVE + 0.1)];
 
 	/** Runs the cells with each process answered by `answer`, and lists what was asked for. */
 	const run = async (
@@ -435,7 +436,7 @@ describe('run_cells_in_turn', () => {
 		assert.ok(passes_are_disturbed([result(noisy)], 1000));
 		// across passes too
 		assert.ok(passes_are_disturbed([result([1000]), result([1300])], 1000));
-		assert.ok(!passes_are_disturbed([result([1000, 1000 * DISTURBED_SPREAD])], 1000));
+		assert.ok(!passes_are_disturbed([result([1000, 1000 * SPREAD_DISTURBED_ABOVE])], 1000));
 		// an excluded library has no rounds to disagree
 		assert.ok(!passes_are_disturbed([create_cell_result(PLANNED!, { excluded: 'x' })], 1000));
 		assert.ok(!passes_are_disturbed([], 1000));
@@ -1010,7 +1011,7 @@ describe('format_run_summary', () => {
 
 	test('lists the cells whose rounds disagreed, so a loaded machine shows', () => {
 		const options = create_options({ filters: SMALL_TS });
-		const noisy = DISTURBED_SPREAD + 0.25;
+		const noisy = SPREAD_DISTURBED_ABOVE + 0.25;
 		const processes = create_processes(options, (planned) =>
 			create_cell_result(
 				planned,
@@ -1028,7 +1029,7 @@ describe('format_run_summary', () => {
 		);
 		assert.ok(
 			summary.includes(
-				`disturbed: ${html_cells.length} library-cells still have a spread over ${DISTURBED_SPREAD} after ${FULL_PARAMS.retries} more attempt(s)`
+				`disturbed: ${html_cells.length} library-cells still have a spread over ${SPREAD_DISTURBED_ABOVE} after ${FULL_PARAMS.retries} more attempt(s)`
 			)
 		);
 		for (const { planned } of html_cells) {

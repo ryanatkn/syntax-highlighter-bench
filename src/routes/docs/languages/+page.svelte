@@ -5,7 +5,16 @@
 	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 
+	import { docs_data_context } from '$lib/docs_data.ts';
+
 	const tome = tome_get_by_slug('languages');
+
+	const get_docs = docs_data_context.get();
+	const docs = $derived(get_docs());
+
+	// the sets of one language are one row: there is one for each language id
+	const sets = $derived(docs.sets.filter((set) => set.langs.length !== 1));
+	const has_single_sets = $derived(docs.sets.some((set) => set.langs.length === 1));
 </script>
 
 <TomeContent {tome}>
@@ -13,24 +22,43 @@
 		<p>
 			The harness owns the language ids. Each library names its languages differently, so an adapter
 			maps these ids onto its library's own. <code>bench/langs.ts</code> is the source of truth, and
-			a results file carries the list so the site reads it from there.
+			a results file carries the list, so the tables on this page are read from the results this
+			site renders.
 		</p>
 	</section>
 	<TomeSection>
 		<TomeSectionHeader text="Language ids" />
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<div class="table-scroll" tabindex="0" role="region" aria-label="Language ids">
+			<table>
+				<caption>The language ids of the results this site renders.</caption>
+				<thead>
+					<tr>
+						<th scope="col">id</th>
+						<th scope="col">language</th>
+						<th scope="col">timed</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each docs.langs as lang (lang.id)}
+						<tr>
+							<th scope="row"><code>{lang.id}</code></th>
+							<td>{lang.label}</td>
+							<td>{lang.timed ? 'yes' : 'no'}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 		<p>
 			The timed languages are the ones every library in the starting roster supports, so a timed
-			comparison is never missing a library by design:
+			comparison is never missing a library by design.
 		</p>
 		<p>
-			<code>ts</code>, <code>js</code>, <code>css</code>, <code>html</code>, <code>json</code>,
-			<code>svelte</code>, <code>md</code>, <code>bash</code>, <code>rust</code>
-		</p>
-		<p>
-			<code>xml</code> is also an id but is not timed, because the roster doesn't share it:
-			twinkleplop has no XML language. It appears in the coverage matrix and in feature sets. A
-			cold-start scenario that loads one language loads a timed one, so it never names
-			<code>xml</code>.
+			A language that is an id but is not timed is one the roster doesn't share: XML is the case
+			today, since twinkleplop has no XML language. It appears in the coverage matrix and in feature
+			sets. A cold-start scenario that loads one language loads a timed one, so it never names an
+			untimed id.
 		</p>
 		<p>
 			The measured libraries support many more languages than these. An id is added when a feature
@@ -63,48 +91,58 @@
 			cold-start scenario imports. The sets are declared in <code>bench/sets.ts</code> before any
 			numbers exist, so a set can't be chosen to flatter a result.
 		</p>
-		<table>
-			<thead>
-				<tr>
-					<th>id</th>
-					<th>languages</th>
-					<th>purpose</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td><code>core</code></td>
-					<td>none</td>
-					<td>the library with no languages registered: its runtime floor</td>
-				</tr>
-				<tr>
-					<td><code>single:&lt;lang&gt;</code></td>
-					<td>one, for each language id</td>
-					<td>subtracting <code>core</code> gives what that language adds</td>
-				</tr>
-				<tr>
-					<td><code>docs</code></td>
-					<td>js, ts, css, html, md, bash, json</td>
-					<td>
-						what a documentation site imports, matching twinkleplop's docs bundle. It is also the
-						set a cold-start process loads in the <code>set</code> scenario
-					</td>
-				</tr>
-				<tr>
-					<td><code>web_rust</code></td>
-					<td>ts, js, css, html, xml, json, svelte, md, bash, rust</td>
-					<td>
-						labelled "web + rust" and footnoted as fuz_code's full set, so home turf for that
-						library
-					</td>
-				</tr>
-				<tr>
-					<td><code>all</code></td>
-					<td>every language id</td>
-					<td>the union</td>
-				</tr>
-			</tbody>
-		</table>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<div class="table-scroll" tabindex="0" role="region" aria-label="Feature sets">
+			<table>
+				<caption>The feature sets of the results this site renders.</caption>
+				<thead>
+					<tr>
+						<th scope="col">id</th>
+						<th scope="col">label</th>
+						<th scope="col">languages</th>
+						<th scope="col">note</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each sets as set (set.id)}
+						<tr>
+							<th scope="row"><code>{set.id}</code></th>
+							<td>{set.label}</td>
+							<td>{set.langs.length > 0 ? set.langs.join(', ') : 'none'}</td>
+							<td>{set.footnote ?? ''}</td>
+						</tr>
+					{/each}
+					{#if has_single_sets}
+						<tr>
+							<th scope="row"><code>single:&lt;lang&gt;</code></th>
+							<td>the language's name</td>
+							<td>one, for each language id</td>
+							<td></td>
+						</tr>
+					{/if}
+				</tbody>
+			</table>
+		</div>
+		<p>What each is for:</p>
+		<ul>
+			<li><code>core</code> — the library with no languages registered: its runtime floor.</li>
+			<li>
+				<code>single:&lt;lang&gt;</code> — subtracting <code>core</code> gives what that language
+				adds, which the results page shows for every language.
+			</li>
+			<li>
+				<code>docs</code> — what a documentation site imports, matching twinkleplop's docs bundle.
+				It is also the set a cold-start process loads in the <code>set</code> scenario.
+			</li>
+			<li>
+				<code>web_rust</code> — everything fuz_code supports, so it is home turf for that library,
+				and its note says so. It is named by its content because the site is neutral.
+			</li>
+			<li>
+				<code>all</code> — every language id. While it holds the same languages as another set, the
+				two are one bundle, and the results page shows them as one row.
+			</li>
+		</ul>
 		<p>
 			A set is measured for a library only when the library supports every language in it. Otherwise
 			the result names the languages it lacks. <TomeLink slug="deterministic" /> describes how a set

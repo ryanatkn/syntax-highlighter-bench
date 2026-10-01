@@ -11,36 +11,45 @@
 <TomeContent {tome}>
 	<section>
 		<aside>
-			This page describes what is designed and not built: the results pages and a published timed
-			run. The details may change as they are built. The <TomeLink slug="adapters" />, the
-			<TomeLink slug="corpus" />, the timed harness and the cold-start scenarios described in
-			<TomeLink slug="method" />, and the <TomeLink slug="deterministic" /> exist.
+			This page describes what is designed and not built. The details may change as they are built.
+			Everything the other pages describe exists: the <TomeLink slug="adapters" />, the
+			<TomeLink slug="corpus" />, the timed harness and the cold-start scenarios of
+			<TomeLink slug="method" />, the <TomeLink slug="deterministic" />, and the pages that render a
+			results file.
 		</aside>
 	</section>
-	<TomeSection>
-		<TomeSectionHeader text="Results pages" />
-		<p>
-			The site will render a results file as a matrix: cells as rows, libraries as columns, each
-			value beside its ratio to the best, with filters for the libraries, languages, sizes, sources,
-			and modes, so a reader compares the subset they care about. A summary is a geometric mean over
-			only the cells every selected library was measured in, and differences inside the machine's
-			noise floor are shown as such.
-		</p>
-		<p>
-			For bundle size the pages will show what each language adds to a library, derived from the
-			measured sets as <TomeLink slug="deterministic" /> describes, beside the sets' totals.
-		</p>
-		<p>
-			For cold start they will show each scenario beside the bare baseline it includes, bundled and
-			unbundled, with what the library added to the time and to the process's memory.
-		</p>
-	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="A published run" />
 		<p>
 			Timed numbers will be published from one named machine, calibrated first, with the machine,
-			the commands, and the checks a run must pass written beside them. Until then the harness can
-			be run by anyone, and <TomeLink slug="method" /> says how.
+			the commands, and the checks a run must pass written beside them. The run is committed as
+			<code>results/latest.json</code>, and the site then renders it in place of the deterministic
+			results. Until then the harness can be run by anyone, and <TomeLink slug="method" /> says how.
 		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="More views" />
+		<p>Each of these is a view over the same results file:</p>
+		<ul>
+			<li>a page for each library: its version, its adapter's notes, its sizes, and its cells</li>
+			<li>
+				a page for each language, with every library's rendering of the same sample side by side
+			</li>
+			<li>
+				the change from one published run to the next, for every library, once there are two runs
+			</li>
+			<li>the throughput cells run in the reader's own browser</li>
+		</ul>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="More measurements" />
+		<ul>
+			<li>
+				Markdown with the languages of its fenced blocks loaded, beside the cells that load Markdown
+				alone
+			</li>
+			<li>inputs built to be a worst case, which regex grammars tend to handle very differently</li>
+			<li>other runtimes than Node</li>
+		</ul>
 	</TomeSection>
 </TomeContent>

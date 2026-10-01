@@ -7,7 +7,12 @@
 	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 
+	import { docs_data_context } from '$lib/docs_data.ts';
+
 	const tome = tome_get_by_slug('results');
+
+	const get_docs = docs_data_context.get();
+	const docs = $derived(get_docs());
 </script>
 
 <TomeContent {tome}>
@@ -22,7 +27,10 @@
 			<code>bench/run.ts</code> writes one for a timed run, as <TomeLink slug="method" /> describes,
 			and <code>bench/deterministic.ts</code> writes the committed
 			<code>results/deterministic.json</code>, which holds only the numbers that are the same on any
-			machine, as <TomeLink slug="deterministic" /> describes. No timed run has been published yet.
+			machine, as <TomeLink slug="deterministic" /> describes.
+			{#if docs.source === 'deterministic'}
+				No timed run has been published yet, so that file is the one this site renders.
+			{/if}
 		</p>
 	</section>
 	<TomeSection>
@@ -156,6 +164,45 @@
 		<p>
 			<code>meta.commit</code> ends in <code>-dirty</code> when the working tree had changes the
 			commit doesn't record, and such a run can't be reproduced from its commit.
+		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="What the site renders" />
+		<p>
+			The site is built from one results file, parsed through the schema when the site is built, so
+			a malformed file fails the build and no number reaches a page unchecked:
+		</p>
+		<ul>
+			<li>
+				<code>results/latest.json</code>, the latest published timed run, when it is committed. It
+				carries its own bundle sizes, token counts, and output sizes, so every number on a page is
+				from one file.
+			</li>
+			<li>
+				otherwise <code>results/deterministic.json</code>. The pages then show the deterministic
+				numbers, and say that no timed results are published where a timed number would be. A
+				deterministic file that holds a timed number fails the build.
+			</li>
+		</ul>
+		<p>
+			A latest run must pass <DeclarationLink name="bench_results_is_publishable" />, or the build
+			fails and says why. A smoke run, a calibration, a filtered run, a run with a gap, a run from a
+			commit with uncommitted changes, and a run whose anchor drifted are never shown as results. A
+			drifted run is measured again, not published under a warning.
+		</p>
+		<p>
+			A published run is also held against the deterministic file. When the two describe the same
+			library versions and the same corpus, their deterministic numbers must be equal: the feature
+			sets, the coverage, the bundle sizes, and each cell's token counts and output sizes. A
+			difference fails the build and names the first place they differ. When a library's version or
+			the corpus has moved since the run, the run is shown as the snapshot it is, and the line that
+			says where the numbers came from also says what has moved since.
+		</p>
+		<p>
+			The fixture run the tests use holds invented numbers. A build renders it only when the
+			<code>BENCH_RESULTS_FIXTURE</code> environment variable is <code>1</code>, which is for
+			working on the pages before a run exists, and every page of such a build is marked as fixture
+			data. A build without the variable never reads the file.
 		</p>
 	</TomeSection>
 	<TomeSection>

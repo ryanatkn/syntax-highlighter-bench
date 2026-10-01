@@ -5,23 +5,29 @@
 
 	import ThemeRoot from '@fuzdev/fuz_ui/ThemeRoot.svelte';
 	import { SiteState, site_context } from '@fuzdev/fuz_ui/site.svelte.ts';
-	import type { Snippet } from 'svelte';
 	import pkg_json from 'virtual:pkg.json';
 
-	const {
-		children
-	}: {
-		children: Snippet;
-	} = $props();
+	import FixtureBanner from '$lib/FixtureBanner.svelte';
+	import { logo_syntax_highlighter_bench } from '$lib/logo.ts';
+	import type { LayoutProps } from './$types.js';
+
+	const { children, data }: LayoutProps = $props();
 
 	// `repo_url` derives from `pkg_json`
-	site_context.set(new SiteState({ pkg_json }));
+	site_context.set(new SiteState({ icon: logo_syntax_highlighter_bench, pkg_json }));
 </script>
 
 <svelte:head>
 	<title>syntax-highlighter-bench</title>
+	<meta
+		name="description"
+		content="A neutral benchmark of JavaScript syntax highlighters: fuz_code, twinkleplop, Prism, and Shiki on the same inputs."
+	/>
 </svelte:head>
 
 <ThemeRoot>
 	{@render children()}
+	{#if data.results_source === 'fixture'}
+		<FixtureBanner />
+	{/if}
 </ThemeRoot>

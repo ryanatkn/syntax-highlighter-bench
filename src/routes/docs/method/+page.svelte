@@ -7,7 +7,13 @@
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 	import Code from '@fuzdev/fuz_code/Code.svelte';
 
+	import { format_percent } from '$lib/bench_format.ts';
+	import { docs_data_context } from '$lib/docs_data.ts';
+
 	const tome = tome_get_by_slug('method');
+
+	const get_docs = docs_data_context.get();
+	const docs = $derived(get_docs());
 
 	const commands = `npm run bench -- --machine <name>            # a full run: results/<date>_<name>.json
 npm run bench:calibrate -- --machine <name>  # the noise floor: results/calibration_<name>.json
@@ -25,7 +31,10 @@ node bench/run.ts --help`;
 			The timed harness measures throughput: how long each library takes to tokenize an input, and
 			to render it as HTML. It then measures cold start: what a library costs a process before it
 			has highlighted anything. <code>bench/run.ts</code> runs both and writes one
-			<TomeLink slug="results" />. No run has been published, so there are no numbers yet.
+			<TomeLink slug="results" />.
+			{#if docs.source === 'deterministic'}
+				No run has been published, so the site has no timed numbers yet.
+			{/if}
 		</p>
 		<p>
 			The method builds on the comparison harness of
@@ -617,6 +626,23 @@ node bench/run.ts --help`;
 			so it can't steer the floor. A calibration file's values are the first arm's, and so are their
 			<code>attempts</code>.
 		</p>
+		{#if docs.noise_floor && docs.machine}
+			<p>
+				The run this site shows was measured on <strong>{docs.machine}</strong>, whose floor is
+				{format_percent(docs.noise_floor.per_cell)} for one cell and
+				{format_percent(docs.noise_floor.geomean)} for a geometric mean. The results page marks a
+				ratio inside it.
+			</p>
+		{:else}
+			<p>
+				{#if docs.source === 'deterministic'}
+					No timed run is published yet, so there is no floor to show here.
+				{:else}
+					The run this site shows carries no floor, so its small differences can't be told from
+					noise.
+				{/if}
+			</p>
+		{/if}
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="The anchor" />
@@ -665,6 +691,29 @@ node bench/run.ts --help`;
 			<li>
 				<strong>Synchronous paths.</strong> A library with an async API loads in its setup and is
 				timed through its synchronous core.
+			</li>
+			<li>
+				<strong>The HTML is read.</strong> In <code>html</code> mode the timed call reads one
+				character of the string, so a library that returns a string the engine hasn't joined up pays
+				to flatten it inside the clock. A benchmark that discards the string doesn't charge for
+				that, so these numbers can differ from a library's own.
+			</li>
+			<li>
+				<strong>Markdown without its fences.</strong> A timed process loads only the language it
+				measures, so a fenced code block inside Markdown is not highlighted, with the exceptions
+				<TomeLink slug="adapters" /> lists. A site that loads several languages pays more for
+				Markdown than these cells show.
+			</li>
+			<li>
+				<strong>Home turf.</strong> Some inputs are a measured library's own samples, which it was
+				developed against. They are labelled with that library wherever they appear, summarized by
+				owner, and left out of the default view and the headline figures, which use the neutral
+				inputs.
+			</li>
+			<li>
+				<strong>Synthetic inputs.</strong> A few inputs were built by joining or repeating files to
+				reach a size, and are marked. A repeated file is more regular than real code of the same
+				size.
 			</li>
 			<li>
 				<strong>Steady state.</strong> In a cell, every library is warm when it is timed. What a
