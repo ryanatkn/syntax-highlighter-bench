@@ -2,13 +2,13 @@
 
 > neutral benchmark suite and results site for JavaScript syntax highlighters
 
-Compares [fuz_code](https://github.com/fuzdev/fuz_code),
-[twinkleplop](https://github.com/pngwn/twinkleplop),
-[Prism](https://github.com/PrismJS/prism), and
-[Shiki](https://github.com/shikijs/shiki) on the same inputs. Shiki's
-JavaScript engine and its Oniguruma wasm engine are counted as two libraries.
-A run produces one results file holding many metrics, and the site is a view
-over that file where a reader picks the subset to compare.
+This project aims to comprehensively benchmark
+[twinkleplop](https://twinkleplop.pngwn.at/),
+[Prism](https://prismjs.com/),
+[Shiki](https://shiki.style/),
+[fuz_code](https://github.com/fuzdev/fuz_code) (same author as this project),
+and other syntax highlighters.
+The [website](https://syntax-highlighter-bench.ryanatkn.com/) has more.
 
 **Status: early.** The adapters, the corpus, the check that guards against a
 plain-text fallback, the harness that times the libraries, warm and from a cold
