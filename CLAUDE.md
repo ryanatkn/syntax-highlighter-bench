@@ -43,8 +43,8 @@ dev server.
 Built: the adapter contract and the adapters, the roster, the output check,
 the corpus and its manifest, the language ids, the feature sets, the results
 schema, the timed harness with its cold-start scenarios, the deterministic
-metrics (bundle size, install footprint, token counts, output sizes raw and
-compressed, coverage) with their
+metrics (bundle size, install footprint, retained heap, token counts, output
+sizes raw and compressed, coverage) with their
 committed results file, the site that renders a results file (the landing page
 and `/results`), and the docs that describe them. No timed run is committed and
 no timed numbers are published, so the site renders the deterministic file and
@@ -65,6 +65,7 @@ bench/                       the Node harness; never imported by the site
   deterministic.ts           CLI: the deterministic results file — build, write, `--check`, and what a timed run carries from it
   sizes.ts                   bundle size: build and minify a bundle entry, compress, the wasm and theme CSS columns
   install.ts                 install footprint: each library's runtime dependency closure, its packages, files, and bytes
+  heap.ts                    retained heap: a generated process per library and timed language over its `single:<lang>` bundle, read after collecting
   bundle_check.ts            one built bundle, imported in a process of its own and made to highlight its languages
   outputs.ts                 token counts and output sizes, raw and compressed: one process per library and language, folded into cells
   node_child.ts              runs a harness script in a Node process and reads the JSON it prints
@@ -212,7 +213,7 @@ Two classes of number, kept apart:
 | class             | where                                                       |
 | ----------------- | ----------------------------------------------------------- |
 | machine-dependent | each cell's `values` (timing, memory); the `startup` section (cold start: time and memory) |
-| deterministic     | each cell's `tokens`, `output`, and `compressed`; `bundle`; `install`; `coverage` |
+| deterministic     | each cell's `tokens`, `output`, and `compressed`; `bundle`; `install`; `heap` (within a reading's jitter, for a Node version and platform); `coverage` |
 
 A cell states each deterministic number once for its input, on the cell whose
 call returns it: `tokens` on the `tokenize` cell and `output` and `compressed`
@@ -228,10 +229,11 @@ also make the committed file change on every regeneration, and a commit can't
 name the tree it is itself committed in. `meta.bundler` (`BenchBundler`: the
 versions of Vite, Rollup, and esbuild, and the compression levels) is set
 exactly when `bundle` is not empty, and the deterministic pass's other sizes
-come with it: `install` covers every roster library, and every `html` cell has
+come with it: `install` covers every roster library, `heap` every timed
+language each library claims (and no other), and every `html` cell has
 `compressed` for exactly the libraries of its `output`, exactly when
-`meta.bundler` is set, and both are empty otherwise. A timed run that doesn't
-carry the deterministic file has none of the three.
+`meta.bundler` is set, and all three are empty otherwise. A timed run that
+doesn't carry the deterministic file has none of them.
 
 `startup`, `bundle`, and `cells` may be empty, `meta.noise_floor` is null
 until the machine is calibrated, and `meta.anchor` may be null only when the run
@@ -327,8 +329,9 @@ the sections agree with each other:
   (`to_max_compressed_bytes`: a few bytes compress to slightly more), and a
   cell's `compressed` sizes at most its `html_bytes` plus the same; `css` is
   null exactly for an `inline_styles` library
-- `install` and the cells' `compressed` come with `bundle`, as above; an
-  install footprint has at least as many files as packages
+- `install`, `heap`, and the cells' `compressed` come with `bundle`, as above;
+  an install footprint has at least as many files as packages; a heap entry is
+  whole KiB, never negative
 - a deterministic-only file with cells is complete
   (`bench_results_find_gaps(results, 'deterministic')`): every claiming library
   has the number each cell states or an `excluded` entry, and every listed
@@ -608,6 +611,54 @@ walked in `plan_run`), and `find_moved_since` names "the dependencies of
 <library>" when it differs. A failed `--check` that touches `install` says a
 dependency moved.
 
+**Retained heap** (`bench/heap.ts`, `measure_heaps`, after `measure_bundles`).
+For each adapter and each timed language it claims, a process runs a generated
+module (`to_heap_child_source`, under
+`node_modules/.cache/syntax-highlighter-bench/heap/`) that imports the
+`single:<lang>` bundle from the bundles cache, highlights the language's
+harness snippet once through `bundle_html_source`, drops the HTML, and calls
+`gc()` until a collection changes `used_heap_size` by under
+`HEAP_SETTLED_BELOW_BYTES` (not zero: under load a heap can move a few hundred
+bytes back and forth forever). It then sums `v8.getHeapSpaceStatistics()` less
+`HEAP_CODE_SPACES` as `retained_kb`,
+separately sums those two spaces as `code_kb` (they hold irregexp's native
+code as well as optimised functions, so a regexp engine's memory is largely
+there: leaving them out would favour it; machine code is the architecture's,
+x64 recorded), and reads `process.memoryUsage().external` (a wasm engine's
+linear memory, at the size it has grown to and never gives back; the OS backs
+only touched pages, so RSS can be lower). `to_bench_heap` subtracts a bare
+module of the same language (same snippet literal, no import, no call) and
+rounds each to KiB, clamped at zero. All three are after one highlight of the
+small harness snippet; larger inputs leave more, most of all for regexp and
+wasm engines.
+
+- **Not in `bench/bundle_check.ts`**: a TypeScript module that statically
+  imports zod, the corpus, and the adapter (every language, for fuz_code and
+  twinkleplop) before any line runs, plus Node's type stripper. The generated
+  module holds nothing of the harness, like a cold-start child.
+- **Flags, for this reading only** (`HEAP_NODE_FLAGS`): `--expose-gc`;
+  `--max-semi-space-size=16`, since V8 sizes the young generation from the
+  machine's memory and a small one moves the wasm engine's reading; above this
+  size it no longer moves; `--single-threaded`, since concurrent compilation
+  landing before or after the reading moved Shiki by kilobytes between
+  processes. With the three, readings repeat to under a kibibyte, under load
+  too. No timed number uses a flag.
+- **Determinism**: V8's object layout, so the figures are for the Node version
+  CI pins on x64 with pointer compression off (official builds). `--check`
+  compares heap fields with `heap_readings_agree` (`HEAP_TOLERANCE_KB` or
+  `HEAP_TOLERANCE_RATIO` of the larger, in `bench_constants.ts`) and the rest
+  exactly; `keep_agreeing_heaps` keeps a committed reading that agrees, both on
+  `--check` and on a write, number by number, so an unchanged tree regenerates
+  an unchanged file; a change smaller than the tolerance isn't recorded until
+  it, with later ones, exceeds it.
+  A heap line outside the tolerance says it is a heap reading and names the Node
+  version and arch.
+- **Site**: heaps are left out of the exact comparison. `find_moved_since`
+  looks at versions, closures, and corpus only; when nothing moved and the
+  exact numbers agree, heaps beyond the tolerance (`bench_heaps_agree`) add
+  `HEAP_MOVED` and render the run as a snapshot, since a Node upgrade moves them
+  and nothing else records it. A heap difference never hides an exact one.
+
 **Coverage** is `to_bench_coverage` over the adapters. The footnote text lives
 only in each adapter's `via`.
 
@@ -628,7 +679,7 @@ regenerating the file is quick and the run is long. A calibration goes
 ahead without it. A file that isn't a results file is refused with exit 2.
 When carried:
 
-- `assemble_results` copies the `bundle` and `install` entries of the run's
+- `assemble_results` copies the `bundle`, `install`, and `heap` entries of the run's
   libraries and `meta.bundler` from it, and each `html` cell's `compressed`
   from the file's `expected` entry for the input and library. The timed harness
   never measures a bundle or compresses HTML; `prepare_startup` only rebuilds a
@@ -643,12 +694,13 @@ When carried:
 
 So there is one source for each number: cell numbers come from `check_output`
 in the process that measured the cell and must equal the file's, and bundle
-sizes, install footprints, and compressed HTML sizes come from the file. The smoke run is therefore also a check of the
+sizes, install footprints, retained heaps, and compressed HTML sizes come from the file. The smoke run is therefore also a check of the
 committed file against every real process.
 
 Tests use a results directory of their own. `src/test/bench/run.spawn.test.ts`
-runs its small smoke run against the committed file, and
-`src/test/bench/sizes.test.ts` and the `prepare_startup` tests in
+runs its small smoke run against the committed file, and one real heap
+reading (Prism on JSON, against the committed figure), and that test,
+`src/test/bench/sizes.test.ts`, and the `prepare_startup` tests in
 `src/test/bench/coldstart.test.ts` hold the only tests that run a real build.
 
 **CI** (`.github/workflows/check.yml`): one job on the pinned Node version runs
@@ -685,7 +737,8 @@ library beside others:
   a large input depended on which libraries ran beside it
 
 Don't pin V8's heap with flags to tame this: the defaults are what a consumer
-gets. `load_adapter` imports only the one adapter module, so the process's
+gets. The retained heap (`bench/heap.ts`) pins flags for its reading alone;
+they move its figures by a kibibyte or two. `load_adapter` imports only the one adapter module, so the process's
 memory is that library's too. Never import `bench/libraries.ts` from
 `bench/cell.ts`.
 
@@ -1082,6 +1135,7 @@ and `logo.ts`:
 | `startup_matrix.ts` | cold-start scenarios as rows: what a library added over the bare baseline, and whether that is inside the baseline's own noise |
 | `bundle_matrix.ts` | the incremental-cost view, the set totals, everything a page loads, sets with the same languages merged, the wasm and stylesheet rows, the install footprint |
 | `output_matrix.ts` | token counts and output sizes as rows, the HTML's raw or compressed, by a selector of its own that starts raw |
+| `heap_matrix.ts` | the retained heap as rows by language: everything summed, the V8 heap, the machine code, and the external memory, as four groups, with the tolerance as a floor |
 | `results_filters.ts` | the selection on `/results` and its URL query form |
 | `headline.ts` | the landing page's rows |
 | `coverage_matrix.ts` | the coverage matrix with numbered footnotes |
@@ -1129,9 +1183,10 @@ and `FixtureBanner.svelte` the rest.
   install table turns it off too: a footprint is everything a package ships,
   every language and theme included, not what a page loads.
 - **A noise floor is a row's own** (`MatrixRow.floor`): the per-cell floor on a
-  throughput cell, the geomean floor on a throughput mean, and none anywhere
-  else. Cold start has no calibrated floor and a byte count has no noise, so a
-  ratio there is never marked `≈`.
+  throughput cell, the geomean floor on a throughput mean, the check's
+  tolerance on a compared heap row, and none anywhere else. Cold start has no
+  calibrated floor and a byte count has no noise, so a ratio there is never
+  marked `≈`.
 - **The sets are found by what they hold**, not by their ids
   (`find_core_set`, `find_single_set`): the incremental cost is the
   single-language set less the set with none, derived and never stored. The
@@ -1141,6 +1196,14 @@ and `FixtureBanner.svelte` the rest.
   wasm binary plus the theme stylesheet in one compression, each compressed on
   its own. It is ranked, so a library whose engine ships as wasm is not
   compared on its JavaScript alone.
+- **The retained heap is tinted and ranked**: unlike a token count, a smaller
+  heap is less memory for the same highlight of the same snippet through the
+  same bundle, as a smaller bundle is fewer bytes. The sum of heap, machine
+  code, and external is ranked first, so neither a regexp engine (machine code)
+  nor a wasm engine (external) is compared without what it holds; the external
+  group is `compared: false`, since most libraries hold none there and a zero
+  has no ratio. A compared heap row's `floor` is the check's tolerance against
+  the row's smallest number (`to_heap_floor`), so readings within it print `≈`.
 - **Cold start is shown as time added over `bare`**, and the whole time is in
   the row's details. An addition smaller than the bare baseline's own p10 to
   p90 band (`to_startup_noise_ms`) is `unranked` and marked "in the noise", and

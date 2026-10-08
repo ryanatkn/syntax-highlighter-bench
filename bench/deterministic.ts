@@ -1,8 +1,9 @@
 /**
  * The deterministic results file: every number of the benchmark that is the
  * same on any machine. Bundle sizes over the feature sets, each library's
- * install footprint, its token count and HTML size on every input with the
- * HTML's compressed sizes, and the coverage matrix.
+ * install footprint, its retained heap on each language, its token count and
+ * HTML size on every input with the HTML's compressed sizes, and the coverage
+ * matrix.
  *
  * ```bash
  * node bench/deterministic.ts           # regenerate results/deterministic.json
@@ -15,14 +16,17 @@
  * value in it and so no machine, time, Node version, or commit. What its numbers
  * depend on is in it instead: each library's version, the corpus hash, and what
  * the bundles were built with. Two inputs aren't recorded: the compressed sizes
- * depend on the zlib and brotli inside Node, and the install footprints on the
- * transitive versions the lockfile installs.
+ * depend on the zlib and brotli inside Node, the install footprints on the
+ * transitive versions the lockfile installs, and the retained heaps on the Node
+ * version and the platform (`bench/heap.ts`). The heaps can also differ by a few
+ * kibibytes between two readings, so `--check` compares them within a tolerance
+ * (`heap_readings_agree`) and every other number exactly.
  *
  * A timed run relates to it in two ways (`carry_deterministic`). The run's
  * cells get their token counts and HTML sizes from their own processes, by the
  * same check under the same setup, and every one is compared with this file as
- * it arrives. And the run copies the bundle sizes, the install footprints, and
- * the HTML's compressed sizes from this file rather than measuring them again. Both happen only when the file describes the run: the
+ * it arrives. And the run copies the bundle sizes, the install footprints, the
+ * retained heaps, and the HTML's compressed sizes from this file rather than measuring them again. Both happen only when the file describes the run: the
  * same library versions, corpus, and sets.
  *
  * Node-only.
@@ -34,7 +38,10 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { availableParallelism } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 
+import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '../src/lib/bench_constants.ts';
 import {
+	BenchHeap,
+	heap_readings_agree,
 	parse_bench_results,
 	type BenchBundler,
 	type BenchCellCompressed,
@@ -44,6 +51,7 @@ import {
 } from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
 import { load_corpus_manifest } from './corpus.ts';
+import { measure_heaps } from './heap.ts';
 import { LANG_ROSTER } from './langs.ts';
 import { ADAPTERS } from './libraries.ts';
 import { measure_installs } from './install.ts';
@@ -88,6 +96,11 @@ export const build_deterministic_results = async (
 		...(log && { log }),
 		concurrency
 	});
+	const heap = await measure_heaps(adapters, {
+		...(options.out_dir !== undefined && { bundles_dir: options.out_dir }),
+		...(log && { log }),
+		concurrency
+	});
 	return parse_bench_results({
 		meta: {
 			generated_at: null,
@@ -111,6 +124,7 @@ export const build_deterministic_results = async (
 		startup: [],
 		bundle,
 		install: measure_installs(adapters),
+		heap,
 		coverage: to_bench_coverage(adapters)
 	} satisfies BenchResults);
 };
@@ -169,6 +183,8 @@ export interface CarriedDeterministic {
 	bundle: BenchResults['bundle'];
 	/** The install footprints of the run's libraries. */
 	install: BenchResults['install'];
+	/** The retained heaps of the run's libraries. */
+	heap: BenchResults['heap'];
 	bundler: BenchBundler;
 	/**
 	 * What each library came to on each input, by `to_expected_key`: its numbers,
@@ -257,16 +273,57 @@ export const carry_deterministic = (
 		install: Object.fromEntries(
 			context.libraries.map((library) => [library.id, deterministic.install[library.id]!])
 		),
+		heap: Object.fromEntries(
+			context.libraries.map((library) => [library.id, deterministic.heap[library.id] ?? {}])
+		),
 		bundler: meta.bundler,
 		expected
 	};
+};
+
+/**
+ * Keeps the committed retained heaps that agree with the regenerated ones, so
+ * that regenerating on an unchanged tree changes nothing and a check compares
+ * the heaps within `heap_readings_agree` and every other number exactly. A heap
+ * reading can move by a little from one process to the next. A change smaller
+ * than the tolerance isn't recorded until it, with later ones, exceeds it.
+ *
+ * @param committed - the file on disk, as JSON, or null
+ * @param generated - the results just built
+ * @returns `generated`, with each agreeing heap number replaced by the committed one
+ */
+export const keep_agreeing_heaps = (committed: unknown, generated: BenchResults): BenchResults => {
+	if (!is_record(committed) || !is_record(committed.heap)) return generated;
+	const heap: BenchResults['heap'] = {};
+	for (const [library, by_lang] of Object.entries(generated.heap)) {
+		const own = committed.heap[library];
+		heap[library] = {};
+		for (const [lang, entry] of Object.entries(by_lang)) {
+			const kept = is_record(own) ? own[lang] : undefined;
+			const parsed = BenchHeap.safeParse(kept);
+			if (!parsed.success) {
+				heap[library][lang] = entry;
+				continue;
+			}
+			// number by number, so a check names only a number outside the tolerance
+			const keep = (key: keyof BenchHeap): number =>
+				heap_readings_agree(parsed.data[key], entry[key]) ? parsed.data[key] : entry[key];
+			heap[library][lang] = {
+				retained_kb: keep('retained_kb'),
+				code_kb: keep('code_kb'),
+				external_kb: keep('external_kb')
+			};
+		}
+	}
+	return { ...generated, heap };
 };
 
 const USAGE = [
 	'usage: node bench/deterministic.ts [--check] [--out <path>]',
 	'',
 	'Regenerates the deterministic results: bundle sizes, install footprints,',
-	'token counts, HTML sizes raw and compressed, and coverage. Nothing is timed.',
+	'retained heaps, token counts, HTML sizes raw and compressed, and coverage.',
+	'Nothing is timed. The check compares retained heaps within a tolerance.',
 	'',
 	'  --check        regenerate in memory, and fail if the committed file differs',
 	'  --out <path>   read and write this file instead of results/deterministic.json',
@@ -311,9 +368,16 @@ const main = async (args: ReadonlyArray<string>): Promise<number> => {
 	}
 
 	const started = performance.now();
-	const results = await build_deterministic_results({
+	const built = await build_deterministic_results({
 		log: (line) => process.stderr.write(line + '\n')
 	});
+	let previous: unknown = null;
+	try {
+		previous = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+	} catch {
+		// not JSON: written over, or reported by the check
+	}
+	const results = keep_agreeing_heaps(previous, built);
 	const serialized = serialize_results(results);
 	const seconds = ((performance.now() - started) / 1000).toFixed(1);
 
@@ -350,6 +414,11 @@ const main = async (args: ReadonlyArray<string>): Promise<number> => {
 	if (differences.every((line) => /\.(gzip|brotli): /.test(line))) {
 		console.error(
 			`only compressed sizes differ, so the committed file was likely generated by a Node with another zlib or brotli (this one has zlib ${process.versions.zlib}, brotli ${process.versions.brotli})`
+		);
+	}
+	if (differences.some((line) => line.startsWith('heap.'))) {
+		console.error(
+			`a retained heap differs by more than a heap reading's own jitter (${HEAP_TOLERANCE_KB} KiB or ${HEAP_TOLERANCE_RATIO * 100}%, whichever is larger): a library, its bundle, or the Node version has moved (this one is ${process.version} on ${process.arch})`
 		);
 	}
 	if (differences.some((line) => line.startsWith('install.'))) {

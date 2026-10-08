@@ -13,7 +13,8 @@ The [website](https://syntax-highlighter-bench.ryanatkn.com/) has more.
 **Status: early.** The adapters, the corpus, the check that guards against a
 plain-text fallback, the harness that times the libraries, warm and from a cold
 start, and writes a results file, the deterministic measurements (bundle size,
-install footprint, token counts, output sizes raw and compressed, coverage), and
+install footprint, retained heap, token counts, output sizes raw and compressed,
+coverage), and
 the site that renders a results file
 exist. The deterministic numbers are committed as `results/deterministic.json`,
 and the site shows them. No timed numbers are published, and the site says so
@@ -33,8 +34,9 @@ wherever one would be.
     one sample
   - `bench/journal.ts` — the journal a timed run keeps, so it can be resumed
   - `bench/deterministic.ts` — the deterministic results file, from
-    `bench/sizes.ts` (bundle size), `bench/install.ts` (install footprint), and
-    `bench/outputs.ts` (token counts and output sizes)
+    `bench/sizes.ts` (bundle size), `bench/install.ts` (install footprint),
+    `bench/heap.ts` (retained heap), and `bench/outputs.ts` (token counts and
+    output sizes)
   - `bench/corpus/` — the inputs, with their manifest
   - `bench/langs.ts` — the language ids every adapter maps onto
   - `bench/sets.ts` — the feature sets bundle size is measured over
@@ -56,8 +58,9 @@ Two classes of number, kept apart in the results file:
   throughput for each input and mode (`tokenize` and `html`), with each
   process's peak memory beside it; cold start.
 - **Deterministic**, the same anywhere: bundle size for each feature set, with
-  wasm and theme CSS reported separately; install footprint; output size, raw
-  and compressed; token counts; the coverage matrix.
+  wasm and theme CSS reported separately; install footprint; retained heap for
+  each language, for the Node version the checks pin; output size, raw and
+  compressed; token counts; the coverage matrix.
 
 The timed harness measures throughput, cold start, and memory. The
 deterministic numbers have a command of their own, and a timed run carries them
@@ -127,8 +130,10 @@ A drifted run is measured again, not published under a warning. A
 same library versions, the same install closures, and the same corpus, their
 deterministic numbers (feature
 sets, coverage, bundle sizes, install footprints, and each cell's token counts
-and output sizes, raw and compressed) must be equal, or the build fails and names the first place they differ. When a
-library's version, its dependencies, or the corpus has moved since the run, the run is shown as
+and output sizes, raw and compressed) must be equal, and their retained heaps
+agree within a reading's jitter, or the build fails and names the first place they differ. When a
+library's version, its dependencies, or the corpus has moved since the run, or
+the retained heaps differ by more, as they do when the Node version moves, the run is shown as
 the snapshot it is, and the line that says where the numbers came from says
 what has moved.
 
@@ -298,7 +303,8 @@ imports it, with one language set up, and the input. It is not what the library
 adds. Compare it between libraries on the same cell. On a small input it says
 little about footprint: a process warms up and is timed for a fixed duration,
 so its peak follows how much the library allocated in that time more than what
-it holds. The cold-start scenarios are where memory is compared.
+it holds. What a library holds is the retained heap, under
+[Deterministic metrics](#retained-heap).
 
 ### Cold start
 
@@ -599,8 +605,9 @@ run passes before it is committed as `results/latest.json`.
 
 ## Deterministic metrics
 
-Bundle sizes, install footprints, token counts, output sizes, and the coverage
-matrix are the same on any machine. One command measures them, with nothing timed, and writes
+Bundle sizes, install footprints, retained heaps, token counts, output sizes,
+and the coverage matrix are the same on any machine (the retained heaps for a
+Node version and platform). One command measures them, with nothing timed, and writes
 `results/deterministic.json`, which is committed:
 
 ```bash
@@ -738,6 +745,47 @@ every language, theme, and type declaration, and not what a page loads. The
 versions are the ones this repository's lockfile installs, transitive ones
 included; a fresh install may resolve a dependency to a newer version.
 
+### Retained heap
+
+What a page or a server holds once a library has loaded one language and
+highlighted once, for every timed language each library claims (`BenchHeap`).
+`bench/heap.ts` runs a Node process that imports the library's `single:<lang>`
+bundle, the one whose size is reported, highlights the language's harness
+snippet once through the adapter's `bundle_html_source`, lets go of the HTML,
+and runs full collections until one changes the heap by under a kibibyte.
+Three numbers, each in KiB over a bare process of the same module without the
+import and the call:
+
+- `retained_kb` — the bytes in use in V8's heap, less the code spaces
+- `code_kb` — the bytes in use in the code spaces: the regular expressions the
+  engine compiled to native code as well as optimised functions. Machine code is
+  the processor's, and the figures are x64's
+- `external_kb` — `process.memoryUsage().external`: array buffers, and a
+  WebAssembly engine's linear memory, counted at the size it has grown to,
+  which it never gives back; the OS backs only the pages it has touched, so
+  resident memory can be lower
+
+The site ranks the three summed. The figures are after one highlight of a small
+snippet; larger inputs leave more, most of all for regexp and wasm engines.
+
+The process imports the bundle and not the adapter: some adapters import every
+language statically, and a TypeScript module would load Node's type stripper
+into the reading. It runs with `--expose-gc`, `--max-semi-space-size=16` (V8
+otherwise sizes the young generation from the machine's memory, and a small one
+leaves some libraries holding a different amount), and `--single-threaded` (a
+compilation finishing on another thread moved Shiki's readings by kilobytes
+from one process to the next). The flags are for this reading only: no timed
+number is measured with a flag.
+
+The figures follow V8's object layout: they are for the Node version the check
+workflow pins, on x64, without pointer compression, as official Node builds
+are. Two readings on one machine agree to well under a kibibyte; `--check`
+still compares them within 16 KiB or 0.5% of the larger, whichever is larger,
+and regenerating keeps a committed reading that agrees, so an unchanged tree
+regenerates an unchanged file, and a change smaller than the tolerance isn't
+recorded until it, with later ones, exceeds it. The site reads two numbers
+within the tolerance as level (`≈`).
+
 ### Coverage
 
 The coverage matrix is each adapter's language map, with a footnote where the
@@ -759,14 +807,15 @@ version of either can compress to a few bytes more or less: generate the file
 on the Node version the check workflow uses. And the install footprints follow
 the transitive versions the lockfile installs, which move without a library's
 own version moving: each footprint carries a hash of its closure
-(`closure`), which a timed run and the site compare. A failed check says which of these it looks like.
+(`closure`), which a timed run and the site compare. The retained heaps follow
+the Node version, as above. A failed check says which of these it looks like.
 
 A timed run takes its cells' token counts and output sizes from its own
 processes, by the same check. When the deterministic file describes the run
 (the same library versions, install closures, corpus, and sets), the run compares each library's
 first result on a cell with the file and stops at a difference, and it copies
-its libraries' bundle sizes, install footprints, and compressed HTML sizes from
-the file. The compressed sizes aren't compared on their own: the raw size is,
+its libraries' bundle sizes, install footprints, retained heaps, and compressed
+HTML sizes from the file. The compressed sizes aren't compared on their own: the raw size is,
 and the install closure (every `name@version` a library installs, transitive
 ones included, as a hash) pins what renders the HTML. Otherwise a
 smoke or filtered run says why and carries none of those sizes, and a full run with no filters is refused

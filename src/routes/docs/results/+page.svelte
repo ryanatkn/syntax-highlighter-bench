@@ -88,6 +88,11 @@
 				and a hash of the closure's <code>name@version</code> list
 			</li>
 			<li>
+				<DeclarationLink name="BenchHeap" /> — for each library and each timed language it claims,
+				what it holds once that language is loaded and highlighted once: the V8 heap less machine
+				code, the machine code, and the external memory beside it, in KiB
+			</li>
+			<li>
 				<DeclarationLink name="BenchCoverageEntry" /> — which languages each library claims, with a
 				footnote where the support is indirect
 			</li>
@@ -108,7 +113,9 @@
 		<p>
 			<strong>Deterministic</strong> numbers come out the same anywhere: token counts and output
 			sizes in each cell's <code>tokens</code>, <code>output</code>, and <code>compressed</code>,
-			plus <code>bundle</code>, <code>install</code>, and <code>coverage</code>.
+			plus <code>bundle</code>, <code>install</code>, <code>heap</code>, and <code>coverage</code>.
+			The retained heaps are deterministic for a Node version and platform, within a reading's own
+			jitter of a few kibibytes at most.
 		</p>
 		<p>
 			A file may hold only the deterministic ones. It then has no <code>meta.run</code> and no
@@ -186,8 +193,8 @@
 			<li>
 				<code>results/latest.json</code>, the latest published timed run, when it is committed:
 				<code>npm run results:publish</code> copies a run there once it passes the test below. It
-				carries its own bundle sizes, install footprints, token counts, and output sizes, so every
-				number on a page is from one file.
+				carries its own bundle sizes, install footprints, retained heaps, token counts, and output
+				sizes, so every number on a page is from one file.
 			</li>
 			<li>
 				otherwise <code>results/deterministic.json</code>. The pages then show the deterministic
@@ -206,9 +213,11 @@
 			library versions, the same install closures, and the same corpus, their deterministic numbers
 			must be equal: the feature sets, the coverage, the bundle sizes, the install footprints, and
 			each cell's token counts and output sizes, raw and compressed. A difference fails the build
-			and names the first place they differ. When a library's version, its dependencies, or the
-			corpus has moved since the run, the run is shown as the snapshot it is, and the line that says
-			where the numbers came from also says what has moved since.
+			and names the first place they differ. The retained heaps must agree within a reading's
+			jitter. When a library's version, its dependencies, or the corpus has moved since the run, or
+			the retained heaps differ by more, as they do when the Node version moves, the run is shown as
+			the snapshot it is, and the line that says where the numbers came from also says what has
+			moved since.
 		</p>
 		<p>
 			The fixture run the tests use holds invented numbers. A build renders it only when the
@@ -295,6 +304,10 @@
 				library of the roster has a footprint, and every library with an output on an
 				<code>html</code> cell has its compressed sizes, exactly when the bundle sizes are present.
 				A footprint has at least a file for each package
+			</li>
+			<li>
+				the retained heaps come with the bundle sizes too, for every timed language each library
+				claims and no other
 			</li>
 			<li>
 				a compressed size is no larger than the raw one plus a compression format's own overhead,

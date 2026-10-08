@@ -12024,6 +12024,243 @@
 			"closure": "472f9f021e5ec51ec6f71c018a017a1d4524da5e5367c3d3273ec8613520fcfe"
 		}
 	},
+	"heap": {
+		"fuz_code": {
+			"ts": {
+				"retained_kb": 124,
+				"code_kb": 61,
+				"external_kb": 0
+			},
+			"js": {
+				"retained_kb": 118,
+				"code_kb": 57,
+				"external_kb": 0
+			},
+			"css": {
+				"retained_kb": 61,
+				"code_kb": 29,
+				"external_kb": 0
+			},
+			"html": {
+				"retained_kb": 172,
+				"code_kb": 79,
+				"external_kb": 0
+			},
+			"json": {
+				"retained_kb": 49,
+				"code_kb": 23,
+				"external_kb": 0
+			},
+			"svelte": {
+				"retained_kb": 196,
+				"code_kb": 93,
+				"external_kb": 0
+			},
+			"md": {
+				"retained_kb": 97,
+				"code_kb": 27,
+				"external_kb": 0
+			},
+			"bash": {
+				"retained_kb": 85,
+				"code_kb": 39,
+				"external_kb": 0
+			},
+			"rust": {
+				"retained_kb": 84,
+				"code_kb": 45,
+				"external_kb": 0
+			}
+		},
+		"twinkleplop": {
+			"ts": {
+				"retained_kb": 1690,
+				"code_kb": 260,
+				"external_kb": 521
+			},
+			"js": {
+				"retained_kb": 1255,
+				"code_kb": 224,
+				"external_kb": 379
+			},
+			"css": {
+				"retained_kb": 550,
+				"code_kb": 102,
+				"external_kb": 130
+			},
+			"html": {
+				"retained_kb": 1222,
+				"code_kb": 199,
+				"external_kb": 360
+			},
+			"json": {
+				"retained_kb": 407,
+				"code_kb": 104,
+				"external_kb": 64
+			},
+			"svelte": {
+				"retained_kb": 1340,
+				"code_kb": 235,
+				"external_kb": 452
+			},
+			"md": {
+				"retained_kb": 553,
+				"code_kb": 101,
+				"external_kb": 101
+			},
+			"bash": {
+				"retained_kb": 859,
+				"code_kb": 127,
+				"external_kb": 169
+			},
+			"rust": {
+				"retained_kb": 674,
+				"code_kb": 145,
+				"external_kb": 127
+			}
+		},
+		"prism": {
+			"ts": {
+				"retained_kb": 135,
+				"code_kb": 206,
+				"external_kb": 0
+			},
+			"js": {
+				"retained_kb": 112,
+				"code_kb": 213,
+				"external_kb": 0
+			},
+			"css": {
+				"retained_kb": 76,
+				"code_kb": 43,
+				"external_kb": 0
+			},
+			"html": {
+				"retained_kb": 189,
+				"code_kb": 257,
+				"external_kb": 0
+			},
+			"json": {
+				"retained_kb": 63,
+				"code_kb": 35,
+				"external_kb": 0
+			},
+			"svelte": {
+				"retained_kb": 207,
+				"code_kb": 261,
+				"external_kb": 0
+			},
+			"md": {
+				"retained_kb": 186,
+				"code_kb": 155,
+				"external_kb": 0
+			},
+			"bash": {
+				"retained_kb": 109,
+				"code_kb": 602,
+				"external_kb": 0
+			},
+			"rust": {
+				"retained_kb": 84,
+				"code_kb": 104,
+				"external_kb": 0
+			}
+		},
+		"shiki_js": {
+			"ts": {
+				"retained_kb": 3027,
+				"code_kb": 4325,
+				"external_kb": 0
+			},
+			"js": {
+				"retained_kb": 2969,
+				"code_kb": 2588,
+				"external_kb": 0
+			},
+			"css": {
+				"retained_kb": 1885,
+				"code_kb": 981,
+				"external_kb": 0
+			},
+			"html": {
+				"retained_kb": 4597,
+				"code_kb": 2709,
+				"external_kb": 0
+			},
+			"json": {
+				"retained_kb": 1341,
+				"code_kb": 292,
+				"external_kb": 0
+			},
+			"svelte": {
+				"retained_kb": 5932,
+				"code_kb": 3714,
+				"external_kb": 0
+			},
+			"md": {
+				"retained_kb": 2494,
+				"code_kb": 801,
+				"external_kb": 0
+			},
+			"bash": {
+				"retained_kb": 1890,
+				"code_kb": 648,
+				"external_kb": 0
+			},
+			"rust": {
+				"retained_kb": 1574,
+				"code_kb": 512,
+				"external_kb": 0
+			}
+		},
+		"shiki_wasm": {
+			"ts": {
+				"retained_kb": 3401,
+				"code_kb": 312,
+				"external_kb": 41416
+			},
+			"js": {
+				"retained_kb": 3394,
+				"code_kb": 315,
+				"external_kb": 28872
+			},
+			"css": {
+				"retained_kb": 2630,
+				"code_kb": 285,
+				"external_kb": 16840
+			},
+			"html": {
+				"retained_kb": 4789,
+				"code_kb": 331,
+				"external_kb": 16840
+			},
+			"json": {
+				"retained_kb": 2276,
+				"code_kb": 269,
+				"external_kb": 16840
+			},
+			"svelte": {
+				"retained_kb": 5642,
+				"code_kb": 356,
+				"external_kb": 49608
+			},
+			"md": {
+				"retained_kb": 3226,
+				"code_kb": 307,
+				"external_kb": 16840
+			},
+			"bash": {
+				"retained_kb": 2639,
+				"code_kb": 286,
+				"external_kb": 16840
+			},
+			"rust": {
+				"retained_kb": 2409,
+				"code_kb": 277,
+				"external_kb": 16840
+			}
+		}
+	},
 	"coverage": {
 		"fuz_code": {
 			"ts": true,

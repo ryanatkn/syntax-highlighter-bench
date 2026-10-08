@@ -26,3 +26,15 @@ export const BENCH_WRITTEN_SOURCES = ['harness', 'stress'] as const satisfies Re
  * run's summary lists the ones still past it, and the site marks them.
  */
 export const SPREAD_DISTURBED_ABOVE = 1.25;
+
+/**
+ * Two retained-heap readings (`BenchHeap`), in KiB, are the same reading when
+ * they are this close, or `HEAP_TOLERANCE_RATIO` of the larger, whichever is
+ * larger. Readings agree to well under a kibibyte; the margin keeps a reading
+ * from being the one number of the deterministic file that fails a check on an
+ * unchanged tree.
+ */
+export const HEAP_TOLERANCE_KB = 16;
+
+/** The relative margin of `HEAP_TOLERANCE_KB`. */
+export const HEAP_TOLERANCE_RATIO = 0.005;

@@ -4674,6 +4674,243 @@
 			"closure": "4444444444444444444444444444444444444444444444444444444444444444"
 		}
 	},
+	"heap": {
+		"fuz_code": {
+			"ts": {
+				"retained_kb": 100,
+				"code_kb": 80,
+				"external_kb": 0
+			},
+			"js": {
+				"retained_kb": 120,
+				"code_kb": 90,
+				"external_kb": 0
+			},
+			"css": {
+				"retained_kb": 140,
+				"code_kb": 100,
+				"external_kb": 0
+			},
+			"html": {
+				"retained_kb": 160,
+				"code_kb": 110,
+				"external_kb": 0
+			},
+			"json": {
+				"retained_kb": 180,
+				"code_kb": 120,
+				"external_kb": 0
+			},
+			"svelte": {
+				"retained_kb": 200,
+				"code_kb": 130,
+				"external_kb": 0
+			},
+			"md": {
+				"retained_kb": 220,
+				"code_kb": 140,
+				"external_kb": 0
+			},
+			"bash": {
+				"retained_kb": 240,
+				"code_kb": 150,
+				"external_kb": 0
+			},
+			"rust": {
+				"retained_kb": 260,
+				"code_kb": 160,
+				"external_kb": 0
+			}
+		},
+		"twinkleplop": {
+			"ts": {
+				"retained_kb": 1500,
+				"code_kb": 300,
+				"external_kb": 500
+			},
+			"js": {
+				"retained_kb": 1520,
+				"code_kb": 310,
+				"external_kb": 1500
+			},
+			"css": {
+				"retained_kb": 1540,
+				"code_kb": 320,
+				"external_kb": 2500
+			},
+			"html": {
+				"retained_kb": 1560,
+				"code_kb": 330,
+				"external_kb": 3500
+			},
+			"json": {
+				"retained_kb": 1580,
+				"code_kb": 340,
+				"external_kb": 4500
+			},
+			"svelte": {
+				"retained_kb": 1600,
+				"code_kb": 350,
+				"external_kb": 5500
+			},
+			"md": {
+				"retained_kb": 1620,
+				"code_kb": 360,
+				"external_kb": 6500
+			},
+			"bash": {
+				"retained_kb": 1640,
+				"code_kb": 370,
+				"external_kb": 7500
+			},
+			"rust": {
+				"retained_kb": 1660,
+				"code_kb": 380,
+				"external_kb": 8500
+			}
+		},
+		"prism": {
+			"ts": {
+				"retained_kb": 150,
+				"code_kb": 230,
+				"external_kb": 0
+			},
+			"js": {
+				"retained_kb": 170,
+				"code_kb": 240,
+				"external_kb": 0
+			},
+			"css": {
+				"retained_kb": 190,
+				"code_kb": 250,
+				"external_kb": 0
+			},
+			"html": {
+				"retained_kb": 210,
+				"code_kb": 260,
+				"external_kb": 0
+			},
+			"json": {
+				"retained_kb": 230,
+				"code_kb": 270,
+				"external_kb": 0
+			},
+			"svelte": {
+				"retained_kb": 250,
+				"code_kb": 280,
+				"external_kb": 0
+			},
+			"md": {
+				"retained_kb": 270,
+				"code_kb": 290,
+				"external_kb": 0
+			},
+			"bash": {
+				"retained_kb": 290,
+				"code_kb": 300,
+				"external_kb": 0
+			},
+			"rust": {
+				"retained_kb": 310,
+				"code_kb": 310,
+				"external_kb": 0
+			}
+		},
+		"shiki_js": {
+			"ts": {
+				"retained_kb": 3000,
+				"code_kb": 4400,
+				"external_kb": 0
+			},
+			"js": {
+				"retained_kb": 3020,
+				"code_kb": 4410,
+				"external_kb": 0
+			},
+			"css": {
+				"retained_kb": 3040,
+				"code_kb": 4420,
+				"external_kb": 0
+			},
+			"html": {
+				"retained_kb": 3060,
+				"code_kb": 4430,
+				"external_kb": 0
+			},
+			"json": {
+				"retained_kb": 3080,
+				"code_kb": 4440,
+				"external_kb": 0
+			},
+			"svelte": {
+				"retained_kb": 3100,
+				"code_kb": 4450,
+				"external_kb": 0
+			},
+			"md": {
+				"retained_kb": 3120,
+				"code_kb": 4460,
+				"external_kb": 0
+			},
+			"bash": {
+				"retained_kb": 3140,
+				"code_kb": 4470,
+				"external_kb": 0
+			},
+			"rust": {
+				"retained_kb": 3160,
+				"code_kb": 4480,
+				"external_kb": 0
+			}
+		},
+		"shiki_wasm": {
+			"ts": {
+				"retained_kb": 3500,
+				"code_kb": 340,
+				"external_kb": 30000
+			},
+			"js": {
+				"retained_kb": 3520,
+				"code_kb": 350,
+				"external_kb": 31000
+			},
+			"css": {
+				"retained_kb": 3540,
+				"code_kb": 360,
+				"external_kb": 32000
+			},
+			"html": {
+				"retained_kb": 3560,
+				"code_kb": 370,
+				"external_kb": 33000
+			},
+			"json": {
+				"retained_kb": 3580,
+				"code_kb": 380,
+				"external_kb": 34000
+			},
+			"svelte": {
+				"retained_kb": 3600,
+				"code_kb": 390,
+				"external_kb": 35000
+			},
+			"md": {
+				"retained_kb": 3620,
+				"code_kb": 400,
+				"external_kb": 36000
+			},
+			"bash": {
+				"retained_kb": 3640,
+				"code_kb": 410,
+				"external_kb": 37000
+			},
+			"rust": {
+				"retained_kb": 3660,
+				"code_kb": 420,
+				"external_kb": 38000
+			}
+		}
+	},
 	"coverage": {
 		"fuz_code": {
 			"ts": true,

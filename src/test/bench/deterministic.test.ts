@@ -2,6 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 
+import { HEAP_TOLERANCE_KB } from '$lib/bench_constants.ts';
 import {
 	BenchMode,
 	bench_results_is_publishable,
@@ -12,12 +13,13 @@ import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import {
 	carry_deterministic,
 	diff_json,
+	keep_agreeing_heaps,
 	serialize_results,
 	to_deterministic_path,
 	to_expected_key
 } from '../../../bench/deterministic.ts';
 import { to_install_closures } from '../../../bench/install.ts';
-import { LANG_ROSTER, lang_is_timed } from '../../../bench/langs.ts';
+import { LANG_ROSTER, TIMED_LANGS, lang_is_timed } from '../../../bench/langs.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { to_bench_coverage, to_bench_libraries } from '../../../bench/library_info.ts';
 import { FEATURE_SETS, to_bench_sets } from '../../../bench/sets.ts';
@@ -157,6 +159,40 @@ describe('the committed deterministic file', () => {
 			}
 		}
 	});
+
+	test('heap: a reading for every timed language a library claims, and only those', () => {
+		for (const adapter of ADAPTERS) {
+			const claimed = TIMED_LANGS.filter((lang) => Object.hasOwn(adapter.langs, lang));
+			assert.deepStrictEqual(Object.keys(results.heap[adapter.id]!), claimed, adapter.id);
+		}
+	});
+});
+
+describe('keep_agreeing_heaps', () => {
+	test('keeps a committed reading within the tolerance, and takes one outside it', () => {
+		const generated = load();
+		const committed = load();
+		const ts = generated.heap.prism!.ts!;
+		committed.heap.prism!.ts = { ...ts, retained_kb: ts.retained_kb + HEAP_TOLERANCE_KB };
+		committed.heap.prism!.js = {
+			...generated.heap.prism!.js!,
+			external_kb: generated.heap.prism!.js!.external_kb + HEAP_TOLERANCE_KB + 1
+		};
+		const kept = keep_agreeing_heaps(committed, generated);
+		assert.deepStrictEqual(kept.heap.prism!.ts, committed.heap.prism!.ts);
+		assert.deepStrictEqual(kept.heap.prism!.js, generated.heap.prism!.js);
+		// only the heap is touched, and a check then names only the reading outside the tolerance
+		assert.deepStrictEqual({ ...kept, heap: generated.heap }, generated);
+		assert.deepStrictEqual(
+			diff_json(committed, kept).map((line) => line.split(':')[0]),
+			['heap.prism.js.external_kb']
+		);
+	});
+
+	test('takes every reading when there is no committed file', () => {
+		assert.strictEqual(keep_agreeing_heaps(null, results), results);
+		assert.strictEqual(keep_agreeing_heaps({ heap: 'no' }, results), results);
+	});
 });
 
 describe('diff_json', () => {
@@ -205,6 +241,7 @@ describe('carry_deterministic', () => {
 		const carried = carry_deterministic(results, context);
 		assert.ok(carried.ok);
 		assert.deepStrictEqual(carried.bundle, results.bundle);
+		assert.deepStrictEqual(carried.heap, results.heap);
 		assert.deepStrictEqual(carried.bundler, results.meta.bundler);
 		const input = results.inputs[0]!;
 		const [tokenize, html] = results.cells;
@@ -223,6 +260,7 @@ describe('carry_deterministic', () => {
 		const carried = carry_deterministic(results, { ...context, libraries });
 		assert.ok(carried.ok);
 		assert.deepStrictEqual(Object.keys(carried.bundle), ['prism']);
+		assert.deepStrictEqual(carried.heap, { prism: results.heap.prism! });
 		assert.ok([...carried.expected.keys()].every((key) => JSON.parse(key)[1] === 'prism'));
 		// which is a results file's whole bundle section for that roster
 		assert.deepStrictEqual(carried.bundle.prism, results.bundle.prism);

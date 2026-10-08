@@ -217,7 +217,8 @@ node bench/run.ts --help`;
 			page, and most of it is the same for every library. Compare it between libraries on the same
 			cell. On a small input it says little about footprint: a process warms up and is timed for a
 			fixed duration, so its peak follows how much the library allocated in that time more than what
-			it holds. The cold-start scenarios below are where memory is compared.
+			it holds. What a library holds is the retained heap, described in
+			<TomeLink slug="deterministic" />.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -377,7 +378,9 @@ node bench/run.ts --help`;
 			its peak resident size is closer to a footprint than a timed cell's. It is still a whole
 			process, most of it Node: subtract the <code>bare</code> entry's. What is left is the code and
 			data the library loaded, and for a first highlight what one call allocated, at the sizes the
-			engine chose for a process of that age.
+			engine chose for a process of that age. The retained heap, described in
+			<TomeLink slug="deterministic" />, is the steadier figure for what a library holds: read after
+			collecting garbage, without Node, and the same from one process to the next.
 		</p>
 		<p>
 			<strong>Nothing is retried.</strong> A disturbance lands on one sample of every scenario, not

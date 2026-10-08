@@ -8,6 +8,7 @@
  */
 
 import {
+	bench_heaps_agree,
 	bench_results_is_publishable,
 	describe_bench_run,
 	parse_bench_results,
@@ -125,6 +126,9 @@ export const find_first_difference = (a: unknown, b: unknown, path = ''): string
 	return null;
 };
 
+/** What `moved` says when the retained heaps differ beyond a reading's jitter. */
+export const HEAP_MOVED = 'the retained heaps, which move with the Node version they are read on';
+
 /** The deterministic numbers of a results file: what must be the same on any machine. */
 const to_deterministic_numbers = (results: BenchResults): Record<string, unknown> => ({
 	sets: results.sets,
@@ -152,9 +156,12 @@ const to_deterministic_numbers = (results: BenchResults): Record<string, unknown
  * A published run is checked against the deterministic results. When both
  * describe the same library versions and corpus, their deterministic numbers
  * (sets, coverage, bundle sizes, install footprints, and each cell's token
- * counts and output sizes, raw and compressed)
- * must be equal. When a version or the corpus has moved since the run, the run
- * is rendered as the snapshot it is, and `moved` says what moved.
+ * counts and output sizes, raw and compressed) must be equal. When a version or
+ * the corpus has moved since the run, the run is rendered as the snapshot it
+ * is, and `moved` says what moved. When nothing has and the exact numbers
+ * agree, retained heaps beyond a reading's jitter (`bench_heaps_agree`) also
+ * make the run a snapshot, as `HEAP_MOVED`: they move with the Node version,
+ * which nothing else records.
  *
  * @throws Error if a file doesn't parse, if the latest run is not publishable,
  * if it disagrees with the deterministic results it should equal, or if the
@@ -195,6 +202,9 @@ export const resolve_site_results = (files: SiteResultsFiles): SiteResults => {
 				`results/latest.json and results/deterministic.json describe the same library versions and corpus, and their deterministic numbers differ, first at ${difference}. Regenerate the deterministic results, or publish a run that agrees with them.`
 			);
 		}
+		// only once every exact number agrees: a reading moves with the Node version, which
+		// nothing else records, so a heap beyond the tolerance makes the run a snapshot
+		if (!bench_heaps_agree(latest.heap, deterministic.heap)) moved.push(HEAP_MOVED);
 	}
 	return {
 		source: 'published',

@@ -15,6 +15,7 @@
 	import { format_source_key } from '$lib/cell_groups.ts';
 	import FilterGroup from '$lib/FilterGroup.svelte';
 	import FilterSelect from '$lib/FilterSelect.svelte';
+	import { results_have_heap, to_heap_groups } from '$lib/heap_matrix.ts';
 	import MatrixTable from '$lib/MatrixTable.svelte';
 	import { OUTPUT_MEASURES, to_output_groups } from '$lib/output_matrix.ts';
 	import Provenance from '$lib/Provenance.svelte';
@@ -116,6 +117,7 @@
 			: to_bundle_cost_groups(results, bundle_selection)
 	);
 	const install_group = $derived(to_install_group(results));
+	const heap_groups = $derived(to_heap_groups(results, filters));
 	const output_groups = $derived(
 		to_output_groups(results, {
 			...filters,
@@ -366,6 +368,42 @@
 					It is everything the packages ship, every language, theme, and type declaration included,
 					and not what a page loads, which the tables above show. The ratios are not colored: a
 					library that ships more languages installs more, and installs it once.
+				</MatrixTable>
+			{/if}
+		</section>
+	{/if}
+
+	{#if shows('heap')}
+		<section id="heap">
+			<h2>Retained heap</h2>
+			{#if !results_have_heap(results)}
+				<p>These results hold no retained heap.</p>
+			{:else if heap_groups.length === 0}
+				<p>No language matches the selection.</p>
+			{:else}
+				<MatrixTable
+					{libraries}
+					groups={heap_groups}
+					heading="language"
+					label="Retained heap by language and library"
+					{reference}
+				>
+					What a page or a server holds once a library has loaded one language and highlighted once:
+					a Node process imports the library's bundle of that language alone, the one whose size is
+					reported above, highlights the language's snippet, lets go of the HTML, and collects
+					garbage until the heap settles. Each number is what that process holds over a bare one,
+					after one highlight of a small snippet; larger inputs leave more, most of all for regexp
+					and wasm engines. Machine code holds the regular expressions the engine compiled as well
+					as optimised functions, and is the processor's: these figures are x64's. External memory
+					is where a WebAssembly engine keeps its linear memory, counted at the size it has grown
+					to, which it never gives back; the OS backs only the pages it has touched, so resident
+					memory can be lower. All three are summed first and ranked: a smaller figure is less
+					memory for the same highlight. Two readings within the tolerance a reading is checked
+					against are marked <code>≈</code>. A theme in a stylesheet is held by the page, not the
+					library, so a library that writes its styles inline holds its theme here and one with
+					classes doesn't. The figures are for one Node version;
+					<a href={resolve('/docs/deterministic')}>the deterministic metrics docs</a> say which, and
+					what moves them.
 				</MatrixTable>
 			{/if}
 		</section>

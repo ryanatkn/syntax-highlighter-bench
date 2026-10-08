@@ -5,8 +5,11 @@ import {
 	BenchBundleSizes,
 	BenchCellCompressed,
 	BenchCellOutput,
+	BenchHeap,
 	BenchInstall
 } from '$lib/results_schema.ts';
+import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '$lib/bench_constants.ts';
+import { HEAP_NODE_FLAGS } from '../../bench/heap.ts';
 import { ADAPTERS } from '../../bench/libraries.ts';
 import { BROTLI_QUALITY, GZIP_LEVEL } from '../../bench/sizes.ts';
 
@@ -33,16 +36,32 @@ test('the deterministic docs state the compression levels as the harness defines
 	}
 });
 
-test('the deterministic docs name every size of a bundle, an output, and an install', () => {
+test('the deterministic docs name every size of a bundle, an output, an install, and a heap', () => {
 	const keys = [
 		...Object.keys(BenchBundleSizes.shape),
 		...Object.keys(BenchCellOutput.shape),
 		...Object.keys(BenchCellCompressed.shape),
-		...Object.keys(BenchInstall.shape)
+		...Object.keys(BenchInstall.shape),
+		...Object.keys(BenchHeap.shape)
 	];
 	for (const [name, text] of Object.entries(docs)) {
 		for (const key of keys) assert.ok(text.includes(`\`${key}\``), `${name} lacks ${key}`);
 	}
+});
+
+test('the deterministic docs give every flag a heap process runs with', () => {
+	for (const [name, text] of Object.entries(docs)) {
+		for (const flag of HEAP_NODE_FLAGS) {
+			assert.ok(text.includes(`\`${flag}\``), `${name} lacks ${flag}`);
+		}
+	}
+});
+
+test('the README states the heap tolerance as the check applies it', () => {
+	// the tome renders it from the constants
+	assert.ok(
+		unwrap(docs.readme).includes(`${HEAP_TOLERANCE_KB} KiB or ${HEAP_TOLERANCE_RATIO * 100}%`)
+	);
 });
 
 test('the deterministic docs give the command and its check', () => {

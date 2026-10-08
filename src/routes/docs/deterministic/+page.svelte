@@ -7,6 +7,8 @@
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 	import Code from '@fuzdev/fuz_code/Code.svelte';
 
+	import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '$lib/bench_constants.ts';
+
 	const tome = tome_get_by_slug('deterministic');
 
 	const commands = `npm run bench:deterministic             # regenerate results/deterministic.json
@@ -17,9 +19,10 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 	<section>
 		<p>
 			Some of what the benchmark reports is the same on any machine: how many bytes a library adds
-			to a page, what installing it adds to a project, how many tokens it finds in an input, how
-			large its HTML is, and which languages it covers. These are measured by a command of their
-			own, with nothing timed, and committed as <code>results/deterministic.json</code>.
+			to a page, what installing it adds to a project, how much memory it holds once loaded, how
+			many tokens it finds in an input, how large its HTML is, and which languages it covers. These
+			are measured by a command of their own, with nothing timed, and committed as
+			<code>results/deterministic.json</code>.
 		</p>
 		<Code lang="bash" content={commands} />
 		<p>
@@ -285,6 +288,56 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 		</p>
 	</TomeSection>
 	<TomeSection>
+		<TomeSectionHeader text="Retained heap" />
+		<p>
+			What a page or a server holds once a library has loaded one language and highlighted once, in
+			<DeclarationLink name="BenchHeap" />, for every timed language each library claims.
+			<code>bench/heap.ts</code> runs a Node process that imports the library's bundle of that
+			language alone, the <code>single:</code> bundle whose size is reported, highlights the
+			language's harness snippet once through the adapter's <code>bundle_html_source</code>, lets go
+			of the HTML, and runs full collections until one changes the heap by under a kibibyte. It then
+			reads three numbers, each in KiB over a bare process of the same module without the import and
+			the call:
+		</p>
+		<ul>
+			<li>
+				<code>retained_kb</code> — the bytes in use in V8's heap, less the two spaces that hold
+				machine code
+			</li>
+			<li>
+				<code>code_kb</code> — the bytes in use in those two spaces. They hold the regular
+				expressions the engine compiled to native code as well as the functions it optimised, so a
+				library that lexes with regular expressions holds much of its memory here. Machine code is
+				the processor's: the figures are for x64.
+			</li>
+			<li>
+				<code>external_kb</code> — <code>process.memoryUsage().external</code>: memory outside the
+				V8 heap that V8 is told about, like array buffers, and a WebAssembly engine's linear memory,
+				counted at the size it has grown to, which it never gives back. The OS backs only the pages
+				it has touched, so resident memory can be lower.
+			</li>
+		</ul>
+		<p>
+			The process imports the bundle, not the adapter: some adapters import every language
+			statically, and an adapter is TypeScript, which would load Node's type stripper into the
+			reading. The generated module holds nothing of the harness, as a cold-start process doesn't.
+		</p>
+		<p>
+			It runs with three flags, for this reading only: no timed number is measured with a flag.
+			<code>--expose-gc</code> gives it the collections. <code>--max-semi-space-size=16</code> pins
+			the young generation, which V8 otherwise sizes from the machine's memory, and a small one
+			leaves some libraries holding a different amount. <code>--single-threaded</code> keeps the
+			engine from finishing compilation on another thread between the collections and the reading,
+			which otherwise moves Shiki's figures by kilobytes from one process to the next.
+		</p>
+		<p>
+			A theme in a stylesheet is held by the page, not the library, so a library that writes its
+			styles inline holds its theme in these figures and one that writes classes doesn't, as with
+			the bundle sizes. The figures are after one highlight of a small snippet; larger inputs leave
+			more, most of all for regexp and wasm engines.
+		</p>
+	</TomeSection>
+	<TomeSection>
 		<TomeSectionHeader text="Coverage" />
 		<p>
 			The coverage matrix is each adapter's language map: <code>true</code> for a language the
@@ -312,9 +365,19 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			Two dependencies are not in the file. The gzip and brotli sizes, of bundles and of HTML alike,
 			come from the zlib and brotli inside Node, and a Node with another version of either can
 			compress to a few bytes more or less. The file is generated on the Node version the checks run
-			on. And the install footprints follow the versions the lockfile installs, which a dependency
-			update moves without moving a library's own version. A failed check says which of these it
-			looks like.
+			on. The install footprints follow the versions the lockfile installs, which a dependency
+			update moves without moving a library's own version. And the retained heaps follow V8's object
+			layout: they are for the Node version the checks run on, on x64, without pointer compression,
+			as official Node builds are. A failed check says which of these it looks like.
+		</p>
+		<p>
+			A heap reading can also differ from the last by a little between two processes on the same
+			machine. Two readings agree to well under a kibibyte, and the check still compares them within
+			{HEAP_TOLERANCE_KB} KiB or {HEAP_TOLERANCE_RATIO * 100}% of the larger, whichever is larger,
+			and every other number exactly. Regenerating keeps a committed reading that agrees, so an
+			unchanged tree regenerates an unchanged file, and a change smaller than the tolerance isn't
+			recorded until it, with later ones, exceeds it. The site reads two numbers within the
+			tolerance as level, marked <code>≈</code>.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -330,9 +393,9 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 				it compares each library's first result on a cell with the file, and stops at a difference
 			</li>
 			<li>
-				it copies the bundle sizes, the install footprints, and the HTML's compressed sizes of its
-				libraries from the file, and measures none of them (cold start rebuilds a missing cached
-				bundle, checked against those sizes)
+				it copies the bundle sizes, the install footprints, the retained heaps, and the HTML's
+				compressed sizes of its libraries from the file, and measures none of them (cold start
+				rebuilds a missing cached bundle, checked against those sizes)
 			</li>
 		</ul>
 		<p>

@@ -1129,8 +1129,8 @@ export interface RunRecord {
  * Assembles a results file and validates it.
  *
  * The cells' token counts and HTML sizes are the ones their processes reported.
- * The bundle sizes, the install footprints, and the HTML's compressed sizes are
- * the deterministic file's, when the run carries it, and otherwise empty. The
+ * The bundle sizes, the install footprints, the retained heaps, and the HTML's
+ * compressed sizes are the deterministic file's, when the run carries it, and otherwise empty. The
  * compressed sizes need no check of their own: the raw size each process
  * reported was checked against the file's, and the file applies only at the
  * same install closures, which pin every package that renders the HTML.
@@ -1234,6 +1234,7 @@ export const assemble_results = (
 		startup: startup.startup,
 		bundle: record.deterministic?.bundle ?? {},
 		install: record.deterministic?.install ?? {},
+		heap: record.deterministic?.heap ?? {},
 		coverage: to_bench_coverage(record.adapters)
 	} satisfies BenchResults);
 	return { results, pairs };
@@ -1495,8 +1496,8 @@ export const format_run_summary = (
 	}
 	lines.push(
 		meta.bundler
-			? 'bundle sizes: carried from the deterministic results file, which every cell and first highlight agreed with, with the install footprints and the compressed HTML sizes'
-			: 'bundle sizes: none, nor install footprints or compressed HTML sizes'
+			? 'bundle sizes: carried from the deterministic results file, which every cell and first highlight agreed with, with the install footprints, the retained heaps, and the compressed HTML sizes'
+			: 'bundle sizes: none, nor install footprints, retained heaps, or compressed HTML sizes'
 	);
 	if (meta.commit?.endsWith('-dirty')) {
 		lines.push(

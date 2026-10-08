@@ -50,7 +50,7 @@
 		{#if ratio !== undefined}
 			<small
 				title={within_floor
-					? "inside the machine's noise floor: not a difference"
+					? "inside the row's noise floor (the machine's, or a heap reading's tolerance): not a difference"
 					: bound
 						? "at least this many times the baseline's own noise, which the smallest numbers in the row are inside"
 						: undefined}

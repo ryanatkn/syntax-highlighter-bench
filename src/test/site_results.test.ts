@@ -6,6 +6,7 @@ import {
 	type BenchResults
 } from '$lib/results_schema.ts';
 import {
+	HEAP_MOVED,
 	bench_results_are_timed,
 	find_first_difference,
 	find_moved_since,
@@ -231,6 +232,27 @@ describe('a published run beside the deterministic results', () => {
 		const site = resolve_latest(load_fixture_json(), deterministic);
 		assert.strictEqual(site.source, 'published');
 		assert.deepStrictEqual(site.moved, ['the dependencies of shiki_js']);
+	});
+
+	test('retained heaps within the jitter of a reading agree, and beyond it are a snapshot with a notice', () => {
+		const near = load_matching_json();
+		near.heap.prism!.ts!.retained_kb += 1;
+		assert.deepStrictEqual(resolve_latest(load_fixture_json(), near).moved, []);
+		const far = load_matching_json();
+		far.heap.shiki_wasm!.ts!.external_kb += 4096;
+		assert.deepStrictEqual(resolve_latest(load_fixture_json(), far).moved, [HEAP_MOVED]);
+	});
+
+	test('a heap beyond the jitter never hides an exact number that differs', () => {
+		const deterministic = load_matching_json();
+		deterministic.heap.prism!.ts!.retained_kb += 4096;
+		const sizes = deterministic.bundle.prism!.docs!;
+		assert.ok('raw' in sizes);
+		sizes.raw += 1;
+		assert.throws(
+			() => resolve_latest(load_fixture_json(), deterministic),
+			/first at bundle\.prism\.docs\.raw/
+		);
 	});
 
 	test('an extra package at another version, and a changed corpus, are named too', () => {

@@ -19,13 +19,14 @@ import { STARTUP_FORMS } from './startup_matrix.ts';
 import { THROUGHPUT_UNITS } from './throughput_matrix.ts';
 
 /** A section of the results page. */
-export type ResultsMetric = 'throughput' | 'startup' | 'bundle' | 'output';
+export type ResultsMetric = 'throughput' | 'startup' | 'bundle' | 'heap' | 'output';
 
 /** Every section, with its label, in display order. */
 export const RESULTS_METRICS: ReadonlyArray<{ id: ResultsMetric; label: string }> = [
 	{ id: 'throughput', label: 'throughput' },
 	{ id: 'startup', label: 'cold start' },
 	{ id: 'bundle', label: 'bundle size' },
+	{ id: 'heap', label: 'retained heap' },
 	{ id: 'output', label: 'tokens and output' }
 ];
 

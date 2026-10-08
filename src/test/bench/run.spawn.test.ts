@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { BenchResults, parse_bench_results } from '$lib/results_schema.ts';
+import { BenchResults, heap_readings_agree, parse_bench_results } from '$lib/results_schema.ts';
 import {
 	STARTUP_DIR,
 	plan_startup_scenarios,
@@ -21,8 +21,9 @@ import {
 	to_startup_child_path,
 	to_startup_env
 } from '../../../bench/coldstart.ts';
-import { load_corpus_manifest } from '../../../bench/corpus.ts';
+import { load_corpus_manifest, read_corpus_input } from '../../../bench/corpus.ts';
 import { to_deterministic_path } from '../../../bench/deterministic.ts';
+import { run_heap_child, to_bench_heap, to_heap_child_source } from '../../../bench/heap.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { read_journal } from '../../../bench/journal.ts';
 import {
@@ -35,6 +36,7 @@ import {
 	type StartupProcessResult
 } from '../../../bench/run.ts';
 import { parse_run_args, type RunOptions } from '../../../bench/run_options.ts';
+import { build_bundle } from '../../../bench/sizes.ts';
 
 // The tests that start real processes: one small smoke run through real cell
 // processes, a few real cold starts, and the commands' exit codes. Keep them
@@ -402,6 +404,47 @@ describe('cold start', () => {
 			assert.strictEqual(asked.status, 0, asked.stderr);
 			assert.deepStrictEqual(JSON.parse(asked.stdout), [true, null]);
 			assert.ok(!existsSync(cache_dir));
+		}
+	);
+});
+
+describe('heap', () => {
+	test(
+		'a library reads what the deterministic file holds for it, over its bare process',
+		{ timeout: 60_000 },
+		async () => {
+			const adapter = ADAPTERS.find((a) => a.id === 'prism')!;
+			const snippet = load_corpus_manifest().inputs.find(
+				(input) => input.source === 'harness' && input.lang === 'json'
+			)!;
+			const highlight = {
+				src: read_corpus_input(snippet),
+				expression: adapter.bundle_html_source('json')
+			};
+			const heap_dir = join(dir, 'heap');
+			mkdirSync(heap_dir, { recursive: true });
+			writeFileSync(
+				join(heap_dir, 'bundle.mjs'),
+				await build_bundle(adapter.bundle_entry(['json']))
+			);
+			writeFileSync(join(heap_dir, 'bare.mjs'), to_heap_child_source(null, highlight));
+			writeFileSync(join(heap_dir, 'prism.mjs'), to_heap_child_source('./bundle.mjs', highlight));
+			const bare = await run_heap_child(join(heap_dir, 'bare.mjs'), 'bare');
+			const reading = await run_heap_child(join(heap_dir, 'prism.mjs'), 'prism');
+			assert.ok(bare.settled && reading.settled);
+			assert.strictEqual(bare.exports, 0);
+			assert.strictEqual(bare.html_length, 0);
+			assert.ok(reading.exports > 0 && reading.html_length > 0);
+			const heap = to_bench_heap(reading, bare);
+			assert.ok(heap.retained_kb > 0);
+			const committed = parse_bench_results(
+				JSON.parse(readFileSync(to_deterministic_path(), 'utf8'))
+			).heap.prism!.json!;
+			assert.ok(
+				heap_readings_agree(heap.retained_kb, committed.retained_kb) &&
+					heap_readings_agree(heap.external_kb, committed.external_kb),
+				`read ${JSON.stringify(heap)}, and the deterministic file has ${JSON.stringify(committed)}`
+			);
 		}
 	);
 });

@@ -32,7 +32,9 @@ import {
 	BENCH_MODES,
 	BENCH_SIZES,
 	BENCH_SOURCES,
-	BENCH_WRITTEN_SOURCES
+	BENCH_WRITTEN_SOURCES,
+	HEAP_TOLERANCE_KB,
+	HEAP_TOLERANCE_RATIO
 } from './bench_constants.ts';
 
 /** An id used as a key or a cross-reference: a set or a cell. */
@@ -838,6 +840,54 @@ export const BenchInstall = z
 	});
 export type BenchInstall = z.infer<typeof BenchInstall>;
 
+/**
+ * What a library holds once one language is loaded and highlighted once, over a
+ * bare Node process: its `single:<lang>` bundle imported, the language's harness
+ * snippet highlighted, and garbage collected until the heap settles. That is
+ * after one highlight of a small snippet; larger inputs leave more, most of all
+ * for regexp and wasm engines. Deterministic for a Node version and platform
+ * (the one the check workflow pins, on x64), within `heap_readings_agree`.
+ */
+export const BenchHeap = z.strictObject({
+	retained_kb: z.number().int().nonnegative().meta({
+		description: "V8's heap in use, in KiB, less the spaces of machine code (`code_kb`)."
+	}),
+	code_kb: z.number().int().nonnegative().meta({
+		description:
+			"V8's code spaces in use, in KiB: the regular expressions compiled to native code as well as optimised functions. Machine code is the architecture's, and the figure is x64's."
+	}),
+	external_kb: z.number().int().nonnegative().meta({
+		description:
+			"`process.memoryUsage().external` in KiB: memory outside V8's heap that V8 is told about, like array buffers, and a WebAssembly engine's linear memory, counted at the size it has grown to, which it never gives back. The OS backs only the pages it has touched, so resident memory can be lower."
+	})
+});
+export type BenchHeap = z.infer<typeof BenchHeap>;
+
+/**
+ * Whether two heap readings, in KiB, are the same reading: within
+ * `HEAP_TOLERANCE_KB`, or `HEAP_TOLERANCE_RATIO` of the larger, whichever is
+ * larger.
+ */
+export const heap_readings_agree = (a: number, b: number): boolean =>
+	Math.abs(a - b) <= Math.max(HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO * Math.max(a, b));
+
+/** Whether two heap entries are the same reading, each number within `heap_readings_agree`. */
+export const bench_heap_agrees = (a: BenchHeap, b: BenchHeap): boolean =>
+	heap_readings_agree(a.retained_kb, b.retained_kb) &&
+	heap_readings_agree(a.code_kb, b.code_kb) &&
+	heap_readings_agree(a.external_kb, b.external_kb);
+
+/** Whether two `heap` sections hold the same readings, each within `heap_readings_agree`. */
+export const bench_heaps_agree = (a: BenchResults['heap'], b: BenchResults['heap']): boolean => {
+	const keys = (record: object): string => JSON.stringify(Object.keys(record).sort());
+	if (keys(a) !== keys(b)) return false;
+	return Object.entries(a).every(([library, by_lang]) => {
+		const other = b[library]!;
+		if (keys(by_lang) !== keys(other)) return false;
+		return Object.entries(by_lang).every(([lang, entry]) => bench_heap_agrees(entry, other[lang]!));
+	});
+};
+
 /** A feature set a library can't be measured over, naming the languages it lacks. */
 export const BenchBundleUnsupported = z.strictObject({
 	unsupported: z.array(LangId).min(1)
@@ -1058,6 +1108,10 @@ export const BenchResults = z
 		install: strict_record(LibraryId, BenchInstall).meta({
 			description:
 				'Deterministic: the install footprint by library id. Every library of the roster, or empty when sizes were not measured.'
+		}),
+		heap: strict_record(LibraryId, strict_record(LangId, BenchHeap)).meta({
+			description:
+				'Deterministic within a few KiB: the retained heap by library id, then every timed language it claims. Empty when sizes were not measured.'
 		}),
 		coverage: strict_record(LibraryId, strict_record(LangId, BenchCoverageEntry)).meta({
 			description:
@@ -1478,6 +1532,31 @@ export const BenchResults = z
 					['install', library],
 					'install footprints come with the bundle sizes, and there are none'
 				);
+			}
+		}
+		// heap: every timed language each library claims, exactly, with the bundle sizes
+		for (const id of bundle_measured ? library_ids : []) {
+			for (const lang of results.langs) {
+				if (lang.timed && claims(id, lang.id) && !Object.hasOwn(results.heap[id] ?? {}, lang.id)) {
+					issue(['heap', id], `library "${id}" has no retained heap for "${lang.id}"`);
+				}
+			}
+		}
+		const timed_lang_ids = new Set(results.langs.filter((l) => l.timed).map((l) => l.id));
+		for (const [library, by_lang] of Object.entries(results.heap)) {
+			if (!library_ids.has(library)) {
+				issue(['heap', library], `unknown library "${library}"`);
+				continue;
+			}
+			if (!bundle_measured) {
+				issue(['heap', library], 'retained heaps come with the bundle sizes, and there are none');
+			}
+			for (const lang of Object.keys(by_lang)) {
+				if (!timed_lang_ids.has(lang)) {
+					issue(['heap', library, lang], `"${lang}" is not a timed language of the file`);
+				} else if (!claims(library, lang)) {
+					issue(['heap', library, lang], `library "${library}" doesn't claim "${lang}"`);
+				}
 			}
 		}
 		// sizes only where every language is claimed; otherwise the missing ones, exactly

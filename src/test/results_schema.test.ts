@@ -70,12 +70,13 @@ const fit_process_noise = (data: BenchResults): BenchResults => {
 
 /**
  * Removes the sizes of the deterministic pass, which come together: the bundle
- * sizes and what they were built with, the install footprints, and the HTML's
- * compressed sizes.
+ * sizes and what they were built with, the install footprints, the retained
+ * heaps, and the HTML's compressed sizes.
  */
 const clear_bundle = (data: BenchResults): void => {
 	data.bundle = {};
 	data.install = {};
+	data.heap = {};
 	data.meta.bundler = null;
 	for (const cell of data.cells) cell.compressed = {};
 };
@@ -1469,6 +1470,40 @@ describe('install', () => {
 		const data = load_fixture();
 		data.install.prism = { packages: 3, files: 2, bytes: 100, closure: 'a'.repeat(64) };
 		assert_rejects(data, 'every package has at least its manifest');
+	});
+});
+
+describe('heap', () => {
+	test('covers every timed language each library claims exactly when the bundle sizes are there', () => {
+		const data = load_fixture();
+		delete data.heap.prism!.ts;
+		assert_rejects(data, 'heap.prism: library "prism" has no retained heap for "ts"');
+		const data2 = load_fixture();
+		clear_bundle(data2);
+		data2.heap.prism = { ts: { retained_kb: 1, code_kb: 0, external_kb: 0 } };
+		assert_rejects(data2, 'retained heaps come with the bundle sizes');
+		const data3 = load_fixture();
+		data3.heap.highlight_js = {};
+		assert_rejects(data3, 'unknown library "highlight_js"');
+	});
+
+	test('names only timed languages the library claims', () => {
+		const data = load_fixture();
+		data.heap.fuz_code!.xml = { retained_kb: 1, code_kb: 0, external_kb: 0 };
+		assert_rejects(data, '"xml" is not a timed language of the file');
+		const data2 = load_fixture();
+		delete data2.coverage.prism!.rust;
+		delete data2.bundle.prism;
+		assert_rejects(data2, `library "prism" doesn't claim "rust"`);
+	});
+
+	test('is whole kibibytes, never negative', () => {
+		const data = load_fixture();
+		data.heap.prism!.ts = { retained_kb: 1.5, code_kb: 0, external_kb: 0 };
+		assert_rejects(data, 'heap.prism.ts.retained_kb');
+		const data2 = load_fixture();
+		data2.heap.prism!.ts = { retained_kb: 1, code_kb: 0, external_kb: -1 };
+		assert_rejects(data2, 'heap.prism.ts.external_kb');
 	});
 });
 
