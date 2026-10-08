@@ -3,6 +3,7 @@ import { assert, describe, test } from 'vitest';
 import {
 	find_core_set,
 	find_single_set,
+	INSTALL_MEASURES,
 	to_bundle_beside_group,
 	to_bundle_cost_groups,
 	to_bundle_increment_entry,
@@ -10,7 +11,8 @@ import {
 	to_bundle_size_entry,
 	to_bundle_sum_entry,
 	to_bundle_total_groups,
-	to_combined_sets
+	to_combined_sets,
+	to_install_group
 } from '$lib/bundle_matrix.ts';
 import {
 	matrix_row_entry,
@@ -330,5 +332,26 @@ describe('to_bundle_beside_group', () => {
 			matrix_row_value(beside.rows[1]!, PARTIAL),
 			sizes(PARTIAL, 'core').css!.gzip
 		);
+	});
+});
+
+describe('to_install_group', () => {
+	test('has a row for each number of the footprint, for every library', () => {
+		const group = to_install_group(results)!;
+		assert.deepStrictEqual(
+			group.rows.map((row) => row.key),
+			INSTALL_MEASURES.map((measure) => `install:${measure.id}`)
+		);
+		for (const [i, measure] of INSTALL_MEASURES.entries()) {
+			const row = group.rows[i]!;
+			assert.strictEqual(row.unit, measure.unit);
+			for (const id of libraries) {
+				assert.strictEqual(matrix_row_value(row, id), results.install[id]![measure.id]);
+			}
+		}
+	});
+
+	test('is null for a file with no footprints', () => {
+		assert.strictEqual(to_install_group({ ...results, install: {} }), null);
 	});
 });

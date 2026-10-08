@@ -11,7 +11,7 @@
  * @module
  */
 
-import type { BenchBundleEntry, BenchSet } from './results_schema.ts';
+import type { BenchBundleEntry, BenchInstall, BenchSet } from './results_schema.ts';
 import { format_bytes } from './bench_format.ts';
 import {
 	to_matrix_row,
@@ -389,4 +389,39 @@ export const to_bundle_total_groups = (
 		},
 		to_bundle_beside_group(results, selection)
 	];
+};
+
+/** The numbers of an install footprint, with their labels and units, in display order. */
+export const INSTALL_MEASURES: ReadonlyArray<{
+	id: Exclude<keyof BenchInstall, 'closure'>;
+	label: string;
+	unit: MatrixRow['unit'];
+}> = [
+	{ id: 'packages', label: 'packages', unit: 'count' },
+	{ id: 'files', label: 'files', unit: 'count' },
+	{ id: 'bytes', label: 'bytes', unit: 'bytes' }
+];
+
+/**
+ * The install footprints: what `npm install` of each library adds, as a row for
+ * each number. The footprint is everything the packages ship, every language,
+ * theme, and type declaration included, and not what a page loads, which the
+ * bundle tables show.
+ *
+ * @returns the group, or null for a file that measured no footprint
+ */
+export const to_install_group = (results: MatrixResults): MatrixGroup | null => {
+	if (Object.keys(results.install).length === 0) return null;
+	return {
+		key: 'install',
+		label: 'Install footprint',
+		note: "the package's runtime dependencies, each package once",
+		rows: INSTALL_MEASURES.map(({ id, label, unit }) =>
+			to_bundle_row(results, { key: `install:${id}`, label, unit }, (library) =>
+				Object.hasOwn(results.install, library)
+					? to_value_entry(results.install[library]![id])
+					: { kind: 'unmeasured' }
+			)
+		)
+	};
 };

@@ -53,6 +53,8 @@ describe('the options and the defaults', () => {
 		assert.deepStrictEqual(defaults.forms, ['bundled']);
 		assert.strictEqual(defaults.bundle, 'incremental');
 		assert.strictEqual(defaults.compression, 'gzip');
+		// the HTML's size starts raw, as the output table always showed it
+		assert.strictEqual(defaults.output_compression, 'raw');
 		assert.strictEqual(defaults.set, 'docs');
 		assert.strictEqual(defaults.unit, 'mb_per_sec');
 		assert.strictEqual(defaults.reference, null);

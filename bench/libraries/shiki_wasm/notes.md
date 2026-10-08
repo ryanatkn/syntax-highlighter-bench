@@ -2,7 +2,8 @@
 
 Everything in [the Shiki notes](../shiki_js/notes.md) applies: the entry
 points, the languages, the token count, the theme, and the caveats. This adapter
-differs only in the engine.
+differs only in the engine, and the caveats there say where the two engines'
+output differs.
 
 ## Engine
 

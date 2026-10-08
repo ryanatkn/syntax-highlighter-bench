@@ -35,8 +35,8 @@ const assert_rejects = (data: unknown, expected: string): void => {
 
 const EXCLUDED_CELL = 'shiki/rust/rust.sample:tokenize';
 
-/** The three per-library sections of a cell. */
-const SECTIONS = ['values', 'tokens', 'output'] as const;
+/** The per-library sections of a cell. */
+const SECTIONS = ['values', 'tokens', 'output', 'compressed'] as const;
 
 /** The deterministic section a cell states: `tokens` on a tokenize cell, `output` on an html one. */
 const to_stated = (cell: BenchResults['cells'][number]): 'tokens' | 'output' =>
@@ -68,10 +68,16 @@ const fit_process_noise = (data: BenchResults): BenchResults => {
 	return data;
 };
 
-/** Removes the bundle sizes, and what they were built with. */
+/**
+ * Removes the sizes of the deterministic pass, which come together: the bundle
+ * sizes and what they were built with, the install footprints, and the HTML's
+ * compressed sizes.
+ */
 const clear_bundle = (data: BenchResults): void => {
 	data.bundle = {};
+	data.install = {};
 	data.meta.bundler = null;
+	for (const cell of data.cells) cell.compressed = {};
 };
 
 /** Removes the cold start: its entries and its exclusions. */
@@ -1398,6 +1404,7 @@ describe('a deterministic-only file', () => {
 		);
 		const data2 = load_deterministic_only();
 		delete data2.cells[1]!.output.prism;
+		delete data2.cells[1]!.compressed.prism;
 		assert_rejects(
 			data2,
 			'cells.1.output: library "prism" claims lang "ts" and has neither its output nor an excluded entry here'
@@ -1441,6 +1448,65 @@ describe('a deterministic-only file', () => {
 			data2.meta[key] = null;
 			assert_rejects(data2, `meta.${key}: a run with timed numbers records its ${key}`);
 		}
+	});
+});
+
+describe('install', () => {
+	test('covers every library of the roster exactly when the bundle sizes are there', () => {
+		const data = load_fixture();
+		delete data.install.prism;
+		assert_rejects(data, 'install: library "prism" has no install footprint');
+		const data2 = load_fixture();
+		clear_bundle(data2);
+		data2.install.prism = { packages: 1, files: 1, bytes: 1, closure: 'a'.repeat(64) };
+		assert_rejects(data2, 'install footprints come with the bundle sizes');
+		const data3 = load_fixture();
+		data3.install.highlight_js = { packages: 1, files: 1, bytes: 1, closure: 'a'.repeat(64) };
+		assert_rejects(data3, 'unknown library "highlight_js"');
+	});
+
+	test('has at least a file for each package', () => {
+		const data = load_fixture();
+		data.install.prism = { packages: 3, files: 2, bytes: 100, closure: 'a'.repeat(64) };
+		assert_rejects(data, 'every package has at least its manifest');
+	});
+});
+
+describe('compressed HTML', () => {
+	const find_html = (data: BenchResults) => data.cells.find((cell) => cell.mode === 'html')!;
+
+	test('is stated on the html cell for every library with an output', () => {
+		const data = load_fixture();
+		delete find_html(data).compressed.prism;
+		assert_rejects(data, 'library "prism" has an output and no compressed sizes');
+		const data2 = load_fixture();
+		const tokenize = data2.cells.find((cell) => cell.mode === 'tokenize')!;
+		tokenize.compressed = { ...find_html(data2).compressed };
+		assert_rejects(data2, "compressed is stated on the input's html cell");
+	});
+
+	test('is empty when the file holds no sizes of the deterministic pass', () => {
+		const data = load_fixture();
+		const { compressed } = find_html(data);
+		clear_bundle(data);
+		find_html(data).compressed = compressed;
+		assert_rejects(data, 'the file holds no sizes of the deterministic pass');
+	});
+
+	test("rejects a size past the raw HTML and a format's own overhead", () => {
+		for (const key of ['gzip', 'brotli'] as const) {
+			const data = load_fixture();
+			const html = find_html(data);
+			html.compressed.prism![key] = to_max_compressed_bytes(html.output.prism!.html_bytes) + 1;
+			assert_rejects(data, `${key} is larger than html_bytes`);
+		}
+	});
+
+	test('names no library without an output', () => {
+		const data = load_fixture();
+		const html = find_html(data);
+		html.compressed.highlight_js = { gzip: 1, brotli: 1 };
+		assert_rejects(data, 'library "highlight_js" has no output to compress');
 	});
 });
 

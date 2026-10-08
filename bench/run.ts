@@ -139,6 +139,7 @@ import {
 	to_bench_libraries,
 	to_package_versions
 } from './library_info.ts';
+import { to_install_closures } from './install.ts';
 import { summarize_passes } from './measure.ts';
 import { to_bench_cell, type CellNumbers } from './outputs.ts';
 import {
@@ -913,7 +914,7 @@ export const assert_passes_agree = (label: string, first: CellResult, pass: Cell
  */
 export const assert_matches_deterministic = (
 	label: string,
-	expected: CellNumbers | { excluded: string } | undefined,
+	expected: Pick<CellNumbers, 'tokens' | 'output'> | { excluded: string } | undefined,
 	result: CellResult
 ): void => {
 	const measured = result.measurement;
@@ -1128,8 +1129,11 @@ export interface RunRecord {
  * Assembles a results file and validates it.
  *
  * The cells' token counts and HTML sizes are the ones their processes reported.
- * The bundle sizes are the deterministic file's, when the run carries it, and
- * otherwise the section is empty.
+ * The bundle sizes, the install footprints, and the HTML's compressed sizes are
+ * the deterministic file's, when the run carries it, and otherwise empty. The
+ * compressed sizes need no check of their own: the raw size each process
+ * reported was checked against the file's, and the file applies only at the
+ * same install closures, which pin every package that renders the HTML.
  *
  * A library that failed the output check in a cell has no numbers there and an
  * entry in `meta.excluded`. A library that doesn't claim a cell's language was
@@ -1168,7 +1172,16 @@ export const assemble_results = (
 				continue;
 			}
 			values[library] = outcome.value;
-			numbers.push([library, { tokens: outcome.tokens, output: outcome.output }]);
+			// the compressed sizes are the deterministic file's, which the raw size was checked against
+			const carried = record.deterministic?.expected.get(to_expected_key(input.file, library));
+			numbers.push([
+				library,
+				{
+					tokens: outcome.tokens,
+					output: outcome.output,
+					compressed: carried && !('excluded' in carried) ? carried.compressed : null
+				}
+			]);
 			if (outcome.ratio !== null) pairs.push({ cell: cell.id, library, ratio: outcome.ratio });
 			if (outcome.arms !== null) arms.push(...outcome.arms);
 		}
@@ -1220,6 +1233,7 @@ export const assemble_results = (
 		cells,
 		startup: startup.startup,
 		bundle: record.deterministic?.bundle ?? {},
+		install: record.deterministic?.install ?? {},
 		coverage: to_bench_coverage(record.adapters)
 	} satisfies BenchResults);
 	return { results, pairs };
@@ -1481,8 +1495,8 @@ export const format_run_summary = (
 	}
 	lines.push(
 		meta.bundler
-			? 'bundle sizes: carried from the deterministic results file, which every cell and first highlight agreed with'
-			: 'bundle sizes: none'
+			? 'bundle sizes: carried from the deterministic results file, which every cell and first highlight agreed with, with the install footprints and the compressed HTML sizes'
+			: 'bundle sizes: none, nor install footprints or compressed HTML sizes'
 	);
 	if (meta.commit?.endsWith('-dirty')) {
 		lines.push(
@@ -1787,7 +1801,9 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 		const carried = carry_deterministic(parsed, {
 			libraries,
 			corpus_hash: manifest.corpus_hash,
-			sets: to_bench_sets()
+			sets: to_bench_sets(),
+			// the transitive versions, which the libraries' own don't show: a quick walk of node_modules
+			closures: to_install_closures(adapters)
 		});
 		if (carried.ok) deterministic = carried;
 		else {

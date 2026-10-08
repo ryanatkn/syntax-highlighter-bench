@@ -1,6 +1,6 @@
 /**
  * The deterministic numbers of the cells: each library's token count and HTML
- * size on every input, with nothing timed.
+ * size on every input, and that HTML's size compressed, with nothing timed.
  *
  * They are taken the way a timed cell takes them, by the same check
  * (`bench/check_output.ts`) under the same rule: a process sets up exactly one
@@ -27,6 +27,7 @@ import { map_concurrent } from '@fuzdev/fuz_util/async.js';
 import { z } from 'zod';
 
 import {
+	BenchCellCompressed,
 	BenchCellOutput,
 	BenchMode,
 	to_bench_cell_id,
@@ -40,6 +41,7 @@ import { check_output, check_snippet, type OutputCheckResult } from './check_out
 import { load_corpus_manifest, read_corpus_input, type CorpusInput } from './corpus.ts';
 import { is_lang, lang_is_timed, TIMED_LANGS } from './langs.ts';
 import { run_node_json } from './node_child.ts';
+import { measure_compressed } from './sizes.ts';
 
 const OUTPUTS_PATH = fileURLToPath(import.meta.url);
 
@@ -56,7 +58,8 @@ export const InputOutput = z.discriminatedUnion('ok', [
 		file: z.string().min(1),
 		ok: z.literal(true),
 		tokens: z.number().int().positive(),
-		output: BenchCellOutput
+		output: BenchCellOutput,
+		compressed: BenchCellCompressed
 	}),
 	z.strictObject({ file: z.string().min(1), ok: z.literal(false), reason: z.string().min(1) })
 ]);
@@ -106,13 +109,32 @@ export const run_outputs = async (
 		lang,
 		loaded_langs,
 		inputs: inputs.map((input): InputOutput => {
+			const src = read_corpus_input(input);
 			const check: OutputCheckResult =
-				!gate.ok || input === snippet
-					? gate
-					: check_output(adapter, lang, read_corpus_input(input));
-			return { file: input.file, ...check };
+				!gate.ok || input === snippet ? gate : check_output(adapter, lang, src);
+			if (!check.ok) return { file: input.file, ...check };
+			return {
+				file: input.file,
+				...check,
+				compressed: to_html_compressed(adapter.html(src, lang), check.output)
+			};
 		})
 	};
+};
+
+/**
+ * Compresses a library's HTML at the levels bundle sizes use. The HTML is made
+ * again for this, never inside the check, and must be the size the check saw.
+ *
+ * @throws if the HTML differs in size from the checked one: the library's output
+ * is then not deterministic
+ */
+export const to_html_compressed = (html: string, output: BenchCellOutput): BenchCellCompressed => {
+	const { raw, gzip, brotli } = measure_compressed(html);
+	if (raw !== output.html_bytes) {
+		throw new Error(`the HTML came to ${raw} bytes, and to ${output.html_bytes} when checked`);
+	}
+	return { gzip, brotli };
 };
 
 /**
@@ -153,6 +175,11 @@ export const measure_outputs = async (
 export interface CellNumbers {
 	tokens: number;
 	output: BenchCellOutput;
+	/**
+	 * The HTML's compressed sizes, from the deterministic pass, or null in a
+	 * timed run that doesn't carry the deterministic file.
+	 */
+	compressed: BenchCellCompressed | null;
 }
 
 /**
@@ -165,7 +192,7 @@ export interface CellNumbers {
  *
  * @param input - the cell's input
  * @param mode - the cell's mode
- * @param numbers - each measured library's token count and HTML size, in roster order
+ * @param numbers - each measured library's token count, HTML size, and compressed HTML size, in roster order
  * @param values - each measured library's timing, or none for a deterministic file
  */
 export const to_bench_cell = (
@@ -188,7 +215,13 @@ export const to_bench_cell = (
 	values,
 	tokens:
 		mode === 'tokenize' ? Object.fromEntries(numbers.map(([id, own]) => [id, own.tokens])) : {},
-	output: mode === 'html' ? Object.fromEntries(numbers.map(([id, own]) => [id, own.output])) : {}
+	output: mode === 'html' ? Object.fromEntries(numbers.map(([id, own]) => [id, own.output])) : {},
+	compressed:
+		mode === 'html'
+			? Object.fromEntries(
+					numbers.flatMap(([id, own]) => (own.compressed === null ? [] : [[id, own.compressed]]))
+				)
+			: {}
 });
 
 /**
@@ -228,8 +261,9 @@ export const to_deterministic_cells = (
 		for (const { id } of claiming) {
 			const own = by_key.get(JSON.stringify([id, input.file]));
 			if (!own) throw new Error(`${id} has no output for "${input.file}"`);
-			if (own.ok) numbers.push([id, { tokens: own.tokens, output: own.output }]);
-			else failed.push({ library: id, reason: own.reason });
+			if (own.ok) {
+				numbers.push([id, { tokens: own.tokens, output: own.output, compressed: own.compressed }]);
+			} else failed.push({ library: id, reason: own.reason });
 		}
 		covered.push(input);
 		for (const mode of BenchMode.options) {

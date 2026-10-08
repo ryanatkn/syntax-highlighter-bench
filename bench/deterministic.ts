@@ -1,7 +1,8 @@
 /**
  * The deterministic results file: every number of the benchmark that is the
- * same on any machine. Bundle sizes over the feature sets, each library's token
- * count and HTML size on every input, and the coverage matrix.
+ * same on any machine. Bundle sizes over the feature sets, each library's
+ * install footprint, its token count and HTML size on every input with the
+ * HTML's compressed sizes, and the coverage matrix.
  *
  * ```bash
  * node bench/deterministic.ts           # regenerate results/deterministic.json
@@ -13,13 +14,15 @@
  * nothing: it goes through `BenchResults` like any results file, with no timed
  * value in it and so no machine, time, Node version, or commit. What its numbers
  * depend on is in it instead: each library's version, the corpus hash, and what
- * the bundles were built with.
+ * the bundles were built with. Two inputs aren't recorded: the compressed sizes
+ * depend on the zlib and brotli inside Node, and the install footprints on the
+ * transitive versions the lockfile installs.
  *
  * A timed run relates to it in two ways (`carry_deterministic`). The run's
  * cells get their token counts and HTML sizes from their own processes, by the
  * same check under the same setup, and every one is compared with this file as
- * it arrives. And the run copies the bundle sizes from this file rather than
- * building them again. Both happen only when the file describes the run: the
+ * it arrives. And the run copies the bundle sizes, the install footprints, and
+ * the HTML's compressed sizes from this file rather than measuring them again. Both happen only when the file describes the run: the
  * same library versions, corpus, and sets.
  *
  * Node-only.
@@ -34,6 +37,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import {
 	parse_bench_results,
 	type BenchBundler,
+	type BenchCellCompressed,
 	type BenchLibrary,
 	type BenchResults,
 	type BenchSet
@@ -42,6 +46,7 @@ import type { HighlighterAdapter } from './adapter.ts';
 import { load_corpus_manifest } from './corpus.ts';
 import { LANG_ROSTER } from './langs.ts';
 import { ADAPTERS } from './libraries.ts';
+import { measure_installs } from './install.ts';
 import { find_library_change, to_bench_coverage, to_bench_libraries } from './library_info.ts';
 import { measure_outputs, to_deterministic_cells, type CellNumbers } from './outputs.ts';
 import { RESULTS_DIR } from './run_options.ts';
@@ -105,6 +110,7 @@ export const build_deterministic_results = async (
 		cells,
 		startup: [],
 		bundle,
+		install: measure_installs(adapters),
 		coverage: to_bench_coverage(adapters)
 	} satisfies BenchResults);
 };
@@ -161,13 +167,18 @@ export const diff_json = (
 export interface CarriedDeterministic {
 	/** The bundle sizes of the run's libraries. */
 	bundle: BenchResults['bundle'];
+	/** The install footprints of the run's libraries. */
+	install: BenchResults['install'];
 	bundler: BenchBundler;
 	/**
 	 * What each library came to on each input, by `to_expected_key`: its numbers,
-	 * or the reason it is excluded.
+	 * the compressed sizes among them, or the reason it is excluded.
 	 */
-	expected: Map<string, CellNumbers | { excluded: string }>;
+	expected: Map<string, ExpectedNumbers | { excluded: string }>;
 }
+
+/** A library's numbers on an input in the deterministic file, which always has the compressed sizes. */
+export type ExpectedNumbers = CellNumbers & { compressed: BenchCellCompressed };
 
 /** The key of `CarriedDeterministic.expected`: an input and a library. */
 export const to_expected_key = (file: string, library: string): string =>
@@ -179,13 +190,20 @@ export interface DeterministicContext {
 	libraries: ReadonlyArray<BenchLibrary>;
 	corpus_hash: string;
 	sets: ReadonlyArray<BenchSet>;
+	/**
+	 * Each library's install closure as this tree installs it (`BenchInstall.closure`),
+	 * by id: the transitive versions, which the libraries' own versions don't show.
+	 */
+	closures: Record<string, string>;
 }
 
 /**
  * Takes the bundle sizes and the expected cell numbers from a deterministic
  * results file, if that file describes this run: every library of the run at
- * the same version, with the same extra packages, the same corpus, and the same
- * feature sets.
+ * the same version, with the same extra packages and the same install closure,
+ * the same corpus, and the same feature sets. The closure pins the transitive
+ * versions, which move a library's HTML and footprint without moving its own
+ * version (Shiki renders through a dependency).
  *
  * @param deterministic - a parsed deterministic results file
  * @param context - what the run that would carry it measures
@@ -205,6 +223,14 @@ export const carry_deterministic = (
 	}
 	const moved = find_library_change(meta.libraries, context.libraries);
 	if (moved !== null) return { ok: false, reason: moved };
+	for (const { id } of context.libraries) {
+		if (deterministic.install[id]?.closure !== context.closures[id]) {
+			return {
+				ok: false,
+				reason: `it measured ${id} with other versions of its dependencies than this tree installs`
+			};
+		}
+	}
 	const expected: CarriedDeterministic['expected'] = new Map();
 	const by_file = Map.groupBy(deterministic.cells, (cell) => cell.file);
 	const excluded = new Map(meta.excluded.map((e) => [JSON.stringify([e.cell, e.library]), e]));
@@ -216,9 +242,10 @@ export const carry_deterministic = (
 			const reason = excluded.get(JSON.stringify([tokenize.id, id]))?.reason;
 			const tokens = tokenize.tokens[id];
 			const output = html.output[id];
+			const compressed = html.compressed[id];
 			if (reason !== undefined) expected.set(to_expected_key(file, id), { excluded: reason });
-			else if (tokens !== undefined && output !== undefined) {
-				expected.set(to_expected_key(file, id), { tokens, output });
+			else if (tokens !== undefined && output !== undefined && compressed !== undefined) {
+				expected.set(to_expected_key(file, id), { tokens, output, compressed });
 			}
 		}
 	}
@@ -226,6 +253,9 @@ export const carry_deterministic = (
 		ok: true,
 		bundle: Object.fromEntries(
 			context.libraries.map((library) => [library.id, deterministic.bundle[library.id]!])
+		),
+		install: Object.fromEntries(
+			context.libraries.map((library) => [library.id, deterministic.install[library.id]!])
 		),
 		bundler: meta.bundler,
 		expected
@@ -235,8 +265,8 @@ export const carry_deterministic = (
 const USAGE = [
 	'usage: node bench/deterministic.ts [--check] [--out <path>]',
 	'',
-	'Regenerates the deterministic results: bundle sizes, token counts, HTML',
-	'sizes, and coverage. Nothing is timed.',
+	'Regenerates the deterministic results: bundle sizes, install footprints,',
+	'token counts, HTML sizes raw and compressed, and coverage. Nothing is timed.',
 	'',
 	'  --check        regenerate in memory, and fail if the committed file differs',
 	'  --out <path>   read and write this file instead of results/deterministic.json',
@@ -320,6 +350,11 @@ const main = async (args: ReadonlyArray<string>): Promise<number> => {
 	if (differences.every((line) => /\.(gzip|brotli): /.test(line))) {
 		console.error(
 			`only compressed sizes differ, so the committed file was likely generated by a Node with another zlib or brotli (this one has zlib ${process.versions.zlib}, brotli ${process.versions.brotli})`
+		);
+	}
+	if (differences.some((line) => line.startsWith('install.'))) {
+		console.error(
+			'an install footprint differs: a library version, or a dependency the lockfile installs for it, has moved'
 		);
 	}
 	console.error('regenerate it with `npm run bench:deterministic`, and commit the result');

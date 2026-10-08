@@ -1,7 +1,12 @@
 import { assert, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { BenchBundleSizes, BenchCellOutput } from '$lib/results_schema.ts';
+import {
+	BenchBundleSizes,
+	BenchCellCompressed,
+	BenchCellOutput,
+	BenchInstall
+} from '$lib/results_schema.ts';
 import { ADAPTERS } from '../../bench/libraries.ts';
 import { BROTLI_QUALITY, GZIP_LEVEL } from '../../bench/sizes.ts';
 
@@ -28,8 +33,13 @@ test('the deterministic docs state the compression levels as the harness defines
 	}
 });
 
-test('the deterministic docs name every size of a bundle and of an output', () => {
-	const keys = [...Object.keys(BenchBundleSizes.shape), ...Object.keys(BenchCellOutput.shape)];
+test('the deterministic docs name every size of a bundle, an output, and an install', () => {
+	const keys = [
+		...Object.keys(BenchBundleSizes.shape),
+		...Object.keys(BenchCellOutput.shape),
+		...Object.keys(BenchCellCompressed.shape),
+		...Object.keys(BenchInstall.shape)
+	];
 	for (const [name, text] of Object.entries(docs)) {
 		for (const key of keys) assert.ok(text.includes(`\`${key}\``), `${name} lacks ${key}`);
 	}

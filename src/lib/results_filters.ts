@@ -44,7 +44,13 @@ export const RESULTS_LIST_KEYS = [
 ] as const;
 
 /** The filters that hold one id. */
-export const RESULTS_CHOICE_KEYS = ['unit', 'bundle', 'compression', 'set'] as const;
+export const RESULTS_CHOICE_KEYS = [
+	'unit',
+	'bundle',
+	'compression',
+	'output_compression',
+	'set'
+] as const;
 
 /** What a reader has selected on the results page. */
 export type ResultsFilters = Record<(typeof RESULTS_LIST_KEYS)[number], Array<string>> &
@@ -71,6 +77,9 @@ export const DEFAULT_SOURCE = 'neutral';
 /** The form of a cold start selected by default: the chunk whose size is reported. */
 export const DEFAULT_FORM = 'bundled';
 
+/** How the HTML's size is shown by default: raw, as the output table has always shown it. */
+export const DEFAULT_OUTPUT_COMPRESSION = 'raw';
+
 /** The set summed by default, when the file has it: what a documentation site imports. */
 export const DEFAULT_SET = 'docs';
 
@@ -93,6 +102,7 @@ export const to_results_filter_options = (results: MatrixResults): ResultsFilter
 		unit: THROUGHPUT_UNITS.map((unit) => unit.id),
 		bundle: BUNDLE_VIEWS.map((view) => view.id),
 		compression: [...BUNDLE_COMPRESSIONS],
+		output_compression: [...BUNDLE_COMPRESSIONS],
 		set: combined.map((set) => set.ids[0]!),
 		set_aliases: Object.fromEntries(
 			combined.flatMap((set) => set.ids.slice(1).map((id) => [id, set.ids[0]!]))
@@ -103,7 +113,7 @@ export const to_results_filter_options = (results: MatrixResults): ResultsFilter
 /**
  * The selection a reader starts from: everything, except the sources, where
  * only the neutral inputs are selected, and the forms of a cold start, where
- * only the bundled one is.
+ * only the bundled one is. Bundle sizes start gzipped and HTML sizes raw.
  */
 export const to_default_results_filters = (options: ResultsFilterOptions): ResultsFilters => ({
 	metrics: [...options.metrics],
@@ -119,6 +129,9 @@ export const to_default_results_filters = (options: ResultsFilterOptions): Resul
 	unit: options.unit[0]!,
 	bundle: options.bundle[0]!,
 	compression: options.compression[0]!,
+	output_compression: options.output_compression.includes(DEFAULT_OUTPUT_COMPRESSION)
+		? DEFAULT_OUTPUT_COMPRESSION
+		: options.output_compression[0]!,
 	set: options.set.includes(DEFAULT_SET) ? DEFAULT_SET : (options.set[0] ?? ''),
 	reference: null
 });

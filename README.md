@@ -13,7 +13,8 @@ The [website](https://syntax-highlighter-bench.ryanatkn.com/) has more.
 **Status: early.** The adapters, the corpus, the check that guards against a
 plain-text fallback, the harness that times the libraries, warm and from a cold
 start, and writes a results file, the deterministic measurements (bundle size,
-token counts, output sizes, coverage), and the site that renders a results file
+install footprint, token counts, output sizes raw and compressed, coverage), and
+the site that renders a results file
 exist. The deterministic numbers are committed as `results/deterministic.json`,
 and the site shows them. No timed numbers are published, and the site says so
 wherever one would be.
@@ -32,8 +33,8 @@ wherever one would be.
     one sample
   - `bench/journal.ts` — the journal a timed run keeps, so it can be resumed
   - `bench/deterministic.ts` — the deterministic results file, from
-    `bench/sizes.ts` (bundle size) and `bench/outputs.ts` (token counts and
-    output sizes)
+    `bench/sizes.ts` (bundle size), `bench/install.ts` (install footprint), and
+    `bench/outputs.ts` (token counts and output sizes)
   - `bench/corpus/` — the inputs, with their manifest
   - `bench/langs.ts` — the language ids every adapter maps onto
   - `bench/sets.ts` — the feature sets bundle size is measured over
@@ -55,8 +56,8 @@ Two classes of number, kept apart in the results file:
   throughput for each input and mode (`tokenize` and `html`), with each
   process's peak memory beside it; cold start.
 - **Deterministic**, the same anywhere: bundle size for each feature set, with
-  wasm and theme CSS reported separately; output size; token counts; the
-  coverage matrix.
+  wasm and theme CSS reported separately; install footprint; output size, raw
+  and compressed; token counts; the coverage matrix.
 
 The timed harness measures throughput, cold start, and memory. The
 deterministic numbers have a command of their own, and a timed run carries them
@@ -123,10 +124,11 @@ A drifted run is measured again, not published under a warning. A
 `results/deterministic.json` that holds a timed number fails the build too.
 
 **A published run beside the deterministic file.** When the two describe the
-same library versions and the same corpus, their deterministic numbers (feature
-sets, coverage, bundle sizes, and each cell's token counts and output sizes)
-must be equal, or the build fails and names the first place they differ. When a
-library's version or the corpus has moved since the run, the run is shown as
+same library versions, the same install closures, and the same corpus, their
+deterministic numbers (feature
+sets, coverage, bundle sizes, install footprints, and each cell's token counts
+and output sizes, raw and compressed) must be equal, or the build fails and names the first place they differ. When a
+library's version, its dependencies, or the corpus has moved since the run, the run is shown as
 the snapshot it is, and the line that says where the numbers came from says
 what has moved.
 
@@ -597,8 +599,8 @@ run passes before it is committed as `results/latest.json`.
 
 ## Deterministic metrics
 
-Bundle sizes, token counts, output sizes, and the coverage matrix are the same
-on any machine. One command measures them, with nothing timed, and writes
+Bundle sizes, install footprints, token counts, output sizes, and the coverage
+matrix are the same on any machine. One command measures them, with nothing timed, and writes
 `results/deterministic.json`, which is committed:
 
 ```bash
@@ -685,8 +687,14 @@ elements it has (`spans`). They are taken as a timed cell takes them: a process
 sets up exactly one language in one library, the snippet check runs, and each
 input is then checked.
 
+The same HTML is also recorded compressed (`compressed`: `gzip` and `brotli`, at
+the levels bundle sizes use), since a server-rendered page ships it that way. It
+is produced again for this, outside the check, and must come to the size the
+check saw.
+
 Each number is stated once for an input, on the cell whose call returns it: the
-token count on the `tokenize` cell and the output size on the `html` cell.
+token count on the `tokenize` cell and the output sizes, raw and compressed, on
+the `html` cell.
 
 What they don't say:
 
@@ -695,13 +703,40 @@ What they don't say:
   it holds may each count.
 - Classes and inline styles are different HTML. A class name is short and needs
   a stylesheet; an inline color is repeated on every token and needs none.
-  Compare `html_bytes` with the theme CSS column beside it.
+  Compare `html_bytes` with the theme CSS column beside it, and the compressed
+  sizes too: a repeated color is what compression removes best.
 - Wrappers differ. twinkleplop and Shiki wrap the output in `<pre>` and a span
   for each line; fuz_code and Prism return bare token spans. `spans` counts
   every element.
 - Prism's two calls can disagree on Markdown. Prism highlights the inside of a
   fenced block in hooks that only `highlight` runs, so for a fence whose
   language is loaded the HTML holds elements the token count doesn't include.
+
+### Install footprint
+
+What `npm install` of a library adds to a project. `bench/install.ts` walks the
+runtime dependency closure of the adapter's package and its separately
+versioned packages, resolving each dependency from the package that needs it as
+Node does, through this repository's `node_modules`, and records:
+
+- `packages` — the packages in the closure, each counted once
+- `files` — the files in their directories, less any nested `node_modules`
+- `bytes` — the sum of those files' sizes as stored, not disk blocks
+- `closure` — a SHA-256 over the sorted `name@version` list, which pins the
+  transitive versions the other three depend on
+
+A package is told apart by name and version, so one installed twice at the
+same version counts once.
+
+The closure follows `dependencies`, the `peerDependencies` not marked optional
+(npm installs those too), and the `optionalDependencies` that are installed and
+not limited to some platforms by `os`, `cpu`, or `libc`: a package with a
+binary per platform would make the figure the machine's. Never
+`devDependencies`. Each library is counted whole, on its own, so Shiki's two
+engines, one package, have one footprint. It is everything the packages ship,
+every language, theme, and type declaration, and not what a page loads. The
+versions are the ones this repository's lockfile installs, transitive ones
+included; a fresh install may resolve a dependency to a newer version.
 
 ### Coverage
 
@@ -718,17 +753,23 @@ them shaped its numbers. What they depend on is in it: each library's version,
 the corpus hash, and the versions of Vite and of the Rollup and esbuild inside
 it. Regenerating it on an unchanged tree changes nothing.
 
-One dependency is not in the file: the gzip and brotli sizes come from the zlib
-and brotli inside Node, and a Node with another version of either can compress
-to a few bytes more or less. Generate the file on the Node version the check
-workflow uses.
+Two dependencies are not in the file. The gzip and brotli sizes, of bundles and
+of HTML, come from the zlib and brotli inside Node, and a Node with another
+version of either can compress to a few bytes more or less: generate the file
+on the Node version the check workflow uses. And the install footprints follow
+the transitive versions the lockfile installs, which move without a library's
+own version moving: each footprint carries a hash of its closure
+(`closure`), which a timed run and the site compare. A failed check says which of these it looks like.
 
 A timed run takes its cells' token counts and output sizes from its own
 processes, by the same check. When the deterministic file describes the run
-(the same library versions, corpus, and sets), the run compares each library's
+(the same library versions, install closures, corpus, and sets), the run compares each library's
 first result on a cell with the file and stops at a difference, and it copies
-its libraries' bundle sizes from the file. Otherwise a smoke or filtered run
-says why and carries no bundle sizes, and a full run with no filters is refused
+its libraries' bundle sizes, install footprints, and compressed HTML sizes from
+the file. The compressed sizes aren't compared on their own: the raw size is,
+and the install closure (every `name@version` a library installs, transitive
+ones included, as a hash) pins what renders the HTML. Otherwise a
+smoke or filtered run says why and carries none of those sizes, and a full run with no filters is refused
 before it measures anything: regenerating the file is quick, and the run is
 long.
 

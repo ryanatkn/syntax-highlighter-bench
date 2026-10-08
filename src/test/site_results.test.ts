@@ -181,6 +181,12 @@ describe('a published run beside the deterministic results', () => {
 			},
 			'bundle.prism.docs.raw'
 		],
+		[
+			'a compressed HTML size',
+			(data) => (data.cells.find((cell) => cell.mode === 'html')!.compressed.prism!.gzip += 1),
+			'cells.neutral/ts/checker_excerpt.ts:html.compressed.prism.gzip'
+		],
+		['an install footprint', (data) => (data.install.prism!.files += 1), 'install.prism.files'],
 		['a coverage footnote', (data) => (data.coverage.fuz_code!.js = true), 'coverage.fuz_code.js'],
 		['a feature set', (data) => data.sets.at(-1)!.langs.pop(), 'sets.']
 	];
@@ -215,6 +221,16 @@ describe('a published run beside the deterministic results', () => {
 			`fuz_code was measured at ${measured} and is now at 99.0.0`
 		]);
 		assert.deepStrictEqual(site.results, load_fixture_json());
+	});
+
+	test('a library whose dependencies moved is a snapshot with a notice, and is not compared', () => {
+		const deterministic = load_matching_json();
+		deterministic.install.shiki_js!.closure = '0'.repeat(64);
+		// a dependency renders Shiki's HTML, so its numbers may differ too
+		deterministic.cells.find((cell) => cell.mode === 'html')!.compressed.shiki_js!.gzip += 1;
+		const site = resolve_latest(load_fixture_json(), deterministic);
+		assert.strictEqual(site.source, 'published');
+		assert.deepStrictEqual(site.moved, ['the dependencies of shiki_js']);
 	});
 
 	test('an extra package at another version, and a changed corpus, are named too', () => {

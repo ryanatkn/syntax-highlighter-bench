@@ -8,7 +8,7 @@ method page of the site's docs (../src/routes/docs/method/+page.svelte).
 
 | file | what it is | committed |
 | --- | --- | --- |
-| `deterministic.json` | the numbers that are the same on any machine: bundle sizes, token counts, output sizes, coverage. `npm run bench:deterministic` regenerates it anywhere, and the check workflow fails when the committed file differs from what regenerates | yes |
+| `deterministic.json` | the numbers that are the same on any machine: bundle sizes, install footprints, token counts, output sizes raw and compressed, coverage. `npm run bench:deterministic` regenerates it anywhere, and the check workflow fails when the committed file differs from what regenerates | yes |
 | `latest.json` | the published timed run, which the site renders. Until a first run is published it is absent, and the site renders `deterministic.json` and shows no timed number | yes, once a run is published |
 | `<UTC date>_<machine>.json` | a full run, as the harness writes it: named by the UTC date it started and the name given to `--machine`. `latest.json` is a copy of one of these, made by `npm run results:publish` | yes, for a run that is published |
 | `calibration_<machine>.json` | a machine's noise floor, from a calibration run. A full run on the same machine copies the floor into its own file | yes, beside the run that carries it |
@@ -157,7 +157,8 @@ Everything below runs on the publishing machine, from the root of the checkout.
    ```
    `noise floor` must say it is carried from the calibration, and otherwise it
    gives the reason. `bundle sizes` must say they are carried from the
-   deterministic results file. `commit` must have no `-dirty`. `output` is the
+   deterministic results file, which carries the install footprints and the
+   compressed HTML sizes with them. `commit` must have no `-dirty`. `output` is the
    file the run will write. The estimate assumes calls shorter than a batch, so
    it misses Shiki's cells on the long-line stress inputs, where a call takes
    seconds: expect the run to take tens of minutes longer than it says.
@@ -201,8 +202,8 @@ Everything below runs on the publishing machine, from the root of the checkout.
     needs no network. The build parses `latest.json` and fails, saying why, if the run is not
     publishable: a smoke run, a calibration, a filtered run, a run with a gap,
     a `-dirty` commit, an anchor that drifted, or no noise floor. It also fails if the run and
-    `deterministic.json` describe the same library versions and corpus and
-    their deterministic numbers differ.
+    `deterministic.json` describe the same library versions, install closures,
+    and corpus and their deterministic numbers differ.
 13. **Commit** `latest.json`, the dated file, and the calibration file, and
     fill in the machine section above if the machine is new or has changed.
 

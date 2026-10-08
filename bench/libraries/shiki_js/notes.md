@@ -123,6 +123,12 @@ one scheme, light.
   not given. Shiki itself throws for an unknown name.
 - The JavaScript engine is created with its defaults, which reject a pattern it
   cannot translate rather than skipping it.
+- The two engines don't always agree on scopes. On `neutral/bash/nvm.sh` they
+  return the same tokens and HTML of the same size, but one token's color
+  differs (the closing `esac` of the large `case` in `nvm()`). The output check
+  and the deterministic file compare counts and sizes, not content, so a
+  difference like this is not flagged. Timing compares the same work, not
+  identical output.
 - Shiki also offers precompiled grammars with a smaller raw JavaScript engine
   for this engine. They come from a package that is not installed here, so the
   adapter uses the standard grammars.

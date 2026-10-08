@@ -16,6 +16,7 @@ import {
 	to_deterministic_path,
 	to_expected_key
 } from '../../../bench/deterministic.ts';
+import { to_install_closures } from '../../../bench/install.ts';
 import { LANG_ROSTER, lang_is_timed } from '../../../bench/langs.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { to_bench_coverage, to_bench_libraries } from '../../../bench/library_info.ts';
@@ -196,7 +197,8 @@ describe('carry_deterministic', () => {
 	const context = {
 		libraries: to_bench_libraries(ADAPTERS),
 		corpus_hash: manifest.corpus_hash,
-		sets: to_bench_sets()
+		sets: to_bench_sets(),
+		closures: to_install_closures(ADAPTERS)
 	};
 
 	test('a run of this tree takes the bundle sizes and every expected cell number', () => {
@@ -209,7 +211,8 @@ describe('carry_deterministic', () => {
 		for (const adapter of ADAPTERS) {
 			assert.deepStrictEqual(carried.expected.get(to_expected_key(input.file, adapter.id)), {
 				tokens: tokenize!.tokens[adapter.id]!,
-				output: html!.output[adapter.id]!
+				output: html!.output[adapter.id]!,
+				compressed: html!.compressed[adapter.id]!
 			});
 		}
 		assert.strictEqual(carried.expected.size, results.inputs.length * ADAPTERS.length);
@@ -230,6 +233,7 @@ describe('carry_deterministic', () => {
 		const [tokenize, html] = changed.cells;
 		delete tokenize!.tokens.prism;
 		delete html!.output.prism;
+		delete html!.compressed.prism;
 		for (const cell of [tokenize!, html!]) {
 			changed.meta.excluded.push({ cell: cell.id, library: 'prism', reason: 'produced no HTML' });
 		}
@@ -274,6 +278,11 @@ describe('carry_deterministic', () => {
 				return c;
 			}),
 			/no library "highlight_js"/
+		);
+		// a dependency the lockfile moved, under the same version of the library
+		assert.match(
+			reason((c) => ({ ...c, closures: { ...c.closures, shiki_js: '0'.repeat(64) } })),
+			/it measured shiki_js with other versions of its dependencies than this tree installs/
 		);
 		const without_sizes = load();
 		without_sizes.bundle = {};

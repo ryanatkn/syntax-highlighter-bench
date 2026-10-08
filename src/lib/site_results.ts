@@ -69,7 +69,8 @@ const to_versions = (library: BenchLibrary): string =>
 /**
  * What differs between a published run and the deterministic results in the
  * things a deterministic number depends on: each library's version with its
- * extra packages, and the corpus.
+ * extra packages, the versions of its dependencies (its install closure), and
+ * the corpus.
  *
  * @returns a phrase for each thing that moved, none when the run describes the
  * same libraries and corpus as the deterministic results
@@ -85,6 +86,12 @@ export const find_moved_since = (run: BenchResults, deterministic: BenchResults)
 			moved.push(`${library.id} was measured at ${library.version} and is now at ${now.version}`);
 		} else if (to_versions(now) !== to_versions(library)) {
 			moved.push(`${library.id} is measured with other versions of its extra packages now`);
+		} else if (
+			Object.hasOwn(run.install, library.id) &&
+			Object.hasOwn(deterministic.install, library.id) &&
+			run.install[library.id]!.closure !== deterministic.install[library.id]!.closure
+		) {
+			moved.push(`the dependencies of ${library.id}`);
 		}
 	}
 	for (const library of deterministic.meta.libraries) {
@@ -123,8 +130,12 @@ const to_deterministic_numbers = (results: BenchResults): Record<string, unknown
 	sets: results.sets,
 	coverage: results.coverage,
 	bundle: results.bundle,
+	install: results.install,
 	cells: Object.fromEntries(
-		results.cells.map((cell) => [cell.id, { tokens: cell.tokens, output: cell.output }])
+		results.cells.map((cell) => [
+			cell.id,
+			{ tokens: cell.tokens, output: cell.output, compressed: cell.compressed }
+		])
 	)
 });
 
@@ -140,7 +151,8 @@ const to_deterministic_numbers = (results: BenchResults): Record<string, unknown
  *
  * A published run is checked against the deterministic results. When both
  * describe the same library versions and corpus, their deterministic numbers
- * (sets, coverage, bundle sizes, and each cell's token counts and output sizes)
+ * (sets, coverage, bundle sizes, install footprints, and each cell's token
+ * counts and output sizes, raw and compressed)
  * must be equal. When a version or the corpus has moved since the run, the run
  * is rendered as the snapshot it is, and `moved` says what moved.
  *

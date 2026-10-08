@@ -26,6 +26,7 @@ import {
 } from '../../../bench/deterministic.ts';
 import { read_journal } from '../../../bench/journal.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
+import { to_install_closures } from '../../../bench/install.ts';
 import { to_bench_libraries } from '../../../bench/library_info.ts';
 import {
 	CHANGED_SUFFIX,
@@ -661,7 +662,8 @@ describe('a timed run and the deterministic results file', () => {
 		const carried = carry_deterministic(deterministic, {
 			libraries,
 			corpus_hash: manifest.corpus_hash,
-			sets: to_bench_sets()
+			sets: to_bench_sets(),
+			closures: to_install_closures(ADAPTERS)
 		});
 		assert.ok(carried.ok, carried.ok ? '' : carried.reason);
 		return carried;
@@ -782,6 +784,18 @@ describe('a timed run and the deterministic results file', () => {
 			/doesn't describe this run, it measured fuz_code with @fuzdev\/fuz_code 0\.0\.1, and this run has/
 		);
 		assert.strictEqual(machine.spawned, 0);
+		// a file whose install closure isn't this tree's: a dependency moved under the same version
+		const moved = structuredClone(deterministic);
+		moved.install.prism!.closure = '0'.repeat(64);
+		writeFileSync(to_deterministic_path(dir), JSON.stringify(moved));
+		const refused_closure = await catch_run_error(unfiltered(), machine.options);
+		assert.strictEqual(refused_closure.exit_code, 2);
+		assert.match(
+			refused_closure.message,
+			/it measured prism with other versions of its dependencies than this tree installs/
+		);
+		assert.strictEqual(machine.spawned, 0);
+		writeFileSync(to_deterministic_path(dir), JSON.stringify(stale));
 		// `--plan` is refused where the run would be
 		assert.throws(
 			() => plan_run(unfiltered('--plan'), { results_dir: dir }),

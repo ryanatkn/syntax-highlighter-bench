@@ -45,8 +45,8 @@
 				<code>startup_excluded</code> for cold-start scenarios, in
 				<DeclarationLink name="BenchStartupExcluded" />; the anchor's drift; the machine's noise
 				floor; the run's own process noise, in <DeclarationLink name="BenchProcessNoise" />, from
-				every pair of a value's passes; what the bundle sizes were built with, in
-				<DeclarationLink name="BenchBundler" />
+				every pair of a value's passes; what the bundle sizes were built with, and the compression
+				levels every compressed size is taken at, in <DeclarationLink name="BenchBundler" />
 			</li>
 			<li>
 				<DeclarationLink name="BenchLang" /> and <DeclarationLink name="BenchSet" /> — the language
@@ -60,8 +60,9 @@
 			<li>
 				<DeclarationLink name="BenchCell" /> — one input measured in one mode, with each library's
 				numbers. Its id is <code>&lt;file&gt;:&lt;mode&gt;</code>. A <code>tokenize</code> cell
-				states the token counts and an <code>html</code> cell the output sizes, so each is stated
-				once for an input. Each value carries <code>attempts</code>: how many times the library was
+				states the token counts and an <code>html</code> cell the output sizes, with the HTML's
+				compressed sizes in <DeclarationLink name="BenchCellCompressed" />, so each is stated once
+				for an input. Each value carries <code>attempts</code>: how many times the library was
 				measured there, more than 1 when its rounds disagreed and it was retried. A retried value's
 				spread and percentiles are those of the attempt that was kept. Each value also carries
 				<code>pass_medians_ns</code>, the kept attempt's median for each pass, so the processes'
@@ -80,6 +81,11 @@
 				<DeclarationLink name="BenchBundleEntry" /> — for each library over each feature set, its
 				bundle sizes in <DeclarationLink name="BenchBundleSizes" />, or the languages of the set it
 				lacks. The sizes are the JavaScript's, with the wasm and the theme CSS each measured apart
+			</li>
+			<li>
+				<DeclarationLink name="BenchInstall" /> — for each library, what <code>npm install</code> of
+				it adds: the packages of its runtime dependency closure, their files, those files' bytes,
+				and a hash of the closure's <code>name@version</code> list
 			</li>
 			<li>
 				<DeclarationLink name="BenchCoverageEntry" /> — which languages each library claims, with a
@@ -101,8 +107,8 @@
 		</p>
 		<p>
 			<strong>Deterministic</strong> numbers come out the same anywhere: token counts and output
-			size in each cell's <code>tokens</code> and <code>output</code>, plus <code>bundle</code> and
-			<code>coverage</code>.
+			sizes in each cell's <code>tokens</code>, <code>output</code>, and <code>compressed</code>,
+			plus <code>bundle</code>, <code>install</code>, and <code>coverage</code>.
 		</p>
 		<p>
 			A file may hold only the deterministic ones. It then has no <code>meta.run</code> and no
@@ -180,8 +186,8 @@
 			<li>
 				<code>results/latest.json</code>, the latest published timed run, when it is committed:
 				<code>npm run results:publish</code> copies a run there once it passes the test below. It
-				carries its own bundle sizes, token counts, and output sizes, so every number on a page is
-				from one file.
+				carries its own bundle sizes, install footprints, token counts, and output sizes, so every
+				number on a page is from one file.
 			</li>
 			<li>
 				otherwise <code>results/deterministic.json</code>. The pages then show the deterministic
@@ -197,11 +203,12 @@
 		</p>
 		<p>
 			A published run is also held against the deterministic file. When the two describe the same
-			library versions and the same corpus, their deterministic numbers must be equal: the feature
-			sets, the coverage, the bundle sizes, and each cell's token counts and output sizes. A
-			difference fails the build and names the first place they differ. When a library's version or
-			the corpus has moved since the run, the run is shown as the snapshot it is, and the line that
-			says where the numbers came from also says what has moved since.
+			library versions, the same install closures, and the same corpus, their deterministic numbers
+			must be equal: the feature sets, the coverage, the bundle sizes, the install footprints, and
+			each cell's token counts and output sizes, raw and compressed. A difference fails the build
+			and names the first place they differ. When a library's version, its dependencies, or the
+			corpus has moved since the run, the run is shown as the snapshot it is, and the line that says
+			where the numbers came from also says what has moved since.
 		</p>
 		<p>
 			The fixture run the tests use holds invented numbers. A build renders it only when the
@@ -284,8 +291,15 @@
 				built with is recorded exactly when they are present
 			</li>
 			<li>
+				the install footprints and the HTML's compressed sizes come with the bundle sizes: every
+				library of the roster has a footprint, and every library with an output on an
+				<code>html</code> cell has its compressed sizes, exactly when the bundle sizes are present.
+				A footprint has at least a file for each package
+			</li>
+			<li>
 				a compressed size is no larger than the raw one plus a compression format's own overhead,
-				and the theme CSS sizes are null exactly for a library that writes its styles inline
+				the HTML's included, and the theme CSS sizes are null exactly for a library that writes its
+				styles inline
 			</li>
 			<li>
 				a file with no timed numbers is complete: in every cell each library that claims the

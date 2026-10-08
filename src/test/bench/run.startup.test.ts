@@ -21,7 +21,11 @@ import {
 	type StartupScenario
 } from '../../../bench/coldstart.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
-import { to_expected_key, type CarriedDeterministic } from '../../../bench/deterministic.ts';
+import {
+	to_expected_key,
+	type CarriedDeterministic,
+	type ExpectedNumbers
+} from '../../../bench/deterministic.ts';
 import { read_journal } from '../../../bench/journal.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { to_bench_libraries } from '../../../bench/library_info.ts';
@@ -323,10 +327,11 @@ describe('run_startup_in_turn', () => {
 	test('a first highlight’s HTML is the size the deterministic file has for the snippet', async () => {
 		const snippet = SCENARIOS.find((s) => s.snippet !== null)!.snippet!;
 		const output = { html_bytes: Buffer.byteLength(HIGHLIGHTED), spans: MIN_SNIPPET_SPAN_KINDS };
+		const compressed = { gzip: 50, brotli: 40 };
 		const to_expected = (prism: object): CarriedDeterministic['expected'] =>
 			new Map([
-				[to_expected_key(snippet.file, 'fuz_code'), { tokens: 9, output }],
-				[to_expected_key(snippet.file, 'prism'), prism as { tokens: number; output: typeof output }]
+				[to_expected_key(snippet.file, 'fuz_code'), { tokens: 9, output, compressed }],
+				[to_expected_key(snippet.file, 'prism'), { compressed, ...prism } as ExpectedNumbers]
 			]);
 		// equal: the run goes through
 		await run_in_turn(to_outcome, to_expected({ tokens: 9, output }));

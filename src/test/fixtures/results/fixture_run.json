@@ -552,7 +552,8 @@
 				"shiki_js": 1024,
 				"shiki_wasm": 1024
 			},
-			"output": {}
+			"output": {},
+			"compressed": {}
 		},
 		{
 			"id": "neutral/ts/checker_excerpt.ts:html",
@@ -670,6 +671,28 @@
 					"html_bytes": 52224,
 					"spans": 878
 				}
+			},
+			"compressed": {
+				"fuz_code": {
+					"gzip": 5263,
+					"brotli": 3944
+				},
+				"twinkleplop": {
+					"gzip": 5263,
+					"brotli": 3944
+				},
+				"prism": {
+					"gzip": 5263,
+					"brotli": 3944
+				},
+				"shiki_js": {
+					"gzip": 8376,
+					"brotli": 6279
+				},
+				"shiki_wasm": {
+					"gzip": 8376,
+					"brotli": 6279
+				}
 			}
 		},
 		{
@@ -756,7 +779,8 @@
 				"shiki_js": 118,
 				"shiki_wasm": 118
 			},
-			"output": {}
+			"output": {},
+			"compressed": {}
 		},
 		{
 			"id": "shiki/rust/rust.sample:html",
@@ -853,6 +877,24 @@
 				"shiki_wasm": {
 					"html_bytes": 6018,
 					"spans": 101
+				}
+			},
+			"compressed": {
+				"fuz_code": {
+					"gzip": 624,
+					"brotli": 465
+				},
+				"twinkleplop": {
+					"gzip": 624,
+					"brotli": 465
+				},
+				"shiki_js": {
+					"gzip": 983,
+					"brotli": 734
+				},
+				"shiki_wasm": {
+					"gzip": 983,
+					"brotli": 734
 				}
 			}
 		},
@@ -957,7 +999,8 @@
 				"shiki_js": 21,
 				"shiki_wasm": 21
 			},
-			"output": {}
+			"output": {},
+			"compressed": {}
 		},
 		{
 			"id": "home/fuz_code/svelte/sample.svelte:html",
@@ -1075,6 +1118,28 @@
 					"html_bytes": 1081,
 					"spans": 18
 				}
+			},
+			"compressed": {
+				"fuz_code": {
+					"gzip": 128,
+					"brotli": 93
+				},
+				"twinkleplop": {
+					"gzip": 128,
+					"brotli": 93
+				},
+				"prism": {
+					"gzip": 128,
+					"brotli": 93
+				},
+				"shiki_js": {
+					"gzip": 193,
+					"brotli": 142
+				},
+				"shiki_wasm": {
+					"gzip": 193,
+					"brotli": 142
+				}
 			}
 		},
 		{
@@ -1178,7 +1243,8 @@
 				"shiki_js": 10240,
 				"shiki_wasm": 10240
 			},
-			"output": {}
+			"output": {},
+			"compressed": {}
 		},
 		{
 			"id": "neutral/json/package_lock.json:html",
@@ -1295,6 +1361,28 @@
 				"shiki_wasm": {
 					"html_bytes": 522240,
 					"spans": 8777
+				}
+			},
+			"compressed": {
+				"fuz_code": {
+					"gzip": 52449,
+					"brotli": 39334
+				},
+				"twinkleplop": {
+					"gzip": 52449,
+					"brotli": 39334
+				},
+				"prism": {
+					"gzip": 52449,
+					"brotli": 39334
+				},
+				"shiki_js": {
+					"gzip": 83578,
+					"brotli": 62681
+				},
+				"shiki_wasm": {
+					"gzip": 83578,
+					"brotli": 62681
 				}
 			}
 		}
@@ -4552,6 +4640,38 @@
 					"xml"
 				]
 			}
+		}
+	},
+	"install": {
+		"fuz_code": {
+			"packages": 6,
+			"files": 400,
+			"bytes": 2000000,
+			"closure": "1111111111111111111111111111111111111111111111111111111111111111"
+		},
+		"twinkleplop": {
+			"packages": 10,
+			"files": 60,
+			"bytes": 700000,
+			"closure": "2222222222222222222222222222222222222222222222222222222222222222"
+		},
+		"prism": {
+			"packages": 2,
+			"files": 700,
+			"bytes": 2000000,
+			"closure": "3333333333333333333333333333333333333333333333333333333333333333"
+		},
+		"shiki_js": {
+			"packages": 45,
+			"files": 2400,
+			"bytes": 15000000,
+			"closure": "4444444444444444444444444444444444444444444444444444444444444444"
+		},
+		"shiki_wasm": {
+			"packages": 45,
+			"files": 2400,
+			"bytes": 15000000,
+			"closure": "4444444444444444444444444444444444444444444444444444444444444444"
 		}
 	},
 	"coverage": {

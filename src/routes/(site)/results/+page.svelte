@@ -9,6 +9,7 @@
 		to_bundle_cost_groups,
 		to_bundle_total_groups,
 		to_combined_sets,
+		to_install_group,
 		type BundleCompression
 	} from '$lib/bundle_matrix.ts';
 	import { format_source_key } from '$lib/cell_groups.ts';
@@ -114,7 +115,13 @@
 			? to_bundle_total_groups(results, bundle_selection)
 			: to_bundle_cost_groups(results, bundle_selection)
 	);
-	const output_groups = $derived(to_output_groups(results, filters));
+	const install_group = $derived(to_install_group(results));
+	const output_groups = $derived(
+		to_output_groups(results, {
+			...filters,
+			compression: filters.output_compression as BundleCompression
+		})
+	);
 </script>
 
 <svelte:head>
@@ -344,6 +351,23 @@
 					row of its own.
 				</MatrixTable>
 			{/if}
+			{#if install_group !== null}
+				<h3>Install footprint</h3>
+				<MatrixTable
+					{libraries}
+					groups={[install_group]}
+					heading="measure"
+					label="Install footprint by library"
+					{reference}
+					colored={false}
+				>
+					What <code>npm install</code> of each library adds to a project: its packages and their
+					runtime dependencies, each package once, with the files they hold and those files' bytes.
+					It is everything the packages ship, every language, theme, and type declaration included,
+					and not what a page loads, which the tables above show. The ratios are not colored: a
+					library that ships more languages installs more, and installs it once.
+				</MatrixTable>
+			{/if}
 		</section>
 	{/if}
 
@@ -357,6 +381,12 @@
 					selected={filters.measures}
 					onchange={(measures) => update({ measures })}
 				/>
+				<FilterSelect
+					label="HTML bytes"
+					options={to_choices(options.output_compression)}
+					value={filters.output_compression}
+					onchange={(output_compression) => update({ output_compression })}
+				/>
 			</form>
 			{#if output_groups.length === 0}
 				<p>No input matches the selection.</p>
@@ -369,11 +399,13 @@
 					{reference}
 					colored={false}
 				>
-					How many tokens each library finds in an input, and how large its HTML is. The ratios are
-					not colored, because smaller is not better here: libraries split the same source
-					differently and wrap their HTML differently, so fewer tokens is less output, not a faster
-					library. <a href={resolve('/docs/deterministic')}>The deterministic metrics docs</a> say
-					what each counts.
+					How many tokens each library finds in an input, and how large its HTML is, raw or
+					compressed as a server would send it. The ratios are not colored, because smaller is not
+					better here: libraries split the same source differently and wrap their HTML differently,
+					so fewer tokens is less output, not a faster library, and HTML with inline styles carries
+					its theme where HTML with classes leaves it to a stylesheet.
+					<a href={resolve('/docs/deterministic')}>The deterministic metrics docs</a> say what each
+					counts.
 				</MatrixTable>
 			{/if}
 		</section>

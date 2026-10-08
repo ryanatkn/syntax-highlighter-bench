@@ -12,7 +12,8 @@ const NEUTRAL: OutputSelection = {
 	langs: ['rust'],
 	sizes: BenchSize.options,
 	sources: ['neutral'],
-	measures: OUTPUT_MEASURES.map((measure) => measure.id)
+	measures: OUTPUT_MEASURES.map((measure) => measure.id),
+	compression: 'raw'
 };
 
 describe('to_output_groups', () => {
@@ -42,6 +43,25 @@ describe('to_output_groups', () => {
 		}
 	});
 
+	test('shows the HTML compressed when a compression is selected', () => {
+		for (const compression of ['gzip', 'brotli'] as const) {
+			const groups = to_output_groups(results, {
+				...NEUTRAL,
+				measures: ['html_bytes'],
+				compression
+			});
+			for (const row of groups[0]!.rows) {
+				const html = results.cells.find((cell) => `${cell.id}:html_bytes` === row.key)!;
+				assert.include(row.note, compression);
+				for (const id of libraries) {
+					const value = matrix_row_value(row, id)!;
+					assert.strictEqual(value, html.compressed[id]![compression]);
+					assert.ok(value < html.output[id]!.html_bytes);
+				}
+			}
+		}
+	});
+
 	test('shows only the selected measures, and has no summary row', () => {
 		const groups = to_output_groups(results, { ...NEUTRAL, measures: ['spans'] });
 		for (const row of groups[0]!.rows) {
@@ -57,7 +77,8 @@ describe('to_output_groups', () => {
 			langs: ['rust'],
 			sizes: BenchSize.options,
 			sources: ['shiki'],
-			measures: OUTPUT_MEASURES.map((measure) => measure.id)
+			measures: OUTPUT_MEASURES.map((measure) => measure.id),
+			compression: 'gzip'
 		});
 		assert.strictEqual(groups[0]!.rows.length, OUTPUT_MEASURES.length);
 		for (const row of groups[0]!.rows) {

@@ -43,7 +43,8 @@ dev server.
 Built: the adapter contract and the adapters, the roster, the output check,
 the corpus and its manifest, the language ids, the feature sets, the results
 schema, the timed harness with its cold-start scenarios, the deterministic
-metrics (bundle size, token counts, output sizes, coverage) with their
+metrics (bundle size, install footprint, token counts, output sizes raw and
+compressed, coverage) with their
 committed results file, the site that renders a results file (the landing page
 and `/results`), and the docs that describe them. No timed run is committed and
 no timed numbers are published, so the site renders the deterministic file and
@@ -63,8 +64,9 @@ bench/                       the Node harness; never imported by the site
   check_output.ts            the pre-measurement output check
   deterministic.ts           CLI: the deterministic results file — build, write, `--check`, and what a timed run carries from it
   sizes.ts                   bundle size: build and minify a bundle entry, compress, the wasm and theme CSS columns
+  install.ts                 install footprint: each library's runtime dependency closure, its packages, files, and bytes
   bundle_check.ts            one built bundle, imported in a process of its own and made to highlight its languages
-  outputs.ts                 token counts and output sizes: one process per library and language, folded into cells
+  outputs.ts                 token counts and output sizes, raw and compressed: one process per library and language, folded into cells
   node_child.ts              runs a harness script in a Node process and reads the JSON it prints
   run.ts                     CLI: a timed run — spawns the processes, assembles and writes the results file
   publish.ts                 CLI: copies a publishable run to `results/latest.json`
@@ -210,11 +212,12 @@ Two classes of number, kept apart:
 | class             | where                                                       |
 | ----------------- | ----------------------------------------------------------- |
 | machine-dependent | each cell's `values` (timing, memory); the `startup` section (cold start: time and memory) |
-| deterministic     | each cell's `tokens` and `output`; `bundle`; `coverage`     |
+| deterministic     | each cell's `tokens`, `output`, and `compressed`; `bundle`; `install`; `coverage` |
 
 A cell states each deterministic number once for its input, on the cell whose
-call returns it: `tokens` on the `tokenize` cell and `output` on the `html`
-cell, the other being empty there. `to_bench_cell` (`bench/outputs.ts`) builds
+call returns it: `tokens` on the `tokenize` cell and `output` and `compressed`
+(the HTML gzipped and brotli-compressed, `BenchCellCompressed`) on the `html`
+cell, the others being empty there. `to_bench_cell` (`bench/outputs.ts`) builds
 every cell, for the timed harness and the deterministic pass alike.
 
 **A deterministic-only file** has no cell `values` and no `startup`. Its
@@ -224,7 +227,11 @@ schema requires each as soon as a file has any. A timestamp or a commit would
 also make the committed file change on every regeneration, and a commit can't
 name the tree it is itself committed in. `meta.bundler` (`BenchBundler`: the
 versions of Vite, Rollup, and esbuild, and the compression levels) is set
-exactly when `bundle` is not empty.
+exactly when `bundle` is not empty, and the deterministic pass's other sizes
+come with it: `install` covers every roster library, and every `html` cell has
+`compressed` for exactly the libraries of its `output`, exactly when
+`meta.bundler` is set, and both are empty otherwise. A timed run that doesn't
+carry the deterministic file has none of the three.
 
 `startup`, `bundle`, and `cells` may be empty, `meta.noise_floor` is null
 until the machine is calibrated, and `meta.anchor` may be null only when the run
@@ -317,14 +324,18 @@ the sections agree with each other:
   missing ones
 - `bundle` covers every library over every set or is empty; a `gzip` or
   `brotli` size is at most `raw` plus a format's own overhead
-  (`to_max_compressed_bytes`: a few bytes compress to slightly more); `css` is
+  (`to_max_compressed_bytes`: a few bytes compress to slightly more), and a
+  cell's `compressed` sizes at most its `html_bytes` plus the same; `css` is
   null exactly for an `inline_styles` library
+- `install` and the cells' `compressed` come with `bundle`, as above; an
+  install footprint has at least as many files as packages
 - a deterministic-only file with cells is complete
   (`bench_results_find_gaps(results, 'deterministic')`): every claiming library
   has the number each cell states or an `excluded` entry, and every listed
   input has a cell in each mode
-- `tokens` only on `tokenize` cells and `output` only on `html` cells, and a
-  library with a value in a cell has that cell's deterministic number
+- `tokens` only on `tokenize` cells and `output` and `compressed` only on
+  `html` cells, and a library with a value in a cell has that cell's
+  deterministic number
 - a value's `p10_ns` is at most its `p90_ns`, and an anchor's `stable` is
   exactly a drift under `BENCH_ANCHOR_STABLE_BELOW`, which lives in the schema
   so the harness and the check can't disagree
@@ -497,8 +508,8 @@ times nothing and takes no machine lock. `--check` regenerates in memory and
 exits 1 with the places that differ (`diff_json`, which names a cell by its id)
 when the committed file is stale; `--out <path>` reads and writes another file.
 The committed file must be diff-clean: regenerate it whenever a library
-version, the corpus, a feature set, an adapter's `bundle_entry`, or Vite
-changes, and commit the result.
+version, the corpus, a feature set, an adapter's `bundle_entry`, Vite, or a
+dependency the lockfile installs for a library changes, and commit the result.
 
 **Bundle size** (`bench/sizes.ts`, `measure_bundles`). For each adapter and
 each set of `FEATURE_SETS`:
@@ -556,7 +567,8 @@ each set of `FEATURE_SETS`:
   never written by Vite.
 - The versions of Vite, Rollup, and esbuild are in `meta.bundler`, and a test
   compares the committed file's with the installed ones.
-- The gzip and brotli sizes depend on the zlib and brotli inside Node. That is
+- The gzip and brotli sizes, of bundles and of the cells' HTML alike, depend
+  on the zlib and brotli inside Node. That is
   not recorded, since a file naming a Node version would differ between
   machines that compress identically. The check workflow pins the Node version,
   and a failed `--check` whose only differences are compressed sizes says so.
@@ -566,35 +578,72 @@ each set of `FEATURE_SETS`:
 at a time. A process sets up exactly that language, runs the snippet gate
 (`check_snippet`), then `check_output` on every input of the language: the same
 functions under the same setup as a timed cell. One language per process,
-always: Prism's registry is global and only grows. `to_deterministic_cells`
-folds the results into cells with no `values`, and an `excluded` entry for each
-cell of an input a library failed on.
+always: Prism's registry is global and only grows. For each input that passed,
+`to_html_compressed` calls `adapter.html` again, outside the check (which is
+browser-safe and so can't compress), compresses the HTML with
+`measure_compressed`, and throws unless it is the size the check saw.
+`to_deterministic_cells` folds the results into cells with no `values`, and an
+`excluded` entry for each cell of an input a library failed on.
+
+**Install footprint** (`bench/install.ts`, `measure_installs`). For each
+adapter, the runtime dependency closure of `package` plus `extra_packages`,
+each dependency resolved from the package that needs it as Node resolves a bare
+specifier (the nearest `node_modules/<name>` walking up, real paths, so a
+package reached twice counts once and two versions of a name count twice). It
+follows `dependencies`, `peerDependencies` not marked optional in
+`peerDependenciesMeta` (npm installs them), and `optionalDependencies` that are
+installed and not platform-gated (`os`, `cpu`, or `libc` in their manifest),
+never `devDependencies`; a gated package installs on some machines only, so
+counting it would make the figure the machine's. A package's `files` and
+`bytes` are what its directory holds less nested `node_modules` (sizes as
+stored, not disk blocks); a symbolic link throws, since no registry tarball has
+one. Each library's closure is counted whole, so `shiki_js` and `shiki_wasm`
+have the same footprint. No path is recorded. A package is told apart by
+`name@version`, so a same-version duplicate nested elsewhere counts once, as a
+consumer's deduplicated install holds it. It depends on the transitive versions
+the lockfile installs, which the libraries' own versions don't show, so
+`closure` is a SHA-256 over the sorted `name@version` list (`to_closure_hash`):
+`carry_deterministic` compares it with this tree's (`to_install_closures`,
+walked in `plan_run`), and `find_moved_since` names "the dependencies of
+<library>" when it differs. A failed `--check` that touches `install` says a
+dependency moved.
 
 **Coverage** is `to_bench_coverage` over the adapters. The footnote text lives
 only in each adapter's `via`.
 
+**Why the compressed sizes and the footprints come from this pass only.**
+Compressing each timed process's HTML at the highest levels would compress the
+same bytes again in every process, for numbers the deterministic file already
+holds, and the footprint depends on the lockfile rather than on anything a
+run measures. So both are carried, like `bundle`.
+
 **A timed run and the deterministic file** (`carry_deterministic`). `plan_run`
 reads `deterministic.json` from the results directory. If it describes the run
-(every library of the run at the same version with the same extra packages, the
-same corpus hash, the same sets) the run carries it. Otherwise a smoke or
+(every library of the run at the same version with the same extra packages and
+the same install `closure`, the same corpus hash, the same sets) the run carries
+it. Otherwise a smoke or
 filtered run logs why and its `bundle` is empty, and a `full` run with no
 filters is refused with exit 2 before measuring, `--plan` included:
 regenerating the file is quick and the run is long. A calibration goes
 ahead without it. A file that isn't a results file is refused with exit 2.
 When carried:
 
-- `assemble_results` copies the `bundle` entries of the run's libraries and
-  `meta.bundler` from it. The timed harness never measures a bundle;
-  `prepare_startup` only rebuilds a cached one for cold start, checked against
-  those sizes.
+- `assemble_results` copies the `bundle` and `install` entries of the run's
+  libraries and `meta.bundler` from it, and each `html` cell's `compressed`
+  from the file's `expected` entry for the input and library. The timed harness
+  never measures a bundle or compresses HTML; `prepare_startup` only rebuilds a
+  cached bundle for cold start, checked against those sizes.
 - Each library's first result on a cell is compared with the file as it arrives
   (`assert_matches_deterministic`, wired into `create_agreement_check`): passed
   or excluded, token count, output size. A difference is a `RunError` with exit
-  2, before the result is journaled.
+  2, before the result is journaled. The compressed sizes are not compared:
+  the raw size and element count are, and the install closure pins every
+  package that renders the HTML (Shiki renders through a dependency), so the
+  compressed sizes follow.
 
 So there is one source for each number: cell numbers come from `check_output`
 in the process that measured the cell and must equal the file's, and bundle
-sizes come from the file. The smoke run is therefore also a check of the
+sizes, install footprints, and compressed HTML sizes come from the file. The smoke run is therefore also a check of the
 committed file against every real process.
 
 Tests use a results directory of their own. `src/test/bench/run.spawn.test.ts`
@@ -995,8 +1044,10 @@ from one named machine; deterministic numbers regenerate anywhere.
 - A published run is the one source of every number on a page, its bundle
   sizes and token counts included, and it is held against the deterministic
   file. `find_moved_since` compares each library's version, its extra
-  packages, and the corpus hash. With nothing moved, `sets`, `coverage`,
-  `bundle`, and each cell's `tokens` and `output` must be deep-equal, or the
+  packages, each library's install `closure`, and the corpus hash. With nothing
+  moved, `sets`, `coverage`,
+  `bundle`, `install`, and each cell's `tokens`, `output`, and `compressed`
+  must be deep-equal, or the
   build fails naming the first difference (`find_first_difference`). With
   something moved, the run is rendered as a snapshot, `SiteResults.moved` says
   what moved, and `Provenance.svelte` prints it.
@@ -1029,8 +1080,8 @@ and `logo.ts`:
 | `cell_groups.ts` | cells grouped by language and source; source keys (`home:<library>`); why a library has no number in a cell |
 | `throughput_matrix.ts` | timed cells as rows, a geomean per mode closing each group, the per-source summary, the disturbed and retried marks |
 | `startup_matrix.ts` | cold-start scenarios as rows: what a library added over the bare baseline, and whether that is inside the baseline's own noise |
-| `bundle_matrix.ts` | the incremental-cost view, the set totals, everything a page loads, sets with the same languages merged, the wasm and stylesheet rows |
-| `output_matrix.ts` | token counts and output sizes as rows |
+| `bundle_matrix.ts` | the incremental-cost view, the set totals, everything a page loads, sets with the same languages merged, the wasm and stylesheet rows, the install footprint |
+| `output_matrix.ts` | token counts and output sizes as rows, the HTML's raw or compressed, by a selector of its own that starts raw |
 | `results_filters.ts` | the selection on `/results` and its URL query form |
 | `headline.ts` | the landing page's rows |
 | `coverage_matrix.ts` | the coverage matrix with numbered footnotes |
@@ -1073,7 +1124,10 @@ and `FixtureBanner.svelte` the rest.
   always printed beside the number, so color is never the only signal. A ratio
   that is only a lower bound never takes the color of a number level with the
   baseline (`to_bound_color`). The token and output tables turn the tint off: a
-  smaller count is not a better one.
+  smaller count is not a better one, and smaller compressed HTML is not either
+  (inline styles carry the theme a classed output leaves to a stylesheet). The
+  install table turns it off too: a footprint is everything a package ships,
+  every language and theme included, not what a page loads.
 - **A noise floor is a row's own** (`MatrixRow.floor`): the per-cell floor on a
   throughput cell, the geomean floor on a throughput mean, and none anywhere
   else. Cold start has no calibrated floor and a byte count has no noise, so a

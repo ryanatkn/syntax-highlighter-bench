@@ -111,7 +111,11 @@ describe('run_outputs', () => {
 	});
 });
 
-const NUMBERS: CellNumbers = { tokens: 7, output: { html_bytes: 70, spans: 6 } };
+const NUMBERS = {
+	tokens: 7,
+	output: { html_bytes: 70, spans: 6 },
+	compressed: { gzip: 60, brotli: 50 }
+} satisfies CellNumbers;
 
 describe('to_bench_cell', () => {
 	const input = JSON_INPUTS[0]!;
@@ -119,13 +123,16 @@ describe('to_bench_cell', () => {
 	test('states the token counts on the tokenize cell and the output sizes on the html cell', () => {
 		const numbers = [
 			['fuz_code', NUMBERS],
-			['prism', { tokens: 9, output: { html_bytes: 90, spans: 8 } }]
+			['prism', { tokens: 9, output: { html_bytes: 90, spans: 8 }, compressed: null }]
 		] as const;
 		const tokenize = BenchCell.parse(to_bench_cell(input, 'tokenize', numbers));
 		assert.deepStrictEqual(tokenize.tokens, { fuz_code: 7, prism: 9 });
 		assert.deepStrictEqual(tokenize.output, {});
+		assert.deepStrictEqual(tokenize.compressed, {});
 		const html = BenchCell.parse(to_bench_cell(input, 'html', numbers));
 		assert.deepStrictEqual(html.tokens, {});
+		// a library with no compressed sizes, as in a run that doesn't carry the deterministic file
+		assert.deepStrictEqual(html.compressed, { fuz_code: { gzip: 60, brotli: 50 } });
 		assert.deepStrictEqual(html.output, {
 			fuz_code: { html_bytes: 70, spans: 6 },
 			prism: { html_bytes: 90, spans: 8 }

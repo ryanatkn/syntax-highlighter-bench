@@ -2,13 +2,15 @@
  * The token-count and output-size tables: the deterministic numbers each cell
  * of a results file states, as rows. A token count is on an input's `tokenize`
  * cell and its HTML's size on the `html` cell, so one input yields a row for
- * each selected measure.
+ * each selected measure. The HTML's size is shown raw or compressed, as the
+ * bundle sizes are.
  *
  * @module
  */
 
 import type { BenchCell } from './results_schema.ts';
 import { format_bytes } from './bench_format.ts';
+import type { BundleCompression } from './bundle_matrix.ts';
 import {
 	format_cell_group_label,
 	format_source_note,
@@ -43,16 +45,22 @@ export const OUTPUT_MEASURES: ReadonlyArray<{
 /** Which inputs and which of their numbers the output tables show. */
 export interface OutputSelection extends Omit<CellSelection, 'modes'> {
 	measures: ReadonlyArray<string>;
+	/** How the HTML's size is shown: raw, or compressed at the bundle sizes' levels. */
+	compression: BundleCompression;
 }
 
 /** One library's number for a measure in a cell, or null when the cell states none. */
 const to_output_value = (
 	cell: BenchCell,
 	library: string,
-	measure: OutputMeasure
+	measure: OutputMeasure,
+	compression: BundleCompression
 ): number | null => {
 	if (measure === 'tokens')
 		return Object.hasOwn(cell.tokens, library) ? cell.tokens[library]! : null;
+	if (measure === 'html_bytes' && compression !== 'raw') {
+		return Object.hasOwn(cell.compressed, library) ? cell.compressed[library]![compression] : null;
+	}
 	return Object.hasOwn(cell.output, library) ? cell.output[library]![measure] : null;
 };
 
@@ -80,12 +88,12 @@ export const to_output_groups = (
 					const row = to_matrix_row({
 						key: `${cell.id}:${measure.id}`,
 						label: cell.file,
-						note: `${cell.size} · ${measure.label} · ${format_bytes(cell.bytes)} of source${cell.synthetic ? ' · synthetic' : ''}`,
+						note: `${cell.size} · ${measure.label}${measure.id === 'html_bytes' && selection.compression !== 'raw' ? `, ${selection.compression}` : ''} · ${format_bytes(cell.bytes)} of source${cell.synthetic ? ' · synthetic' : ''}`,
 						unit: measure.unit,
 						direction: 'lower'
 					});
 					for (const { id } of results.meta.libraries) {
-						const value = to_output_value(cell, id, measure.id);
+						const value = to_output_value(cell, id, measure.id, selection.compression);
 						row.entries[id] =
 							value === null
 								? to_missing_cell_entry(results, excluded, cell, id)

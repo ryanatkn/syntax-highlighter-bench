@@ -6,7 +6,8 @@
  * The file separates two classes of number. **Machine-dependent** numbers come
  * from the timed harness on a named machine: each cell's `values` and the
  * `startup` section (cold start). **Deterministic** numbers regenerate identically anywhere:
- * each cell's `tokens` and `output`, plus `bundle` and `coverage`. A file may
+ * each cell's `tokens`, `output`, and `compressed`, plus `bundle`, `install`, and
+ * `coverage`. A file may
  * hold only the deterministic ones: it then records no machine, time, or commit,
  * since none of them shaped its numbers.
  *
@@ -340,7 +341,8 @@ export const bench_run_is_complete = (run: Pick<BenchRun, 'kind' | 'filters'>): 
 /**
  * What the bundle sizes were built and compressed with. Together with the
  * libraries' versions it is what the sizes depend on, apart from the zlib and
- * brotli inside the Node that compressed them.
+ * brotli inside the Node that compressed them. The compression levels are also
+ * the ones the HTML's compressed sizes (`BenchCell.compressed`) are taken at.
  */
 export const BenchBundler = z.strictObject({
 	vite: z.string().min(1).meta({ description: 'The version of Vite that bundled.' }),
@@ -482,7 +484,8 @@ export const BenchMeta = z.strictObject({
 			"How far apart this run's processes came out on the same library and cell, from every value's `pass_medians_ns`. Null exactly when no cell has a value or the run measured one pass. In a calibration file it is the first arm's."
 	}),
 	bundler: BenchBundler.nullable().meta({
-		description: 'Null exactly when `bundle` is empty: no sizes were measured.'
+		description:
+			"Null exactly when `bundle` is empty: no sizes were measured. The sizes of the deterministic pass come together, so it is also null exactly when `install` and every cell's `compressed` are empty."
 	})
 });
 export type BenchMeta = z.infer<typeof BenchMeta>;
@@ -692,6 +695,17 @@ export const BenchCellOutput = z.strictObject({
 export type BenchCellOutput = z.infer<typeof BenchCellOutput>;
 
 /**
+ * The size of one library's HTML for a cell's input once compressed, at the
+ * levels `BenchBundler` records: what a server sends for a page that renders the
+ * highlighted input. Its raw size is `BenchCellOutput.html_bytes`. Deterministic.
+ */
+export const BenchCellCompressed = z.strictObject({
+	gzip: z.number().int().positive().meta({ description: 'The HTML, gzipped.' }),
+	brotli: z.number().int().positive().meta({ description: 'The HTML, brotli-compressed.' })
+});
+export type BenchCellCompressed = z.infer<typeof BenchCellCompressed>;
+
+/**
  * The id of a cell: its input's file and its mode, which together are unique in
  * a run.
  */
@@ -737,6 +751,10 @@ export const BenchCell = z.strictObject({
 	output: strict_record(LibraryId, BenchCellOutput).meta({
 		description:
 			'Deterministic: HTML size by library id. Stated on the `html` cell and empty on any other.'
+	}),
+	compressed: strict_record(LibraryId, BenchCellCompressed).meta({
+		description:
+			"Deterministic: the HTML's compressed sizes by library id, from the deterministic pass. Stated on the `html` cell for exactly the libraries of `output` when the file holds that pass's sizes (`meta.bundler` is set), and empty otherwise and on any other cell."
 	})
 });
 export type BenchCell = z.infer<typeof BenchCell>;
@@ -794,6 +812,31 @@ export const BenchBundleSizes = z
 	})
 	.superRefine(refine_byte_sizes);
 export type BenchBundleSizes = z.infer<typeof BenchBundleSizes>;
+
+/**
+ * What `npm install` of a library adds: the runtime dependency closure of its
+ * package and its extra packages, each package counted once, as this
+ * repository's lockfile installs them. Deterministic.
+ */
+export const BenchInstall = z
+	.strictObject({
+		packages: z.number().int().positive().meta({ description: 'The packages in the closure.' }),
+		files: z.number().int().positive().meta({ description: 'The files those packages hold.' }),
+		bytes: z
+			.number()
+			.int()
+			.positive()
+			.meta({ description: "The sum of those files' sizes, as stored, not as disk blocks." }),
+		closure: Sha256.meta({
+			description:
+				'SHA-256 over the sorted `name@version` list of the closure: what pins the figures, transitive versions included, so two files can be compared on it.'
+		})
+	})
+	.refine((install) => install.files >= install.packages, {
+		path: ['files'],
+		message: 'every package has at least its manifest'
+	});
+export type BenchInstall = z.infer<typeof BenchInstall>;
 
 /** A feature set a library can't be measured over, naming the languages it lacks. */
 export const BenchBundleUnsupported = z.strictObject({
@@ -993,7 +1036,9 @@ export const bench_results_find_startup_gaps = (
  * anchor, its run parameters, and where it came from, a run with no filters has
  * no gap (`bench_results_find_gaps`, and for a `full` run
  * `bench_results_find_startup_gaps`), each deterministic number of an input is
- * stated on one cell, and bundle sizes cover every library and set or none.
+ * stated on one cell, and bundle sizes cover every library and set or none, as
+ * the install footprints cover every library and the compressed HTML sizes every
+ * library with an HTML size.
  */
 export const BenchResults = z
 	.strictObject({
@@ -1009,6 +1054,10 @@ export const BenchResults = z
 			.meta({ description: 'Machine-dependent. Empty when cold start was not measured.' }),
 		bundle: strict_record(LibraryId, strict_record(Id, BenchBundleEntry)).meta({
 			description: 'Deterministic: library id, then set id. Empty when sizes were not measured.'
+		}),
+		install: strict_record(LibraryId, BenchInstall).meta({
+			description:
+				'Deterministic: the install footprint by library id. Every library of the roster, or empty when sizes were not measured.'
 		}),
 		coverage: strict_record(LibraryId, strict_record(LangId, BenchCoverageEntry)).meta({
 			description:
@@ -1149,12 +1198,44 @@ export const BenchResults = z
 			}
 			// each deterministic number is stated once for an input, on the cell whose call returns it
 			const stated = cell.mode === 'tokenize' ? 'tokens' : 'output';
-			const unstated = cell.mode === 'tokenize' ? 'output' : 'tokens';
-			if (Object.keys(cell[unstated]).length > 0) {
-				issue(
-					[...path, unstated],
-					`${unstated} is stated on the input's ${cell.mode === 'tokenize' ? 'html' : 'tokenize'} cell, and is empty here`
-				);
+			const unstated =
+				cell.mode === 'tokenize' ? (['output', 'compressed'] as const) : (['tokens'] as const);
+			for (const key of unstated) {
+				if (Object.keys(cell[key]).length > 0) {
+					issue(
+						[...path, key],
+						`${key} is stated on the input's ${cell.mode === 'tokenize' ? 'html' : 'tokenize'} cell, and is empty here`
+					);
+				}
+			}
+			// the compressed sizes: for every library with an output when the pass's sizes are here
+			for (const library of Object.keys(cell.compressed)) {
+				const output = cell.output[library];
+				const at = [...path, 'compressed', library];
+				if (output === undefined) {
+					if (cell.mode === 'html') issue(at, `library "${library}" has no output to compress`);
+					continue;
+				}
+				for (const key of ['gzip', 'brotli'] as const) {
+					if (cell.compressed[library]![key] > to_max_compressed_bytes(output.html_bytes)) {
+						issue(
+							[...at, key],
+							`${key} is larger than html_bytes by more than a compression format's own overhead`
+						);
+					}
+				}
+			}
+			if (cell.mode === 'html') {
+				for (const library of Object.keys(cell.output)) {
+					if (Object.hasOwn(cell.compressed, library) !== (results.meta.bundler !== null)) {
+						issue(
+							[...path, 'compressed', library],
+							results.meta.bundler === null
+								? `library "${library}" has compressed sizes, and the file holds no sizes of the deterministic pass`
+								: `library "${library}" has an output and no compressed sizes`
+						);
+					}
+				}
 			}
 			for (const library of Object.keys(cell.values)) {
 				if (!Object.hasOwn(cell[stated], library)) {
@@ -1377,6 +1458,9 @@ export const BenchResults = z
 		}
 		const libraries = new Map(results.meta.libraries.map((l) => [l.id, l]));
 		for (const id of bundle_measured ? library_ids : []) {
+			if (!Object.hasOwn(results.install, id)) {
+				issue(['install'], `library "${id}" has no install footprint`);
+			}
 			if (!Object.hasOwn(results.bundle, id)) {
 				issue(['bundle'], `library "${id}" has no bundle entry`);
 				continue;
@@ -1385,6 +1469,15 @@ export const BenchResults = z
 				if (!Object.hasOwn(results.bundle[id]!, set.id)) {
 					issue(['bundle', id], `library "${id}" has no entry for set "${set.id}"`);
 				}
+			}
+		}
+		for (const library of Object.keys(results.install)) {
+			if (!library_ids.has(library)) issue(['install', library], `unknown library "${library}"`);
+			else if (!bundle_measured) {
+				issue(
+					['install', library],
+					'install footprints come with the bundle sizes, and there are none'
+				);
 			}
 		}
 		// sizes only where every language is claimed; otherwise the missing ones, exactly
