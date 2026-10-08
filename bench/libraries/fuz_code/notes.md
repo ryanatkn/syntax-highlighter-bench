@@ -72,9 +72,9 @@ The whole API is synchronous. `setup` only builds the styler.
   the TypeScript and CSS lexers.
 - **`md` highlights a fenced block only when its language is registered.** A
   timed process sets up only the language it measures, so Markdown is measured
-  without embedded-code highlighting, the same as in every other library. A
-  fence tagged `md` is the exception: the Markdown lexer is loaded, so it is
-  highlighted.
+  without embedded-code highlighting, as in the other libraries, apart from the
+  exceptions in the Prism notes. A fence tagged `md` is one of them here: the
+  Markdown lexer is loaded, so it is highlighted.
 
 ## Theme CSS
 

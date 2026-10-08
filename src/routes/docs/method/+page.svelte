@@ -750,8 +750,8 @@ node bench/run.ts --help`;
 			come out the same anywhere, and a run stops if one of its processes disagrees with the
 			committed <TomeLink slug="deterministic" />. A full run with no filters is refused unless that
 			file describes it, so run the smoke run first: it checks every cell and every first highlight
-			against the file in a minute or two, before a long run can stop on a disagreement. The timed
-			ones depend on the machine, so compare the ratios between libraries rather than the times.
+			against the file, before a long run can stop on a disagreement. The timed ones depend on the
+			machine, so compare the ratios between libraries rather than the times.
 		</p>
 		<p>
 			A quiet machine matters more than a fast one: close other programs, and prefer a fixed CPU

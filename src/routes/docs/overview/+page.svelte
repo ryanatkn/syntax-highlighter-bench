@@ -110,8 +110,9 @@
 				<code>results/latest.json</code>.
 			</li>
 			<li>
-				<code>src/lib/results_schema.ts</code> — the one module the harness and the site share. The
-				rest of <code>src/lib/</code> turns a results file into the tables of the site.
+				<code>src/lib/results_schema.ts</code> — the schema the harness and the site share, with
+				<code>src/lib/bench_constants.ts</code>, the id lists it builds its enums from. The rest of
+				<code>src/lib/</code> turns a results file into the tables of the site.
 			</li>
 			<li><code>src/routes/</code> — this site, built as static pages.</li>
 		</ul>

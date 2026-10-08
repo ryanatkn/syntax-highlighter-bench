@@ -266,22 +266,26 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			<li>
 				it compares each library's first result on a cell with the file, and stops at a difference
 			</li>
-			<li>it copies the bundle sizes of its libraries from the file, and builds nothing</li>
+			<li>
+				it copies the bundle sizes of its libraries from the file, and measures none (cold start
+				rebuilds a missing cached bundle, checked against those sizes)
+			</li>
 		</ul>
 		<p>
 			So a timed results file holds the deterministic numbers of its cells and the bundle sizes of
 			its libraries, equal to the deterministic file's. When the file doesn't describe the run, a
 			smoke or filtered run says so and carries no bundle sizes, and a full run with no filters is
-			refused before it measures anything: regenerating the file takes seconds, and the run is long.
+			refused before it measures anything: regenerating the file is quick, and the run is long.
 		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Kept current" />
 		<p>
-			On every change the repository's check workflow runs the tests, a smoke run of every library
-			on every cell, and <code>bench:deterministic -- --check</code>. The last rebuilds every bundle
-			and recounts every input, and fails with the places that differ when the committed file is
-			stale. Nothing in the workflow is a measurement of speed.
+			On every change the repository's check workflow runs the tests,
+			<code>bench:deterministic -- --check</code>, and a smoke run of every library on every cell.
+			The deterministic check rebuilds every bundle and recounts every input, and fails with the
+			places that differ when the committed file is stale. Nothing in the workflow is a measurement
+			of speed.
 		</p>
 	</TomeSection>
 </TomeContent>

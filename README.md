@@ -548,7 +548,7 @@ unexpected is excluded from a cell or a cold-start scenario. `bench/run.ts` prin
 library-cells were retried and whether the run was resumed.
 
 Run `npm run bench:smoke` on the machine first. It checks every cell and every
-first highlight against the committed deterministic file in a minute or two,
+first highlight against the committed deterministic file (`--plan` prints an estimate),
 before a long run can stop on a disagreement.
 
 To publish a run, follow [results/README.md](results/README.md): the files in
@@ -689,11 +689,11 @@ processes, by the same check. When the deterministic file describes the run
 first result on a cell with the file and stops at a difference, and it copies
 its libraries' bundle sizes from the file. Otherwise a smoke or filtered run
 says why and carries no bundle sizes, and a full run with no filters is refused
-before it measures anything: regenerating the file takes seconds, and the run
-is long.
+before it measures anything: regenerating the file is quick, and the run is
+long.
 
-The check workflow (`.github/workflows/check.yml`) runs `gro check`, the smoke
-run, and `bench:deterministic -- --check` on every change. None of it measures
+The check workflow (`.github/workflows/check.yml`) runs `gro check`,
+`bench:deterministic -- --check`, and the smoke run on every change. None of it measures
 speed.
 
 ## Neutrality

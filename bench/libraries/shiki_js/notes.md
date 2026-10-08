@@ -85,7 +85,8 @@ language modules, and creates the engine.
 - **`md` highlights a fenced block only when its language is loaded.** The
   Markdown grammar lists the fence languages as lazily embedded. A timed process
   sets up only the language it measures, so Markdown is measured without
-  embedded-code highlighting, the same as in every other library.
+  embedded-code highlighting, as in the other libraries, apart from the
+  exceptions in the Prism notes.
 
 ## Theme
 

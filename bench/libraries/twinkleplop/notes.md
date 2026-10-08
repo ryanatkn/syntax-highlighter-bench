@@ -73,7 +73,8 @@ twinkleplop has no XML language, so `xml` is unsupported.
 Markdown does not highlight the contents of a fenced block: the block is one
 token. The other libraries would highlight it when the fence's language is
 loaded, but a timed process sets up only the language it measures, so Markdown
-is measured without embedded-code highlighting in every library.
+is measured without embedded-code highlighting in every library, with the
+exceptions the Prism and fuz_code notes list.
 
 ## Theme CSS
 

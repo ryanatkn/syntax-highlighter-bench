@@ -134,7 +134,7 @@ Everything below runs on the publishing machine, from the root of the checkout.
    Node version, corpus hash, and parameters (`--passes`, `--rounds`,
    `--target-ms`, the warmup and rewarm, and `--retries`). When any of those
    has changed, calibrate again. The harness doesn't compare the library
-   versions, the commit, the kernel, or `NODE_OPTIONS` of a calibration, so calibrate again after either
+   versions, the commit, the kernel, or `NODE_OPTIONS` of a calibration, so calibrate again after any of them
    changes in a way that could move a time.
 7. **Plan the full run**, and read the plan.
    ```bash

@@ -87,7 +87,7 @@ src/lib/                     the site's modules and components: see Site
 src/routes/                  the static SvelteKit site
   +layout.server.ts          tells every page where the rendered results came from
   (site)/                    the landing page and `results/`, under one header
-  docs/                      tomes (overview, adapters, corpus, languages, method, deterministic, results, design) + API docs
+  docs/                      tomes (overview, adapters, corpus, languages, method, deterministic, results, design, library) + API docs
 src/test/                    vitest tests; `bench/` mirrors the harness
   fixtures/results/          a fixture results file with invented numbers
 static/                      the mark: `logo.svg`, `favicon.png`, and `src/lib/logo.ts` are one drawing
@@ -113,8 +113,8 @@ no flags. Every module there must hold to:
 - `import type` (or inline `type`) for types
 
 The site never imports from `bench/`. The harness may import
-`src/lib/results_schema.ts`, which depends only on zod, and
-`src/lib/bench_constants.ts`, which imports nothing.
+`src/lib/bench_constants.ts`, which imports nothing, and
+`src/lib/results_schema.ts`, which depends only on zod and that module.
 
 `gro check` typechecks and lints `bench/`, but `gro format` sweeps only `src/`
 and the root config files. `src/test/bench/format.test.ts` fails when a harness
@@ -525,12 +525,14 @@ reads `deterministic.json` from the results directory. If it describes the run
 same corpus hash, the same sets) the run carries it. Otherwise a smoke or
 filtered run logs why and its `bundle` is empty, and a `full` run with no
 filters is refused with exit 2 before measuring, `--plan` included:
-regenerating the file takes seconds and the run is long. A calibration goes
+regenerating the file is quick and the run is long. A calibration goes
 ahead without it. A file that isn't a results file is refused with exit 2.
 When carried:
 
 - `assemble_results` copies the `bundle` entries of the run's libraries and
-  `meta.bundler` from it. The timed harness never builds a bundle.
+  `meta.bundler` from it. The timed harness never measures a bundle;
+  `prepare_startup` only rebuilds a cached one for cold start, checked against
+  those sizes.
 - Each library's first result on a cell is compared with the file as it arrives
   (`assert_matches_deterministic`, wired into `create_agreement_check`): passed
   or excluded, token count, output size. A difference is a `RunError` with exit
@@ -859,8 +861,8 @@ lock path and results directory to `run_bench`, so `gro check` neither takes
 nor waits on the machine's.
 
 **Keep the spawning tests few.** `src/test/bench/run.spawn.test.ts` is the only
-file that starts processes, and each costs a Node start. How a process's ending
-is read is tested without one, through `read_cell_result`, and a whole timed
+file that starts harness processes, and each costs a Node start. How a
+process's ending is read is tested without one, through `read_cell_result`, and a whole timed
 run through the `spawn_cell` seam.
 
 ## Site
