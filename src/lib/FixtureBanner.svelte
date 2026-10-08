@@ -13,6 +13,6 @@
 		text-align: center;
 		color: var(--text_100);
 		background-color: var(--shade_00);
-		border-top: var(--border_width_4) var(--border_style) var(--color_c_50);
+		border-top: var(--border_width_4) var(--border_style) var(--palette_c_50);
 	}
 </style>

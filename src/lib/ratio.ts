@@ -38,11 +38,11 @@ export const RATIO_LEVEL_LIMITS: ReadonlyArray<number> = [0.9, 1.1, 1.5, 3];
  * better than the reference, level with the baseline, then three steps worse.
  */
 export const RATIO_LEVEL_COLORS: ReadonlyArray<string> = [
-	'var(--color_j_50)',
-	'var(--color_b_50)',
-	'var(--color_e_50)',
-	'var(--color_h_50)',
-	'var(--color_c_50)'
+	'var(--palette_j_50)',
+	'var(--palette_b_50)',
+	'var(--palette_e_50)',
+	'var(--palette_h_50)',
+	'var(--palette_c_50)'
 ];
 
 /**

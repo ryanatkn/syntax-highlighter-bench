@@ -65,7 +65,7 @@ describe('the color scale', () => {
 	});
 
 	test('every color is a fuz_css variable, so it adapts to the color scheme', () => {
-		for (const color of RATIO_LEVEL_COLORS) assert.match(color, /^var\(--color_[a-j]_\d+\)$/);
+		for (const color of RATIO_LEVEL_COLORS) assert.match(color, /^var\(--palette_[a-j]_\d+\)$/);
 	});
 });
 
