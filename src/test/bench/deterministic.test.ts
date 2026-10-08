@@ -259,14 +259,14 @@ describe('carry_deterministic', () => {
 				c.libraries[0]!.version = '99.0.0';
 				return c;
 			}),
-			/fuz_code at another version/
+			/it measured fuz_code with @fuzdev\/fuz_code [^,]+, and this run has @fuzdev\/fuz_code 99\.0\.0/
 		);
 		assert.match(
 			reason((c) => {
 				c.libraries.find((l) => l.id === 'prism')!.extra_packages = { 'prism-svelte': '99.0.0' };
 				return c;
 			}),
-			/prism at another version/
+			/it measured prism with prism-svelte [^,]+, and this run has prism-svelte 99\.0\.0/
 		);
 		assert.match(
 			reason((c) => {

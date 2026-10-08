@@ -39,12 +39,12 @@
 			<li>
 				<DeclarationLink name="BenchMeta" /> — the machine, Node version, commit, and corpus hash;
 				what kind of run it was and how it measured, in <DeclarationLink name="BenchRun" />, with
-				the retries it allowed, how cold start was sampled, and how many segments it was measured
-				in; the roster of libraries with their versions and the color schemes their default themes
-				cover; the excluded list for cells, and <code>startup_excluded</code> for cold-start
-				scenarios, in <DeclarationLink name="BenchStartupExcluded" />; the anchor's drift; the
-				machine's noise floor; what the bundle sizes were built with, in
-				<DeclarationLink name="BenchBundler" />
+				the retries it allowed, how cold start was sampled, how many segments it was measured in,
+				and the load average it started at; the roster of libraries with their versions and the
+				color schemes their default themes cover; the excluded list for cells, and
+				<code>startup_excluded</code> for cold-start scenarios, in
+				<DeclarationLink name="BenchStartupExcluded" />; the anchor's drift; the machine's noise
+				floor; what the bundle sizes were built with, in <DeclarationLink name="BenchBundler" />
 			</li>
 			<li>
 				<DeclarationLink name="BenchLang" /> and <DeclarationLink name="BenchSet" /> — the language
@@ -119,8 +119,8 @@
 		</p>
 		<p>
 			<DeclarationLink name="bench_results_is_publishable" /> is the test for a result: a full run
-			with no filters and no gap in its cells or its cold start, a stable anchor, and a commit that
-			records everything that ran.
+			with no filters and no gap in its cells or its cold start, a stable anchor, a noise floor
+			carried from the machine's calibration, and a commit that records everything that ran.
 		</p>
 		<p>
 			No filters is what a run set out to cover. Whether the file then holds all of it is checked by
@@ -174,7 +174,8 @@
 		</p>
 		<ul>
 			<li>
-				<code>results/latest.json</code>, the latest published timed run, when it is committed. It
+				<code>results/latest.json</code>, the latest published timed run, when it is committed:
+				<code>npm run results:publish</code> copies a run there once it passes the test below. It
 				carries its own bundle sizes, token counts, and output sizes, so every number on a page is
 				from one file.
 			</li>
@@ -187,8 +188,8 @@
 		<p>
 			A latest run must pass <DeclarationLink name="bench_results_is_publishable" />, or the build
 			fails and says why. A smoke run, a calibration, a filtered run, a run with a gap, a run from a
-			commit with uncommitted changes, and a run whose anchor drifted are never shown as results. A
-			drifted run is measured again, not published under a warning.
+			commit with uncommitted changes, a run whose anchor drifted, and a run with no noise floor are
+			never shown as results. A drifted run is measured again, not published under a warning.
 		</p>
 		<p>
 			A published run is also held against the deterministic file. When the two describe the same

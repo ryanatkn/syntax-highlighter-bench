@@ -63,12 +63,26 @@ const strict_record = <TKey extends z.ZodType<string, string>, TValue extends z.
 export const BenchMachine = z.strictObject({
 	name: Id.meta({ description: 'The name the machine is published under.' }),
 	cpu: z.string().min(1).meta({ description: 'The CPU model.' }),
-	governor: z
-		.string()
-		.min(1)
+	threads: z
+		.number()
+		.int()
+		.positive()
 		.nullable()
-		.meta({ description: 'The CPU frequency governor, or null where the OS exposes none.' }),
-	memory_gb: z.number().positive().meta({ description: 'Installed memory in gigabytes.' })
+		.meta({ description: 'Logical CPUs, or null where the OS reports none.' }),
+	governor: z.string().min(1).nullable().meta({
+		description: "The first CPU's frequency governor, or null where the OS exposes none."
+	}),
+	cpufreq_driver: z.string().min(1).nullable().meta({
+		description: "The first CPU's frequency scaling driver, or null where the OS exposes none."
+	}),
+	epp: z.string().min(1).nullable().meta({
+		description: "The first CPU's energy-performance preference, or null where the driver has none."
+	}),
+	boost: z.boolean().nullable().meta({
+		description: 'Whether frequency boost is on, or null where the OS exposes no switch.'
+	}),
+	memory_gb: z.number().positive().meta({ description: 'Installed memory in gigabytes.' }),
+	os_release: z.string().min(1).meta({ description: 'The OS release, as `os.release()` gives it.' })
 });
 export type BenchMachine = z.infer<typeof BenchMachine>;
 
@@ -269,6 +283,10 @@ export const BenchRun = z.strictObject({
 	duration_ms: z.number().int().nonnegative().meta({
 		description:
 			'How long the run measured for, anchor readings included: the sum of its segments, without the time between them.'
+	}),
+	load_at_start: z.number().nonnegative().meta({
+		description:
+			"The machine's 1-minute load average when the run was planned, before it spawned anything; for a resumed run, the highest of its segments'. Something else was running when it is well above 0."
 	})
 });
 export type BenchRun = z.infer<typeof BenchRun>;
@@ -1308,18 +1326,20 @@ export type BenchResults = z.infer<typeof BenchResults>;
  * Whether a run's numbers can be published as results: a complete `full` run
  * with no gap in its cells or its cold start (`bench_results_find_gaps`,
  * `bench_results_find_startup_gaps`), from a commit that records everything
- * that ran, on a machine that held still. A run that was stopped and resumed
+ * that ran, on a machine that held still and was calibrated, so the run
+ * carries a noise floor that says which differences are results. A run that was stopped and resumed
  * qualifies like any other: its anchor covers every segment. A site shows
  * anything else as what it is, never as a result.
  */
 export const bench_results_is_publishable = (results: BenchResults): boolean => {
-	const { run, anchor, commit } = results.meta;
+	const { run, anchor, commit, noise_floor } = results.meta;
 	return (
 		run !== null &&
 		run.kind === 'full' &&
 		bench_run_is_complete(run) &&
 		anchor !== null &&
 		anchor.stable &&
+		noise_floor !== null &&
 		commit !== null &&
 		!commit.endsWith('-dirty') &&
 		bench_results_find_gaps(results).length === 0 &&
@@ -1338,4 +1358,28 @@ export const parse_bench_results = (data: unknown): BenchResults => {
 	const parsed = BenchResults.safeParse(data);
 	if (!parsed.success) throw new Error(`invalid bench results: ${z.prettifyError(parsed.error)}`);
 	return parsed.data;
+};
+
+/** The facts of a run that decide whether it is publishable, as one line for an error. */
+export const describe_bench_run = (results: BenchResults): string => {
+	const { run, anchor, commit, noise_floor } = results.meta;
+	if (run === null) return 'it holds no timed run';
+	const filters = Object.entries(run.filters)
+		.filter(([, ids]) => ids !== null)
+		.map(([key]) => key);
+	return [
+		`kind: ${run.kind}`,
+		`filters: ${filters.length > 0 ? filters.join(', ') : 'none'}`,
+		`commit: ${commit ?? 'none'}`,
+		`anchor: ${
+			anchor === null
+				? 'none'
+				: anchor.stable
+					? `stable, drift ${(anchor.drift * 100).toFixed(1)}%`
+					: `drifted by ${(anchor.drift * 100).toFixed(1)}%, so the machine changed state during the run: run it again`
+		}`,
+		`noise floor: ${noise_floor === null ? 'none' : 'present'}`,
+		`cells without a number: ${bench_results_find_gaps(results).length}`,
+		`cold-start scenarios without a number: ${bench_results_find_startup_gaps(results).length}`
+	].join('; ');
 };

@@ -10,15 +10,16 @@ method page of the site's docs (../src/routes/docs/method/+page.svelte).
 | --- | --- | --- |
 | `deterministic.json` | the numbers that are the same on any machine: bundle sizes, token counts, output sizes, coverage. `npm run bench:deterministic` regenerates it anywhere, and the check workflow fails when the committed file differs from what regenerates | yes |
 | `latest.json` | the published timed run, which the site renders. Until a first run is published it is absent, and the site renders `deterministic.json` and shows no timed number | yes, once a run is published |
-| `<UTC date>_<machine>.json` | a full run, as the harness writes it: named by the UTC date it started and the name given to `--machine`. `latest.json` is a copy of one of these | yes, for a run that is published |
+| `<UTC date>_<machine>.json` | a full run, as the harness writes it: named by the UTC date it started and the name given to `--machine`. `latest.json` is a copy of one of these, made by `npm run results:publish` | yes, for a run that is published |
 | `calibration_<machine>.json` | a machine's noise floor, from a calibration run. A full run on the same machine copies the floor into its own file | yes, beside the run that carries it |
 | `scratch/` | smoke runs and filtered runs, which are never publishable | no: git ignores it |
 | `full_<machine>.journal.jsonl`, `calibrate_<machine>.journal.jsonl` | the journal of a timed run that has not finished: every process's result, appended as it is measured, so a stopped run can be resumed. It is removed when the results file is written | no: git ignores it |
-| `*.journal.jsonl.overlapped` | the journal of a run that lost the machine lock, set aside. Another run may have overlapped it, so it can't be resumed: delete it | no: git ignores it |
+| `*.journal.jsonl.overlapped`, `*.journal.jsonl.changed` | the journal of a run that lost the machine lock, or during which a measured package changed on disk, set aside. Another run may have overlapped it, or its samples are of two versions, so it can't be resumed: delete it | no: git ignores it |
 
-Nothing in the harness writes `latest.json`: publishing a run is copying its
-dated file to that name by hand, as the steps below say. Every results file here goes
-through one schema, `src/lib/results_schema.ts`.
+A timed run never writes `latest.json`: `npm run results:publish` copies a
+run's dated file to that name once the file is shown to be publishable, as the
+steps below say. Every results file here goes through one schema,
+`src/lib/results_schema.ts`.
 
 ## The publishing machine
 
@@ -31,12 +32,19 @@ replaces them.
 | --- | --- | --- |
 | name | the name given to `--machine` | `meta.machine.name` |
 | CPU model | `lscpu`, or the file | `meta.machine.cpu` |
-| cores and threads | `lscpu` | no |
-| frequency driver | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver` | no |
-| frequency governor | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`, which the harness reads | `meta.machine.governor` |
+| cores | `lscpu` | no |
+| threads | the logical CPUs Node counts | `meta.machine.threads` |
+| frequency driver | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver` | `meta.machine.cpufreq_driver` |
+| frequency governor | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor` | `meta.machine.governor` |
+| energy-performance preference | `energy_performance_preference`, in the same directory | `meta.machine.epp` |
+| boost | `/sys/devices/system/cpu/cpufreq/boost`, the first CPU's `boost`, or `intel_pstate/no_turbo` inverted | `meta.machine.boost` |
 | memory | the file, in gigabytes | `meta.machine.memory_gb` |
-| OS and kernel release | `/etc/os-release` and `uname -r` | no |
+| kernel release | `uname -r` | `meta.machine.os_release` |
+| OS | `/etc/os-release` | no |
 | Node version | `node --version` | `meta.node` |
+
+The harness reads the first CPU's frequency settings, and is null for any the
+OS doesn't expose. It logs when the CPUs run different governors.
 
 The file also records the commit (`meta.commit`), the corpus hash
 (`meta.corpus_hash`), and every library's version (`meta.libraries`). What the
@@ -49,8 +57,8 @@ not because it is perfectly quiet. The commands are for Linux with systemd, and
 the unit names on a machine are its own: look at what it runs.
 
 - **AC power, and the `performance` governor.** A governor that scales the
-  frequency with load adds its own ramp to every batch. Check every core, since
-  the harness records only the first:
+  frequency with load adds its own ramp to every batch. Check every core: the
+  harness records the first, and only warns when the others differ:
   ```bash
   cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor | sort | uniq -c
   ```
@@ -60,7 +68,12 @@ the unit names on a machine are its own: look at what it runs.
 - **Nothing else running.** Close editors, browsers, chat clients, other
   terminal sessions, and anything that indexes or syncs files. One process is
   measured at a time, and anything else that wakes up lands in some library's
-  batch and not in the others'.
+  batch and not in the others'. A timed run records the 1-minute load average
+  as it starts (`meta.run.load_at_start`, the highest of its segments' when it
+  was resumed), prints it in `--plan`, and warns when it is over 1. It never
+  refuses: wait for the load to settle, or stop the run and find what is
+  running. Right after another run, a calibration included, the load reads
+  about 1 for a minute or so: wait for it to settle before starting.
 - **No suspend.** Turn off automatic suspend on AC, so a long unattended run
   isn't stopped partway.
 - **Timers and scheduled jobs stopped for the duration.** Package updates, log
@@ -130,12 +143,14 @@ Everything below runs on the publishing machine, from the root of the checkout.
    be stable, or the floor is not carried: run it again.
 
    A full run carries the floor only from a calibration that was not filtered,
-   whose anchor was stable, and that has the same machine name, CPU, governor,
-   Node version, corpus hash, and parameters (`--passes`, `--rounds`,
-   `--target-ms`, the warmup and rewarm, and `--retries`). When any of those
-   has changed, calibrate again. The harness doesn't compare the library
-   versions, the commit, the kernel, or `NODE_OPTIONS` of a calibration, so calibrate again after any of them
-   changes in a way that could move a time.
+   whose anchor was stable, and that has the same machine name, CPU, threads,
+   frequency driver, governor, energy-performance preference, and boost, the
+   same Node version, corpus hash, and parameters (`--passes`, `--rounds`,
+   `--target-ms`, the warmup and rewarm, and `--retries`), and every library at
+   the same version with the same extra packages. When any of those has
+   changed, calibrate again. The harness doesn't compare the commit, the
+   kernel, or `NODE_OPTIONS` of a calibration, so calibrate again after any of
+   them changes in a way that could move a time.
 7. **Plan the full run**, and read the plan.
    ```bash
    npm run bench -- --machine <name> --plan
@@ -158,18 +173,24 @@ Everything below runs on the publishing machine, from the root of the checkout.
    npm run bench:calibrate -- --machine <name> --resume  # a stopped calibration
    ```
    The resumed run must be the same run: the same flags, corpus, library
-   versions, machine name, CPU, governor, kernel release, Node version,
+   versions, machine name, CPU, threads, frequency driver, governor,
+   energy-performance preference, boost, kernel release, Node version,
    `NODE_OPTIONS`, and commit. So between stopping and resuming, commit
    nothing, install nothing, and update nothing. A resume that is refused names
    what differs. To start over instead, delete the journal. If the journal was
-   set aside as `.overlapped`, another run held the machine at the same time:
-   delete it and start over.
+   set aside as `.overlapped` (another run held the machine at the same time)
+   or as `.changed` (a measured package changed on disk during the run), delete
+   it and start over.
 10. **Check the run**, with the list below. A run that fails a check is
     measured again, not published with a note.
-11. **Make it the published run.** Nothing does this but a copy:
+11. **Make it the published run.**
     ```bash
-    cp results/<UTC date>_<name>.json results/latest.json
+    npm run results:publish -- results/<UTC date>_<name>.json
     ```
+    It refuses, with the reasons, a file that is not in `results/` itself
+    (followed through links, so not in `scratch/`), is `latest.json`, is not a
+    results file, or is not publishable (the same test the build applies, in step
+    12), and otherwise writes `latest.json` as a byte-for-byte copy.
 12. **Build the site over it.** With `BENCH_RESULTS_FIXTURE` unset:
     ```bash
     gro build --no-install
@@ -177,7 +198,7 @@ Everything below runs on the publishing machine, from the root of the checkout.
     `--no-install` skips the install `gro build` starts with, so the step
     needs no network. The build parses `latest.json` and fails, saying why, if the run is not
     publishable: a smoke run, a calibration, a filtered run, a run with a gap,
-    a `-dirty` commit, or an anchor that drifted. It also fails if the run and
+    a `-dirty` commit, an anchor that drifted, or no noise floor. It also fails if the run and
     `deterministic.json` describe the same library versions and corpus and
     their deterministic numbers differ.
 13. **Commit** `latest.json`, the dated file, and the calibration file, and
@@ -185,10 +206,10 @@ Everything below runs on the publishing machine, from the root of the checkout.
 
 ## The checks a run must pass
 
-The build in step 12 enforces three of these: a stable anchor, a clean commit,
-and a whole, unfiltered full run. The rest are yours to read, and the build
-passes whatever they say: the exclusions, the disturbed cells, the noise floor,
-and the versions. The summary a run prints has a line for most of them, and the
+The build in step 12 enforces four of these: a stable anchor, a clean commit,
+a whole, unfiltered full run, and a noise floor. The rest are yours to read,
+and the build passes whatever they say: the exclusions, the disturbed cells,
+the size of the noise floor, and the versions. The summary a run prints has a line for most of them, and the
 file holds the same facts. To read them from the file:
 
 ```bash
@@ -211,8 +232,8 @@ node -e "const m=require('./results/latest.json').meta;console.log(m.commit,m.no
       file by `attempts`.
 - [ ] **The noise floor is there, and small enough.** `noise floor` gives a
       figure per cell and one for a geomean, and is not `none`. The harness runs
-      without one and the build accepts the file, so this line and the plan in
-      step 7 are the only checks. A difference
+      without one, and the build refuses a file that has none, so check the plan
+      in step 7 before the run rather than after. A difference
       between two libraries that is smaller than the floor is not a difference,
       so a floor larger than the differences the results are read for means the
       machine was not quiet enough: quiet it and calibrate again.
@@ -253,7 +274,7 @@ when any of these changes:
 - **the method**: a change to how the harness measures, or to its parameters
 - **a library's version**, or that of a package it is measured with
 - **the Node version**
-- **the machine**, its governor included
+- **the machine**, its frequency settings included
 
 When a library's version or the corpus has moved since the run, the site still
 renders `latest.json`, as the snapshot it is, and says what has moved. For the

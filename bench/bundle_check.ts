@@ -125,5 +125,7 @@ export const check_bundle = async (spec: BundleCheckSpec): Promise<BundleCheckRe
 if (import.meta.main) {
 	const spec = BundleCheckSpec.parse(JSON.parse(process.argv[2] ?? 'null'));
 	const result = await check_bundle(spec);
-	process.stdout.write(JSON.stringify(result) + '\n');
+	// exits once the line is written, so a handle the library leaves open can't keep the process
+	// alive; the callback waits for the write, which is asynchronous to a pipe
+	process.stdout.write(JSON.stringify(result) + '\n', (error) => process.exit(error ? 1 : 0));
 }

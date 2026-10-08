@@ -24,6 +24,7 @@ import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import { to_expected_key, type CarriedDeterministic } from '../../../bench/deterministic.ts';
 import { read_journal } from '../../../bench/journal.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
+import { to_bench_libraries } from '../../../bench/library_info.ts';
 import {
 	RunError,
 	assemble_results,
@@ -33,6 +34,7 @@ import {
 	read_startup_result,
 	run_bench,
 	run_startup_in_turn,
+	to_planned_versions,
 	to_startup_entries,
 	type ChildOutcome,
 	type RunBenchOptions,
@@ -51,6 +53,9 @@ import {
 // processes: reading a process, the rounds, the journal, resuming, and the plan.
 
 const manifest = load_corpus_manifest();
+
+/** The versions installed, which a cell process reports. */
+const VERSIONS = to_planned_versions(to_bench_libraries(ADAPTERS));
 
 let dir: string;
 let out: string;
@@ -470,6 +475,7 @@ const create_machine = (answer: (planned: PlannedStartup) => ChildOutcome = to_o
 					cell: `${spec.file}:${spec.mode}`,
 					library: spec.library,
 					loaded_langs: ['json'],
+					versions: VERSIONS.get(spec.library)!,
 					measurement: {
 						tokens: 10,
 						output: { html_bytes: 100, spans: 10 },
@@ -793,11 +799,13 @@ describe('the plan of a run with cold start', () => {
 			generated_at: plan.generated_at,
 			duration_ms: 1,
 			segments: 1,
+			load_at_start: 0,
 			machine: plan.machine,
 			node: plan.node,
 			commit: plan.commit,
 			corpus_hash: plan.corpus_hash,
 			adapters: plan.adapters,
+			libraries: plan.libraries,
 			processes: [],
 			startup_scenarios: plan.startup_scenarios,
 			startup,
@@ -837,11 +845,13 @@ describe('the plan of a run with cold start', () => {
 			generated_at: calibration.generated_at,
 			duration_ms: 1,
 			segments: 1,
+			load_at_start: 0,
 			machine: calibration.machine,
 			node: calibration.node,
 			commit: calibration.commit,
 			corpus_hash: calibration.corpus_hash,
 			adapters: calibration.adapters,
+			libraries: calibration.libraries,
 			processes: [],
 			startup_scenarios: [],
 			startup: [],

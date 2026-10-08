@@ -441,7 +441,8 @@ node bench/run.ts --help`;
 					<td><code>--metrics</code></td>
 					<td>
 						measure only <code>throughput</code> (the timed cells) or only <code>startup</code>
-						(cold start). Both by default
+						(cold start). Both by default, and naming both, or <code>throughput</code> on a
+						calibration, which measures nothing else, is no filter
 					</td>
 				</tr>
 				<tr>
@@ -524,11 +525,21 @@ node bench/run.ts --help`;
 			</li>
 			<li>
 				<strong>What must match.</strong> The kind of run, its parameters and filters, the corpus
-				hash, every library's version, the machine's name, CPU, and governor, the OS release, the
-				Node version, the <code>NODE_OPTIONS</code> the processes inherit, and the commit with its
-				dirty marker. A resume with any of them different is refused, naming what differs, so
-				results from two setups are never mixed. With a dirty working tree the journal can't tell
-				whether the uncommitted changes are the ones it started with, and a resume says so.
+				hash, every library's version, the machine's name, CPU, threads, and frequency settings
+				(governor, driver, energy-performance preference, and boost), the OS release, the Node
+				version, the <code>NODE_OPTIONS</code> the processes inherit, and the commit with its dirty
+				marker. A resume with any of them different is refused, naming what differs, so results from
+				two setups are never mixed. With a dirty working tree the journal can't tell whether the
+				uncommitted changes are the ones it started with, and a resume says so.
+			</li>
+			<li>
+				<strong>Nothing installed mid-run.</strong> Every cell process reports the versions of its
+				library's packages it found installed, and one that differs from what the run was planned
+				with stops the run, naming the package and both versions, before its result is journaled.
+				Cold-start processes report none, so the run reads the versions again before writing its
+				file, and on a change writes nothing and sets the journal aside as
+				<code>&lt;journal&gt;.changed</code>: its cold-start samples were never checked against the
+				change, so the run starts over.
 			</li>
 			<li>
 				<strong>Never by accident.</strong> A journal already there stops a run that wasn't given
@@ -551,7 +562,8 @@ node bench/run.ts --help`;
 				<DeclarationLink name="BenchRun" />, counts the stretches the run was measured in: 1 for an
 				uninterrupted run. <code>generated_at</code>, and the date in a full run's file name, are
 				when the first segment started. <code>duration_ms</code> is the time spent measuring,
-				without the time between segments.
+				without the time between segments, and <code>load_at_start</code> the highest of the
+				segments' load averages at their start.
 			</li>
 			<li>
 				<strong>A crash in the middle of a write.</strong> A last line with no newline is a write
@@ -616,8 +628,11 @@ node bench/run.ts --help`;
 		<p>
 			A calibration is written to <code>results/calibration_&lt;machine&gt;.json</code>. A later
 			full run copies its noise floor if the calibration describes that run: unfiltered, with a
-			stable anchor, and on the same machine name, CPU, governor, Node version, corpus, and
-			parameters, retries included. Otherwise the run records no noise floor and says why.
+			stable anchor, and on the same machine name, CPU, threads, and frequency settings, with the
+			same Node version, corpus, and parameters, retries included, and every library at the same
+			version with the same extra packages. The commit is not compared, so a commit that changes
+			nothing measured keeps the floor. Otherwise the run records no noise floor and says why, and
+			the site won't publish it.
 		</p>
 		<p>
 			A calibration retries too, each arm of a library on its own and by the same rule, so an arm
@@ -665,6 +680,12 @@ node bench/run.ts --help`;
 			the two ends. A segment stopped by a signal or a failed process still takes its closing
 			reading. One that was killed outright can't, and the next segment's opening reading stands in
 			for it.
+		</p>
+		<p>
+			Before it spawns anything, a run reads the machine's load average over the last minute and
+			records it as <code>load_at_start</code>. On a quiet machine it is well under 1, and a timed
+			run warns when it is over 1, since something else is then running. It warns and goes on: the
+			anchor, the spread, and the retries are what judge the run.
 		</p>
 	</TomeSection>
 	<TomeSection>

@@ -257,7 +257,7 @@ describe('to_startup_child_source', () => {
 		assert.deepStrictEqual(without(core), without(bare));
 	});
 
-	test('the clock is read after the work and before anything is gathered or written', () => {
+	test('the clock is read after the work and before anything is gathered or written, and the process exits after', () => {
 		const source = to_startup_child_source('./single_json.entry.mjs', {
 			src: '{"a": "</script>\n"}',
 			expression: 'exports.highlight(src)'
@@ -271,7 +271,9 @@ describe('to_startup_child_source', () => {
 			'process.resourceUsage().maxRSS',
 			'process.stdout.write(',
 			'html: html,',
-			'getCompileCacheDir()'
+			'getCompileCacheDir()',
+			// once the line is written, so a handle the library left open can't hold the process
+			'(error) => process.exit(error ? 1 : 0)'
 		].map((part) => source.indexOf(part));
 		assert.ok(
 			order.every((index) => index >= 0),

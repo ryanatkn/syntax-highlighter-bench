@@ -15,7 +15,7 @@ target/
 /results/scratch/
 # The journal of a timed run that hasn't finished, or that was set aside
 /results/*.journal.jsonl
-/results/*.journal.jsonl.overlapped
+/results/*.journal.jsonl.*
 
 # Env
 .env*

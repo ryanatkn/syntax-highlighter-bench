@@ -54,7 +54,15 @@ const HEADER: JournalHeader = {
 		{ id: 'fuz_code', version: '1.0.0' },
 		{ id: 'twinkleplop', version: '2.0.0', extra_packages: { '@twinkleplop/json': '0.1.0' } }
 	],
-	machine: { name: 'box', cpu: 'Test CPU', governor: 'performance' },
+	machine: {
+		name: 'box',
+		cpu: 'Test CPU',
+		threads: 16,
+		governor: 'performance',
+		cpufreq_driver: 'amd-pstate-epp',
+		epp: 'performance',
+		boost: true
+	},
 	os_release: '6.1.0',
 	node: 'v24.14.1',
 	node_options: '',
@@ -65,6 +73,7 @@ const create_result = (library: string, ns: number = 1000): CellResult => ({
 	cell: 'harness/ts/snippet.ts:tokenize',
 	library,
 	loaded_langs: ['ts'],
+	versions: { [library]: '1.0.0' },
 	measurement: {
 		tokens: 10,
 		output: { html_bytes: 100, spans: 10 },
@@ -115,7 +124,7 @@ describe('a journal', () => {
 			result: { key: 'prism:set:docs:unbundled', sample: null, excluded: 'the process failed' }
 		};
 		write_journal([
-			{ type: 'segment', at_ms: 300, anchor_ns: 1000 },
+			{ type: 'segment', at_ms: 300, anchor_ns: 1000, load: 0.1 },
 			result_entry(900, 'fuz_code', 0),
 			startup_entry(2000, 'bare', 0),
 			startup_entry(2100, 'fuz_code:core:bundled', 0),
@@ -153,11 +162,11 @@ describe('a journal', () => {
 			excluded: 'produced no tokens'
 		};
 		write_journal([
-			{ type: 'segment', at_ms: 300, anchor_ns: 1000 },
+			{ type: 'segment', at_ms: 300, anchor_ns: 1000, load: 0.1 },
 			result_entry(900, 'fuz_code', 0),
 			result_entry(1500, 'fuz_code', 1),
 			{ type: 'anchor', at_ms: 1800, anchor_ns: 1010 },
-			{ type: 'segment', at_ms: 250, anchor_ns: 1020 },
+			{ type: 'segment', at_ms: 250, anchor_ns: 1020, load: 1.5 },
 			result_entry(700, 'fuz_code', 0, 1),
 			{ type: 'result', at_ms: 1200, pass: 0, attempt: 0, result: excluded }
 		]);
@@ -176,13 +185,17 @@ describe('a journal', () => {
 		// every reading, in order: a segment's opening one, and its closing one when it took it
 		assert.deepStrictEqual(journal.readings_ns, [1000, 1010, 1020]);
 		assert.strictEqual(journal.segments, 2);
+		assert.deepStrictEqual(journal.loads, [0.1, 1.5]);
 		// each segment up to its last line, and not the time between them
 		assert.strictEqual(journal.duration_ms, 1800 + 1200);
 		assert.strictEqual(journal.complete_bytes, readFileSync(path).length);
 	});
 
 	test('is one JSON line for the header and one for each entry', () => {
-		write_journal([{ type: 'segment', at_ms: 0, anchor_ns: 1000 }, result_entry(5, 'fuz_code', 0)]);
+		write_journal([
+			{ type: 'segment', at_ms: 0, anchor_ns: 1000, load: 0.1 },
+			result_entry(5, 'fuz_code', 0)
+		]);
 		const text = readFileSync(path, 'utf8');
 		assert.ok(text.endsWith('\n'));
 		const lines = text.trimEnd().split('\n');
@@ -200,11 +213,17 @@ describe('a journal', () => {
 		const writer = open_journal(path, HEADER);
 		writer.close();
 		writer.close();
-		assert.throws(() => writer.append({ type: 'segment', at_ms: 0, anchor_ns: 1 }), /closed/);
+		assert.throws(
+			() => writer.append({ type: 'segment', at_ms: 0, anchor_ns: 1, load: 0.1 }),
+			/closed/
+		);
 	});
 
 	test('a last line cut short by a crash is dropped, and a resume appends after what is whole', () => {
-		write_journal([{ type: 'segment', at_ms: 0, anchor_ns: 1000 }, result_entry(5, 'fuz_code', 0)]);
+		write_journal([
+			{ type: 'segment', at_ms: 0, anchor_ns: 1000, load: 0.1 },
+			result_entry(5, 'fuz_code', 0)
+		]);
 		const whole = readFileSync(path).length;
 		const cut = JSON.stringify(result_entry(9, 'fuz_code', 1));
 		for (const tail of [cut.slice(0, 40), cut]) {
@@ -235,7 +254,7 @@ describe('a journal', () => {
 			[[repeated, repeated], /line 4 repeats a result/]
 		] as const) {
 			rmSync(path, { force: true });
-			write_journal([{ type: 'segment', at_ms: 0, anchor_ns: 1000 }]);
+			write_journal([{ type: 'segment', at_ms: 0, anchor_ns: 1000, load: 0.1 }]);
 			appendFileSync(path, lines.map((line) => line + '\n').join(''));
 			const journal = read_journal(path);
 			assert.ok(!journal.ok);
@@ -309,7 +328,14 @@ describe('diff_journal_header', () => {
 			['libraries', { ...HEADER, libraries: HEADER.libraries.slice(0, 1) }],
 			['machine.name', { ...HEADER, machine: { ...HEADER.machine, name: 'other' } }],
 			['machine.cpu', { ...HEADER, machine: { ...HEADER.machine, cpu: 'Other CPU' } }],
+			['machine.threads', { ...HEADER, machine: { ...HEADER.machine, threads: 8 } }],
 			['machine.governor', { ...HEADER, machine: { ...HEADER.machine, governor: null } }],
+			[
+				'machine.cpufreq_driver',
+				{ ...HEADER, machine: { ...HEADER.machine, cpufreq_driver: 'acpi-cpufreq' } }
+			],
+			['machine.epp', { ...HEADER, machine: { ...HEADER.machine, epp: 'balance_performance' } }],
+			['machine.boost', { ...HEADER, machine: { ...HEADER.machine, boost: false } }],
 			['startup_samples', { ...HEADER, startup_samples: 30 }],
 			['startup_discard', { ...HEADER, startup_discard: 0 }],
 			['filters.metrics', { ...HEADER, filters: { ...HEADER.filters, metrics: ['startup'] } }],
@@ -327,10 +353,16 @@ describe('diff_journal_header', () => {
 			assert.notDeepEqual(differences[0]!.journal, differences[0]!.current);
 		}
 		// every field of a header is one of these, so a new field can't go uncompared
-		const compared = new Set(changes.map(([field]) => field.split('.')[0]));
+		const compared = new Set(changes.flatMap(([field]) => [field, field.split('.')[0]]));
 		assert.deepStrictEqual(
 			Object.keys(JournalHeader.shape).filter((key) => !compared.has(key)),
 			['type', 'journal', 'generated_at']
+		);
+		assert.deepStrictEqual(
+			Object.keys(JournalHeader.shape.machine.shape).filter(
+				(key) => !compared.has(`machine.${key}`)
+			),
+			[]
 		);
 	});
 

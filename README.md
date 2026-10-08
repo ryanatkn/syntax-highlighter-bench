@@ -117,7 +117,8 @@ timed results are published, and show no number.
 **What may be published.** `results/latest.json` must pass
 `bench_results_is_publishable`, or the build fails and says why: a smoke run, a
 calibration, a filtered run, a run with a gap, a run from a commit with
-uncommitted changes, and a run whose anchor drifted are never shown as results.
+uncommitted changes, a run whose anchor drifted, and a run with no noise floor
+are never shown as results.
 A drifted run is measured again, not published under a warning. A
 `results/deterministic.json` that holds a timed number fails the build too.
 
@@ -223,6 +224,7 @@ node bench/run.ts --metrics startup          # cold start alone, to results/scra
 npm run bench -- --machine <name> --plan     # what a run would do, measuring nothing
 npm run bench -- --machine <name> --resume   # continue a run that was stopped
 node bench/run.ts --help
+npm run results:publish -- results/<date>_<name>.json  # make a publishable run results/latest.json
 ```
 
 A **cell** is one input in one mode, across the libraries that claim its
@@ -384,7 +386,7 @@ to comma-separated ids, and an unknown id is an error. `--libraries` and
 `--langs` narrow the cold-start scenarios too; the other three select inputs,
 which cold start has none of. `--metrics` measures only `throughput` (the timed
 cells) or only `startup` (cold start); naming both is the default, and no
-filter. `--passes`, `--rounds`, and
+filter, as is `throughput` on a calibration, which measures nothing else. `--passes`, `--rounds`, and
 `--target-ms` change how long a cell is measured, `--retries` how often a
 disturbed library is measured again, and `--startup-samples` how many processes
 sample each cold-start scenario. `--out` chooses the file. A full run is
@@ -395,10 +397,12 @@ filters. No results file is written if a process fails.
 
 `--plan` prints what a run would do and measures nothing: the cells, libraries,
 and processes, the cold-start scenarios with the processes they add, the
-parameters, where the results and the journal would go, and
+parameters, the machine's state and load average, where the results and the
+journal would go, and
 an estimate of how long it would take, worked out from the parameters. It makes
 the same checks a run makes before it measures, so it is refused where the run
-would be.
+would be. A timed run records the 1-minute load average as it starts
+(`meta.run.load_at_start`) and warns, without refusing, when it is over 1.
 
 ### Stopping and resuming
 
@@ -416,13 +420,23 @@ npm run bench -- --machine <name> --resume
 
 - **What must match.** The journal's first line records the kind of run, its
   parameters and filters, the corpus hash, every library's version, the
-  machine's name, CPU, and governor, the OS release, the Node version, the
-  `NODE_OPTIONS` the processes inherit, and the commit, with its dirty marker.
+  machine's name, CPU, threads, and frequency settings (governor, driver,
+  energy-performance preference, and boost), the OS release, the Node version,
+  the `NODE_OPTIONS` the processes inherit, and the commit, with its dirty
+  marker.
   `--resume` continues only when all of them are the same for the new command,
   and otherwise is refused, naming what differs. Results from two different
   setups are never mixed. One thing the journal can't see: with a dirty working
   tree it can't tell whether the uncommitted changes are the ones it started
   with, and a resume says so.
+- **Nothing installed mid-run.** Every cell process reports the versions of
+  its library's packages it found installed, and one that differs from what the
+  run was planned with stops the run, naming the package and both versions. A
+  package changed between two processes could move a time and nothing else.
+  Cold-start processes report none, so the run reads the versions again before
+  writing its file, and on a change writes nothing and sets the journal aside
+  as `<journal>.changed`: its cold-start samples were never checked against the
+  change, so the run starts over.
 - **Never by accident.** A journal already there stops a run that wasn't given
   `--resume`: it is neither overwritten nor continued until you say which, and
   the refusal says what run the journal records. `--resume` with no journal is
@@ -484,8 +498,9 @@ the noise, including what varies from one process to the next. The 95th
 percentile across cells and libraries is the floor for one cell, and the largest
 gap between a library's two geometric means is the floor for a geometric mean.
 A later full run carries the floor in its results file if the calibration
-describes it: unfiltered, steady, and on the same machine, governor, Node
-version, corpus, and parameters, retries included. A difference smaller than
+describes it: unfiltered, steady, and on the same machine in the same state
+(threads and frequency settings), with the same Node version, corpus,
+parameters, retries included, and library versions. A difference smaller than
 the floor is not a result.
 
 **The anchor.** A run measures a fixed workload, involving no measured library,

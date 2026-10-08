@@ -252,7 +252,11 @@ describe('parse_run_args', () => {
 		assert.ok(run_measures(parse('--calibrate'), 'throughput'));
 		assert.ok(!run_measures(parse('--calibrate'), 'startup'));
 		// saying so is fine, and asking for cold start is not
-		assert.ok(!run_measures(parse('--calibrate', '--metrics', 'throughput'), 'startup'));
+		const said = parse('--calibrate', '--metrics', 'throughput');
+		assert.ok(!run_measures(said, 'startup'));
+		// and restricts nothing, so the calibration is complete and written where a full run finds it
+		assert.strictEqual(said.filters.metrics, null);
+		assert.ok(bench_run_is_complete(said));
 		for (const args of [
 			['--metrics', 'startup'],
 			['--metrics', 'throughput,startup'],

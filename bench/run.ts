@@ -50,14 +50,15 @@ import {
 	constants,
 	existsSync,
 	mkdirSync,
+	readdirSync,
 	readFileSync,
 	renameSync,
 	rmSync,
 	statSync,
 	writeFileSync
 } from 'node:fs';
-import { availableParallelism, cpus, hostname, release, totalmem } from 'node:os';
-import { dirname, relative, resolve } from 'node:path';
+import { availableParallelism, cpus, hostname, loadavg, release, totalmem } from 'node:os';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stats_median, stats_percentile } from '@fuzdev/fuz_util/stats.js';
 import { time_format_adaptive } from '@fuzdev/fuz_util/time.js';
@@ -70,6 +71,7 @@ import {
 	type BenchCellOutput,
 	type BenchCellValue,
 	type BenchExcluded,
+	type BenchLibrary,
 	type BenchMachine,
 	type BenchNoiseFloor,
 	type BenchResults,
@@ -118,7 +120,14 @@ import {
 } from './journal.ts';
 import { LANG_ROSTER } from './langs.ts';
 import { ADAPTERS } from './libraries.ts';
-import { to_bench_coverage, to_bench_libraries } from './library_info.ts';
+import {
+	find_library_change,
+	find_version_change,
+	format_package_version,
+	to_bench_coverage,
+	to_bench_libraries,
+	to_package_versions
+} from './library_info.ts';
 import {
 	acquire_machine_lock,
 	format_lock_holder,
@@ -131,6 +140,7 @@ import {
 	estimate_run_ms,
 	estimate_startup_ms,
 	format_run_help,
+	LOAD_BUSY_ABOVE,
 	parse_run_args,
 	plan_cells,
 	plan_processes,
@@ -424,20 +434,89 @@ export interface ProcessResult {
 }
 
 /**
- * Creates the check each result goes through as it arrives: a library's
- * processes on a cell must agree on what is deterministic, whichever pass, arm,
- * or attempt they are, and the first of them must agree with the deterministic
- * results file when the run carries one. A disagreement stops the run at that
- * cell.
+ * The versions a run plans with, by library id, as a cell process reports them.
  *
+ * @param libraries - the run's roster, read once when it was planned
+ */
+export const to_planned_versions = (
+	libraries: ReadonlyArray<BenchLibrary>
+): Map<string, Record<string, string>> =>
+	new Map(libraries.map((library) => [library.id, to_package_versions(library)]));
+
+/**
+ * Checks that a cell process loaded the versions the run planned with. A package
+ * changed on disk during a run can change a library's speed and nothing else, so
+ * the output checks alone would never see it.
+ *
+ * @param label - the cell and library, for the error
+ * @param planned - the library's versions when the run was planned
+ * @param result - what the process reported
+ * @throws `RunError` with exit code 2 naming the package and both versions if they differ
+ */
+export const assert_planned_versions = (
+	label: string,
+	planned: Record<string, string> | undefined,
+	result: CellResult
+): void => {
+	const change = find_version_change(planned ?? {}, result.versions);
+	if (change === null) return;
+	throw new RunError(
+		`${label} loaded ${format_package_version(change.package, change.current)}, and the run was planned with ${format_package_version(change.package, change.recorded)}: a package changed on disk during the run, so its numbers would not be one run's. Restore the version, or start the run over`,
+		2
+	);
+};
+
+/**
+ * Finds a package that changed on disk during a run: the cell processes report
+ * theirs, and the cold-start processes, which resolve theirs as they are
+ * spawned, can't, so the roster is read again after measuring.
+ *
+ * @param planned - the roster read when the run was planned
+ * @param read_current - reads the roster now
+ * @returns the change, naming the package and both versions, or why the roster
+ * can't be read now (a package removed), or null when nothing changed
+ */
+export const find_roster_change = (
+	planned: ReadonlyArray<BenchLibrary>,
+	read_current: () => ReadonlyArray<BenchLibrary>
+): string | null => {
+	let current: ReadonlyArray<BenchLibrary>;
+	try {
+		current = read_current();
+	} catch (error) {
+		return `the installed packages can't be read now: ${(error as Error).message}`;
+	}
+	for (const library of current) {
+		const own = planned.find((l) => l.id === library.id);
+		const change = find_version_change(
+			own ? to_package_versions(own) : {},
+			to_package_versions(library)
+		);
+		if (change !== null) {
+			return `${library.id} is installed at ${format_package_version(change.package, change.current)} now, and the run was planned with ${format_package_version(change.package, change.recorded)}`;
+		}
+	}
+	return null;
+};
+
+/**
+ * Creates the check each result goes through as it arrives: a process must have
+ * loaded the versions the run was planned with, a library's processes on a cell
+ * must agree on what is deterministic, whichever pass, arm, or attempt they
+ * are, and the first of them must agree with the deterministic results file
+ * when the run carries one. A disagreement stops the run at that cell.
+ *
+ * @param versions - the versions the run was planned with, by library id
  * @param expected - what the deterministic file has for each input and library
  */
 const create_agreement_check = (
+	versions: ReadonlyMap<string, Record<string, string>>,
 	expected?: CarriedDeterministic['expected']
 ): ((planned: PlannedProcess, result: CellResult) => void) => {
 	const firsts: Map<string, CellResult> = new Map();
 	return (planned, result) => {
 		const label = to_process_label(planned);
+		assert_planned_versions(label, versions.get(planned.library), result);
 		const first = firsts.get(label);
 		if (first) {
 			assert_passes_agree(label, first, result);
@@ -519,6 +598,8 @@ export interface RunCellsDeps {
 	on_result?: (planned: PlannedProcess, result: CellResult) => void;
 	/** What the deterministic file has, which every library's first result on a cell must match. */
 	expected?: CarriedDeterministic['expected'];
+	/** The versions the run was planned with, by library id, which every result must report. */
+	versions: ReadonlyMap<string, Record<string, string>>;
 }
 
 /**
@@ -549,7 +630,7 @@ export const run_cells_in_turn = async (
 ): Promise<Array<ProcessResult>> => {
 	const { measure, on_result } = deps;
 	const arms = to_arm_count(options.kind);
-	const check = create_agreement_check(deps.expected);
+	const check = create_agreement_check(deps.versions, deps.expected);
 	const results: Array<ProcessResult> = [];
 	const run = async (processes: ReadonlyArray<PlannedProcess>): Promise<Array<ProcessResult>> => {
 		const ran: Array<ProcessResult> = [];
@@ -919,12 +1000,21 @@ export interface NoiseFloorContext {
 	node: string;
 	corpus_hash: string;
 	params: RunParams;
+	/** The run's libraries, with the versions it measures. */
+	libraries: ReadonlyArray<BenchLibrary>;
 }
+
+/** The machine's state a calibration must share with a run, beyond its name and CPU. */
+const NOISE_FLOOR_MACHINE_KEYS = ['threads', 'governor', 'cpufreq_driver', 'epp', 'boost'] as const;
 
 /**
  * Takes the noise floor from a machine's calibration run, if that calibration
- * describes this run: complete, steady, and on the same machine, governor, Node
- * version, corpus, and parameters, retries included.
+ * describes this run: complete, steady, and on the same machine in the same
+ * state (logical CPUs, governor, scaling driver, energy-performance preference,
+ * boost), the same Node version, corpus, and parameters, retries included, and
+ * every library of the run at the same version with the same extra packages.
+ * The commit is not compared: a commit that changes nothing measured would
+ * otherwise invalidate every calibration.
  *
  * @param calibration - a parsed calibration results file
  * @param context - what the run that would carry it measures with
@@ -945,8 +1035,13 @@ export const carry_noise_floor = (
 	if (machine.name !== context.machine.name || machine.cpu !== context.machine.cpu) {
 		return { ok: false, reason: `it is from another machine (${machine.name}, ${machine.cpu})` };
 	}
-	if (machine.governor !== context.machine.governor) {
-		return { ok: false, reason: `it ran under the governor ${machine.governor}` };
+	for (const key of NOISE_FLOOR_MACHINE_KEYS) {
+		if (machine[key] !== context.machine[key]) {
+			return {
+				ok: false,
+				reason: `it ran with ${key} ${machine[key]}, and this run has ${context.machine[key]}`
+			};
+		}
 	}
 	if (node !== context.node) return { ok: false, reason: `it ran on Node ${node}` };
 	if (corpus_hash !== context.corpus_hash) {
@@ -964,6 +1059,8 @@ export const carry_noise_floor = (
 			return { ok: false, reason: `it measured with ${key} ${run[key]}` };
 		}
 	}
+	const moved = find_library_change(calibration.meta.libraries, context.libraries);
+	if (moved !== null) return { ok: false, reason: moved };
 	return { ok: true, noise_floor };
 };
 
@@ -976,12 +1073,16 @@ export interface RunRecord {
 	duration_ms: number;
 	/** How many segments it was measured in. */
 	segments: number;
+	/** The load average it started at: the highest of its segments'. */
+	load_at_start: number;
 	machine: BenchMachine;
 	node: string;
 	commit: string;
 	corpus_hash: string;
 	/** The libraries the run selected, in roster order. */
 	adapters: ReadonlyArray<HighlighterAdapter>;
+	/** Their roster entries, with the versions read when the run was planned. */
+	libraries: ReadonlyArray<BenchLibrary>;
 	/** Every process's result, each with the process it answers, retries included. */
 	processes: ReadonlyArray<ProcessResult>;
 	/** The cold-start scenarios the run planned. None when it measures no cold start. */
@@ -1070,10 +1171,11 @@ export const assemble_results = (
 					: { startup_samples: null, startup_discard: null, startup_compile_cache: null }),
 				filters: options.filters,
 				segments: record.segments,
-				duration_ms: record.duration_ms
+				duration_ms: record.duration_ms,
+				load_at_start: record.load_at_start
 			},
 			anchor: record.anchor,
-			libraries: to_bench_libraries(record.adapters),
+			libraries: [...record.libraries],
 			excluded,
 			startup_excluded: startup.excluded,
 			noise_floor: calibrate ? to_noise_floor(pairs) : record.noise_floor,
@@ -1092,27 +1194,97 @@ export const assemble_results = (
 	return { results, pairs };
 };
 
-const GOVERNOR_PATH = '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor';
+/** Where Linux describes the CPUs. */
+const CPU_DIR = '/sys/devices/system/cpu';
+
+/** A file's trimmed content, or null when it is missing, unreadable, or empty. */
+const read_sys_file = (path: string): string | null => {
+	try {
+		return readFileSync(path, 'utf8').trim() || null;
+	} catch {
+		// not exposed here: another OS, another driver, a container, or a VM
+		return null;
+	}
+};
 
 /**
- * Describes the machine a run is on.
+ * Reads whether frequency boost is on, from the first switch the OS exposes:
+ * the cpufreq one, the first CPU's own (amd-pstate), or intel_pstate's
+ * `no_turbo`, which says the opposite.
+ */
+const read_boost = (cpu_dir: string): boolean | null => {
+	for (const path of [join(cpu_dir, 'cpufreq/boost'), join(cpu_dir, 'cpu0/cpufreq/boost')]) {
+		const value = read_sys_file(path);
+		if (value === '1') return true;
+		if (value === '0') return false;
+	}
+	const no_turbo = read_sys_file(join(cpu_dir, 'intel_pstate/no_turbo'));
+	return no_turbo === '1' ? false : no_turbo === '0' ? true : null;
+};
+
+/**
+ * Describes the machine a run is on. The frequency settings are the first
+ * CPU's: `find_mixed_governors` says when the others differ.
  *
  * @param name - the name it is recorded under
- * @param governor_path - where the OS exposes the CPU frequency governor, if it does
+ * @param cpu_dir - where the OS describes the CPUs, if it does
  */
-export const read_machine = (name: string, governor_path: string = GOVERNOR_PATH): BenchMachine => {
-	let governor: string | null = null;
-	try {
-		governor = readFileSync(governor_path, 'utf8').trim() || null;
-	} catch {
-		// no cpufreq here: another OS, a container, or a VM
-	}
+export const read_machine = (name: string, cpu_dir: string = CPU_DIR): BenchMachine => {
+	const cpufreq = join(cpu_dir, 'cpu0/cpufreq');
 	return {
 		name,
 		cpu: cpus()[0]?.model.trim() || 'unknown',
-		governor,
-		memory_gb: Math.round((totalmem() / 1024 ** 3) * 10) / 10
+		threads: cpus().length || null,
+		governor: read_sys_file(join(cpufreq, 'scaling_governor')),
+		cpufreq_driver: read_sys_file(join(cpufreq, 'scaling_driver')),
+		epp: read_sys_file(join(cpufreq, 'energy_performance_preference')),
+		boost: read_boost(cpu_dir),
+		memory_gb: Math.round((totalmem() / 1024 ** 3) * 10) / 10,
+		os_release: release()
 	};
+};
+
+/**
+ * Warns of a timed run planned on a busy machine: a load average past
+ * `LOAD_BUSY_ABOVE`. A smoke run's numbers mean nothing, so it never warns.
+ *
+ * @returns the warning, or null
+ */
+export const to_load_note = (plan: Pick<RunPlan, 'options' | 'load'>): string | null =>
+	plan.options.kind !== 'smoke' && plan.load > LOAD_BUSY_ABOVE
+		? `the machine is busy: its load average over the last minute is ${plan.load.toFixed(2)}, past ${LOAD_BUSY_ABOVE}, so something else is running and may land in some library's batches: quiet the machine, or stop this run`
+		: null;
+
+/** Describes a machine's state in one line, saying which settings the OS doesn't expose. */
+export const format_machine = (machine: BenchMachine): string => {
+	const show = (value: string | boolean | number | null): string =>
+		value === null ? 'unknown' : value === true ? 'on' : value === false ? 'off' : String(value);
+	return `${machine.cpu}, ${show(machine.threads)} threads, governor ${show(machine.governor)}, driver ${show(machine.cpufreq_driver)}, epp ${show(machine.epp)}, boost ${show(machine.boost)}, ${machine.memory_gb} GB, OS ${machine.os_release}`;
+};
+
+/**
+ * Says when the CPUs don't all run the same frequency governor, which the
+ * recorded machine, reading the first CPU's, wouldn't show.
+ *
+ * @param cpu_dir - where the OS describes the CPUs, if it does
+ * @returns a note naming the governors, or null when there is one or none
+ */
+export const find_mixed_governors = (cpu_dir: string = CPU_DIR): string | null => {
+	let entries: Array<string>;
+	try {
+		entries = readdirSync(cpu_dir);
+	} catch {
+		return null;
+	}
+	const governors = new Set(
+		entries
+			.filter((entry) => /^cpu\d+$/.test(entry))
+			.map((cpu) => read_sys_file(join(cpu_dir, cpu, 'cpufreq/scaling_governor')))
+			.filter((governor) => governor !== null)
+	);
+	return governors.size > 1
+		? `the CPUs run different frequency governors (${[...governors].sort().join(', ')}), and the run records the first CPU's`
+		: null;
 };
 
 /**
@@ -1284,6 +1456,10 @@ export interface RunBenchOptions {
 	) => Promise<PreparedStartup>;
 	/** Reads the anchor. */
 	measure_anchor?: () => number;
+	/** Reads the 1-minute load average. */
+	read_load?: () => number;
+	/** Reads the selected libraries' roster entries, with their installed versions, after measuring. */
+	read_libraries?: (adapters: ReadonlyArray<HighlighterAdapter>) => Array<BenchLibrary>;
 }
 
 /**
@@ -1316,6 +1492,8 @@ export interface RunPlan {
 	corpus_hash: string;
 	/** The libraries the run selected, in roster order. */
 	adapters: ReadonlyArray<HighlighterAdapter>;
+	/** Their roster entries, with the versions read when the run was planned. */
+	libraries: Array<BenchLibrary>;
 	cells: Array<PlannedCell>;
 	/** The planned processes, before any retry. */
 	processes: Array<PlannedProcess>;
@@ -1339,6 +1517,10 @@ export interface RunPlan {
 	noise_floor: BenchNoiseFloor | null;
 	/** Why a full run carries no noise floor, if it doesn't. */
 	noise_floor_note: string | null;
+	/** What the recorded machine doesn't show, like CPUs on different governors. */
+	machine_note: string | null;
+	/** The 1-minute load average when the run was planned, before it spawned anything. */
+	load: number;
 	/** What the run takes from the deterministic results file, when that file describes it. */
 	deterministic: CarriedDeterministic | null;
 	/** Why the run carries nothing from the deterministic results file, if it doesn't. */
@@ -1378,6 +1560,8 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 	)
 		? plan_startup_scenarios(ADAPTERS, options.filters, manifest.inputs)
 		: { scenarios: [], unsupported: [] };
+	// before the run spawns anything, its own processes included
+	const load = (bench_options.read_load ?? (() => loadavg()[0] ?? 0))();
 	const smoke = options.kind === 'smoke';
 	// a calibration measures each library as two arms, so each gets twice the passes
 	const processes = plan_processes(cells, options.passes * to_arm_count(options.kind));
@@ -1439,8 +1623,16 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 					version,
 					...(extra_packages && { extra_packages })
 				})),
-				machine: { name: machine.name, cpu: machine.cpu, governor: machine.governor },
-				os_release: release(),
+				machine: {
+					name: machine.name,
+					cpu: machine.cpu,
+					threads: machine.threads,
+					governor: machine.governor,
+					cpufreq_driver: machine.cpufreq_driver,
+					epp: machine.epp,
+					boost: machine.boost
+				},
+				os_release: machine.os_release,
 				node,
 				// the processes inherit the parent's environment
 				node_options: process.env.NODE_OPTIONS ?? '',
@@ -1503,7 +1695,8 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 				machine,
 				node,
 				corpus_hash: manifest.corpus_hash,
-				params: options
+				params: options,
+				libraries
 			});
 			if (carried.ok) noise_floor = carried.noise_floor;
 			else noise_floor_note = `the calibration doesn't describe this run, ${carried.reason}`;
@@ -1553,6 +1746,7 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 		generated_at,
 		corpus_hash: manifest.corpus_hash,
 		adapters,
+		libraries,
 		cells,
 		processes,
 		startup_scenarios,
@@ -1567,6 +1761,8 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 		journal,
 		noise_floor,
 		noise_floor_note,
+		machine_note: find_mixed_governors(),
+		load,
 		deterministic,
 		deterministic_note
 	};
@@ -1619,6 +1815,13 @@ const find_unplanned_result = (
 /** The suffix a journal is renamed with when its run lost the machine lock. */
 export const OVERLAPPED_SUFFIX = '.overlapped';
 
+/**
+ * The suffix a journal is renamed with when a package changed on disk during its
+ * run. Its cold-start samples taken after the change were never checked against
+ * it, so the run can't be resumed, even with the versions restored.
+ */
+export const CHANGED_SUFFIX = '.changed';
+
 const to_display_path = (path: string): string => {
 	const relative_path = relative(process.cwd(), path);
 	return relative_path.startsWith('..') ? path : relative_path;
@@ -1663,6 +1866,9 @@ export const format_run_plan = (plan: RunPlan): string => {
 				`${library} is unsupported for ${scenario}${lang === null ? '' : ` ${lang}`}${set === null ? '' : ` ${set}`}, unbundled and bundled: it doesn't claim ${missing.join(', ')}`
 			]
 		),
+		['machine', format_machine(plan.machine)],
+		['load', to_load_note(plan) ?? `${plan.load.toFixed(2)} over the last minute`],
+		...(plan.machine_note === null ? [] : [['', plan.machine_note] as [string, string]]),
 		['commit', plan.commit],
 		['output', to_display_path(plan.path)]
 	];
@@ -1698,6 +1904,8 @@ export const format_run_plan = (plan: RunPlan): string => {
 
 /** What measuring a run's processes comes to. */
 interface Measured {
+	/** The load average the run started at: the highest of its segments'. */
+	load_at_start: number;
 	processes: Array<ProcessResult>;
 	startup: Array<StartupProcessResult>;
 	/** Every anchor reading, over every segment. */
@@ -1727,7 +1935,7 @@ const measure_smoke = async (
 	const log_stderr = (label: string, stderr: string): void => {
 		if (stderr.trim() !== '') log(`${label} wrote to stderr:\n${stderr.trim()}`);
 	};
-	const check = create_agreement_check(expected);
+	const check = create_agreement_check(to_planned_versions(plan.libraries), expected);
 	const processes = await run_at_once(
 		plan.processes,
 		plan.concurrency,
@@ -1765,6 +1973,7 @@ const measure_smoke = async (
 		}
 	);
 	return {
+		load_at_start: plan.load,
 		processes,
 		startup,
 		readings_ns: [opening, read_anchor()],
@@ -1857,9 +2066,10 @@ const measure_segment = async (
 	try {
 		const opening = read_anchor();
 		readings_ns.push(opening);
-		writer.append({ type: 'segment', at_ms: at_ms(), anchor_ns: opening });
+		writer.append({ type: 'segment', at_ms: at_ms(), anchor_ns: opening, load: plan.load });
 		const processes = await run_cells_in_turn(plan.cells, options, {
 			...(plan.deterministic && { expected: plan.deterministic.expected }),
+			versions: to_planned_versions(plan.libraries),
 			measure: (planned) => {
 				const key = to_journal_key(planned.cell.id, planned.library, planned.pass, planned.attempt);
 				const journaled = replay.get(key);
@@ -1927,6 +2137,7 @@ const measure_segment = async (
 			);
 		}
 		return {
+			load_at_start: Math.max(plan.load, ...(journal?.loads ?? [])),
 			processes,
 			startup,
 			readings_ns,
@@ -1965,6 +2176,9 @@ export const run_bench = async (
 	// everything that could fail is tried before measuring, not after
 	const plan = plan_run(options, bench_options);
 	const { machine, adapters, cells, processes, path, journal_path, startup_scenarios } = plan;
+	if (plan.machine_note !== null) log(plan.machine_note);
+	const load_note = to_load_note(plan);
+	if (load_note !== null) log(load_note);
 	if (plan.noise_floor_note !== null) log(`no noise floor: ${plan.noise_floor_note}`);
 	if (plan.deterministic_note !== null) log(`no bundle sizes: ${plan.deterministic_note}`);
 	try {
@@ -2027,16 +2241,33 @@ export const run_bench = async (
 				: await measure_segment(plan, bench_options, lock, on_progress, log);
 		if (show_progress) process.stderr.write('\r\x1b[K');
 
+		// a cold-start process resolves its packages when it is spawned, and no check sees them
+		const roster_change = find_roster_change(plan.libraries, () =>
+			(bench_options.read_libraries ?? to_bench_libraries)(adapters)
+		);
+		if (roster_change !== null) {
+			let set_aside = '';
+			if (journal_path !== null) {
+				renameSync(journal_path, journal_path + CHANGED_SUFFIX);
+				set_aside = `: the journal was set aside as ${to_display_path(journal_path + CHANGED_SUFFIX)} and can not be resumed, since cold-start samples taken after the change were never checked against it`;
+			}
+			throw new RunError(
+				`${roster_change}: a package changed on disk during the run, so nothing was written and the run starts over${set_aside}`,
+				2
+			);
+		}
 		const { results, pairs } = assemble_results({
 			options,
 			generated_at: plan.generated_at,
 			duration_ms: measured.duration_ms,
 			segments: measured.segments,
+			load_at_start: measured.load_at_start,
 			machine,
 			node: plan.node,
 			commit: plan.commit,
 			corpus_hash: plan.corpus_hash,
 			adapters,
+			libraries: plan.libraries,
 			processes: measured.processes,
 			startup_scenarios,
 			startup: measured.startup,

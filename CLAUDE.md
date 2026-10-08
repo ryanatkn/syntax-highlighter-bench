@@ -30,6 +30,7 @@ node bench/run.ts --machine <name> --resume # continue a timed run that was stop
 node bench/run.ts --metrics startup --libraries prism --langs json --startup-samples 2 # a small cold-start run, to results/scratch/
 npm run bench:deterministic             # regenerate results/deterministic.json
 npm run bench:deterministic -- --check  # fail if the committed file differs from what regenerates
+npm run results:publish -- results/<file>.json  # copy a publishable run to results/latest.json
 BENCH_RESULTS_FIXTURE=1 gro build       # build the site over the fixture run (invented numbers, marked on every page)
 ```
 
@@ -65,6 +66,7 @@ bench/                       the Node harness; never imported by the site
   outputs.ts                 token counts and output sizes: one process per library and language, folded into cells
   node_child.ts              runs a harness script in a Node process and reads the JSON it prints
   run.ts                     CLI: a timed run — spawns the processes, assembles and writes the results file
+  publish.ts                 CLI: copies a publishable run to `results/latest.json`
   run_options.ts             a run's flags, parameters, cell and process plan, and output path (pure)
   cell.ts                    one library on one cell, in a process of its own: setup, output check, measurement
   coldstart.ts               cold start: the scenarios, the generated process of one sample, its check, the stats
@@ -94,8 +96,11 @@ static/                      the mark: `logo.svg`, `favicon.png`, and `src/lib/l
 ```
 
 Planned addition: committed timed runs in `results/`, the latest as
-`results/latest.json`. Nothing in the harness writes that file: a published
-run is its dated file copied there by hand, as `results/README.md` says. Keep
+`results/latest.json`. A timed run never writes that file: `npm run
+results:publish -- <file>` (`bench/publish.ts`) copies a run's dated file
+there, byte for byte, once it is a file in `results/` itself (followed through
+links, so not in `scratch/`, not elsewhere, and not `latest.json`), parses, and
+passes `bench_results_is_publishable`, as `results/README.md` says. Keep
 that page in step with the harness: `src/test/docs_publish.test.ts` checks the
 scripts, flags, and thresholds it quotes. `read_commit` ignores `results/`, so
 an edit to the page never marks a run `-dirty`, which is right: it changes
@@ -222,16 +227,25 @@ how the timed numbers were measured — the kind of run (`full`, `smoke`,
 `calibrate`), passes, rounds and durations, the retries allowed, the
 loaded-language rule, how cold start was sampled (`startup_samples`,
 `startup_discard`, `startup_compile_cache`), the filters, how many segments
-it was measured in, and the duration — and may be null only when nothing was
+it was measured in, the duration, and `load_at_start` (the 1-minute load
+average when the run was planned, the highest of its segments' for a resumed
+run) — and may be null only when nothing was
 timed. `bench_run_is_complete` is a run that isn't smoke and has no filter:
 what it set out to cover. `bench_results_find_gaps` lists what a file's cells
 lack to have covered it, and `bench_results_find_startup_gaps` what its cold
 start lacks; `BenchResults` rejects a complete run with a cell gap, and a
 complete `full` run with a cold-start gap. `bench_results_is_publishable` adds
-that it is `full`, has neither gap, its anchor is stable, and its commit isn't
-dirty. The site should use the latter
+that it is `full`, has neither gap, its anchor is stable, it carries a noise
+floor, and its commit isn't dirty. The site should use the latter
 and never restate it. `meta.commit` is a full hash, with `-dirty` appended when
 the working tree had uncommitted changes.
+
+`meta.machine` (`BenchMachine`, read by `read_machine`) names the machine and
+records its state: the CPU model, its logical CPUs (`threads`), the first CPU's
+`governor`, `cpufreq_driver`, `epp` (energy-performance preference), and
+`boost`, each null where the OS exposes none, the memory, and `os_release`. A
+run logs when the CPUs run different governors (`find_mixed_governors`) and
+never refuses for it.
 
 A gap, checked from the file alone: a roster library that claims a cell's
 language and has neither a value nor a `meta.excluded` entry there, or a listed
@@ -254,7 +268,8 @@ are null exactly when the run measured no cold start (a calibration, or
 `--metrics throughput`).
 
 `filters.metrics` (`BenchRunMetric`: `throughput`, `startup`) is a filter like
-the others (naming both parses to null, so it is no filter): a run that left one out is not complete, is written to
+the others (naming both parses to null, so it is no filter, and so does
+`--calibrate --metrics throughput`, since a calibration measures nothing else): a run that left one out is not complete, is written to
 `results/scratch/`, and must hold nothing of what it left out. `libraries` and
 `langs` narrow the cold-start scenarios too; `sizes`, `modes`, and `sources`
 select inputs, which cold start has none of.
@@ -586,7 +601,9 @@ memory is that library's too. Never import `bench/libraries.ts` from
 
 **A cell process** (`bench/cell.ts`, `run_cell`), in order:
 
-1. `adapter.setup([lang])` — the loaded-language rule.
+1. `adapter.setup([lang])` — the loaded-language rule — then the installed
+   versions of `adapter.package` and its `extra_packages`
+   (`read_package_versions`), which go in the result.
 2. The output check: the snippet gate on the language's harness snippet, then
    the per-input floor on the cell's input. A failure is returned as excluded
    with its reason and the library is not timed. A `LangNotSetUpError`
@@ -598,7 +615,24 @@ memory is that library's too. Never import `bench/libraries.ts` from
    peak resident size (`process.resourceUsage().maxRSS`, which is in kilobytes).
    On a small input that peak follows what the warmup and the batches allocated
    more than what the library holds, so the docs point readers at the
-   cold-start entries for memory.
+   cold-start entries for memory. The process exits once that line is written
+   (in the write's callback, since a write to a pipe is asynchronous), so a
+   handle a library leaves open can't hold it until the parent's timeout. The
+   cold-start, outputs, and bundle-check processes end the same way.
+
+**Versions are checked per process.** The parent reads the roster's versions
+once in `plan_run`, and `create_agreement_check` holds every cell result's
+`versions` against them (`assert_planned_versions`): a package changed on disk
+mid-run is a `RunError` with exit 2 naming the package and both versions,
+before the result is journaled. A change that moves speed and not output would
+otherwise go unseen. Cold-start processes resolve their packages as they are
+spawned and report none, so after measuring `run_bench` reads the roster again
+(`find_roster_change`; a package that can't be read, being removed, is a change
+too). On a change it writes nothing and sets the journal aside as
+`<journal>.changed` (`CHANGED_SUFFIX`): its cold-start samples taken after the
+change were never checked, so restoring the versions and resuming would publish
+them, and the run starts over. The results file records the roster read at
+planning (`RunRecord.libraries`), never one read later.
 
 **The timed call** (`create_timed_call`) is the same for every library. In
 `html` mode it reads one character of the returned string. fuz_code,
@@ -654,7 +688,11 @@ the engine is tested with a fake clock; `create_measure_deps` throws without
   takes the machine lock.
 - `read_commit` runs in `plan_run`, before any anchor reading, on purpose: the
   anchor reads several percent slower after a process's first spawn, so every
-  reading must come after one.
+  reading must come after one. The load average is read first of all, before
+  the run spawns anything (`RunBenchOptions.read_load` for tests); it is
+  journaled on each `segment` line, printed by `--plan`, and past
+  `LOAD_BUSY_ABOVE` (`bench/run_options.ts`) a timed run logs a warning
+  (`to_load_note`) and goes ahead.
 - A timed run spawns one process at a time with `spawnSync`, so the parent has
   no timers and does no work while a process measures. It yields to the event
   loop between processes so a signal can stop the run. A smoke run alone spawns
@@ -696,7 +734,8 @@ date so a run resumed on a later day finds it). Smoke runs keep none.
 
 - The first line is a `JournalHeader`: the kind, the parameters with retries
   and the cold-start samples and discarded rounds, the filters, the corpus hash, each library's id, version, and extra packages,
-  the machine's name, CPU, and governor, the OS release, the Node version, the
+  the machine's name, CPU, threads, governor, frequency driver, energy-performance
+  preference, and boost, the OS release, the Node version, the
   `NODE_OPTIONS` the processes inherit, the commit with its dirty marker, and
   `generated_at`. Two dirty trees at one commit look the same to it, so a resume
   from a dirty tree logs that it can't vouch for the changes. `diff_journal_header` compares every field
@@ -704,7 +743,7 @@ date so a run resumed on a later day finds it). Smoke runs keep none.
   field there whenever something new can change what is measured; a test fails
   if a header field goes uncompared.
 - Then, for each segment (one stretch of measuring): a `segment` line with the
-  opening anchor reading, a `result` line per cell process (pass, attempt, the
+  opening anchor reading and the load average, a `result` line per cell process (pass, attempt, the
   `CellResult`), a `startup` line per cold-start process (round, the
   `StartupResult`), and an `anchor` line with the closing reading. Every line
   carries milliseconds since its segment started, so duration survives a stop.
@@ -723,7 +762,10 @@ date so a run resumed on a later day finds it). Smoke runs keep none.
 - A segment whose `lock.release()` reports the lock was lost may have overlapped
   another run. On every path `close()` renames its journal to
   `<journal>.overlapped` (`OVERLAPPED_SUFFIX`), which no run resumes, the
-  message says so, and no results file is written.
+  message says so, and no results file is written. A run whose packages changed
+  on disk sets its journal aside the same way, as `<journal>.changed`
+  (`CHANGED_SUFFIX`). A run only ever resumes the journal at its exact path, so
+  any suffix takes a journal out of reach, and one `.gitignore` rule covers them.
 - The assembled file records `segments`, `generated_at` from the first segment
   (so a full run's dated name is the day it started), `duration_ms` summed over
   segments, and an anchor over every reading.
@@ -839,9 +881,12 @@ can't steer the floor, and the floor describes a full run with the same
 retries. Retrying both arms together on their pooled spread would select for
 the arms agreeing, which is the thing being measured. A `full` run carries the
 floor of `results/calibration_<machine>.json` when `carry_noise_floor` accepts
-it: unfiltered, anchor stable, same machine name, CPU, governor, Node version,
-corpus hash, and parameters, retries included. Otherwise `meta.noise_floor` is
-null and the run logs why.
+it: unfiltered, anchor stable, same machine name, CPU, threads, governor,
+frequency driver, energy-performance preference, and boost, same Node version,
+corpus hash, and parameters, retries included, and every library of the run at
+the same version with the same extra packages (`find_library_change`, which
+`carry_deterministic` uses too). Not the commit: a docs commit would invalidate
+every calibration. Otherwise `meta.noise_floor` is null and the run logs why.
 
 **The anchor** (`bench/anchor.ts`): a deterministic workload with no measured
 library in it, read before the first process and after the last of every
@@ -882,8 +927,9 @@ from one named machine; deterministic numbers regenerate anywhere.
   build.
 - `results/latest.json` must pass `bench_results_is_publishable`, with no
   exception. Anything else fails the build with the run's facts
-  (`describe_bench_run`): smoke, calibration, filtered, a gap, a dirty commit,
-  a drifted anchor, or a file with no timed run. A drifted run is measured
+  (`describe_bench_run`, in the schema module so `bench/publish.ts` refuses with
+  the same reasons): smoke, calibration, filtered, a gap, a dirty commit,
+  a drifted anchor, no noise floor, or a file with no timed run. A drifted run is measured
   again, never rendered under a warning.
 - `results/deterministic.json` must hold no timed number, or the build fails:
   that path is shown as "the same on any machine".

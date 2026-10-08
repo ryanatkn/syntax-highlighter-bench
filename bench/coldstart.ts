@@ -321,7 +321,9 @@ export const to_startup_child_source = (
 		`\t\texports: ${entry === null ? '0' : 'Object.keys(exports).length'},`,
 		`\t\thtml: ${highlight === null ? 'null' : 'html'},`,
 		"\t\tcompile_cache_dir: process.getBuiltinModule('node:module').getCompileCacheDir() ?? null",
-		"\t}) + '\\n'",
+		"\t}) + '\\n',",
+		// after the clock: exits once the line is written, whatever handle the library left open
+		'\t(error) => process.exit(error ? 1 : 0)',
 		');',
 		''
 	].join('\n');

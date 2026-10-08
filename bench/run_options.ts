@@ -94,6 +94,16 @@ export const SMOKE_PARAMS: Readonly<RunParams> = {
 	startup_discard: 0
 };
 
+/**
+ * The 1-minute load average above which a timed run warns as it starts; it
+ * never refuses. A timed run measures one process at a time, and when it is
+ * planned it has spawned nothing yet, so on a quiet machine the load is well
+ * under 1. Above 1, something else kept about a CPU's worth of tasks running or
+ * waiting over the last minute, enough to land in some library's batches and
+ * not in the others'.
+ */
+export const LOAD_BUSY_ABOVE = 1;
+
 /** Every flag `bench/run.ts` takes, as its help prints them. */
 export const RUN_FLAGS: ReadonlyArray<{ flag: string; value: string | null; description: string }> =
 	[
@@ -347,8 +357,10 @@ export const parse_run_args = (
 				sizes,
 				modes,
 				sources,
-				// naming every metric restricts nothing, so it is no filter
-				metrics: metrics?.length === BenchRunMetric.options.length ? null : metrics
+				// naming every metric restricts nothing, so it is no filter, and nor does naming
+				// throughput on a calibration, which measures nothing else
+				metrics:
+					metrics?.length === BenchRunMetric.options.length || kind === 'calibrate' ? null : metrics
 			},
 			...params,
 			machine,

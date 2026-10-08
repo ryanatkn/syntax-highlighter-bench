@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { BENCH_ANCHOR_STABLE_BELOW } from '$lib/results_schema.ts';
 import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
 import { SITE_DETERMINISTIC_PATH, SITE_LATEST_PATH } from '$lib/server/site_results_load.ts';
-import { RUN_FLAGS } from '../../bench/run_options.ts';
+import { LOAD_BUSY_ABOVE, RUN_FLAGS } from '../../bench/run_options.ts';
 
 // the page states by hand what the harness and `package.json` define
 const page = readFileSync(new URL('../../results/README.md', import.meta.url), 'utf8');
@@ -38,7 +38,13 @@ test('the publishing page states the thresholds and the files the site reads', (
 	const text = page.replace(/\s+/g, ' ');
 	assert.ok(text.includes(`within ${BENCH_ANCHOR_STABLE_BELOW * 100}%`), 'the anchor threshold');
 	assert.ok(text.includes(`over ${SPREAD_DISTURBED_ABOVE} after`), 'the spread threshold');
+	assert.ok(text.includes(`warns when it is over ${LOAD_BUSY_ABOVE}`), 'the load threshold');
 	for (const path of [SITE_DETERMINISTIC_PATH, SITE_LATEST_PATH]) {
 		assert.ok(page.includes(`\`${path.replace('results/', '')}\``), path);
 	}
+});
+
+test('the publishing page publishes through the script, never by hand', () => {
+	assert.ok(page.includes('npm run results:publish -- results/'));
+	assert.ok(!/\bcp\b[^\n]*latest\.json/.test(page), 'a hand copy to latest.json');
 });

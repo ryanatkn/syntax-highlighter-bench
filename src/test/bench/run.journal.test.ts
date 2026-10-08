@@ -27,6 +27,7 @@ import { read_journal } from '../../../bench/journal.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
 import { to_bench_libraries } from '../../../bench/library_info.ts';
 import {
+	CHANGED_SUFFIX,
 	OVERLAPPED_SUFFIX,
 	RunError,
 	format_run_plan,
@@ -34,10 +35,11 @@ import {
 	plan_run,
 	read_commit,
 	run_bench,
+	to_planned_versions,
 	type ChildOutcome,
 	type RunBenchOptions
 } from '../../../bench/run.ts';
-import { parse_run_args, type RunOptions } from '../../../bench/run_options.ts';
+import { LOAD_BUSY_ABOVE, parse_run_args, type RunOptions } from '../../../bench/run_options.ts';
 import { to_bench_sets } from '../../../bench/sets.ts';
 
 // A timed run end to end, with invented process results in place of real
@@ -76,6 +78,9 @@ const parse = (...args: Array<string>): RunOptions => {
 };
 
 const STEADY = [1000, 1010];
+
+/** The versions installed, which a process reports. */
+const VERSIONS = to_planned_versions(to_bench_libraries(ADAPTERS));
 const NOISY = [1000, 1000 * (SPREAD_DISTURBED_ABOVE + 0.2)];
 
 /** What a process would print for a spec. */
@@ -84,6 +89,7 @@ const to_outcome = (spec: CellSpec, ns: Array<number>, tokens: number = 10): Chi
 		cell: `${spec.file}:${spec.mode}`,
 		library: spec.library,
 		loaded_langs: [manifest.inputs.find((i) => i.file === spec.file)!.lang],
+		versions: VERSIONS.get(spec.library)!,
 		measurement: {
 			tokens,
 			output: { html_bytes: 100, spans: 10 },
@@ -243,6 +249,21 @@ describe('a timed run keeps a journal', () => {
 		}
 	});
 
+	test('a busy machine is warned of, never refused, and a resumed run keeps its busiest start', async () => {
+		const machine = create_machine();
+		const loads = [LOAD_BUSY_ABOVE + 2, 0.2];
+		const options = { ...machine.options, read_load: () => loads.shift()! };
+		machine.interrupt_after = 3;
+		await catch_run_error(parse(), options);
+		assert.ok(machine.log.some((line) => /the machine is busy: .* 3\.00, past 1/.test(line)));
+		assert.deepStrictEqual(read_journal_ok().loads, [LOAD_BUSY_ABOVE + 2]);
+		machine.interrupt_after = Infinity;
+		machine.log.length = 0;
+		const { results } = await run_bench(parse('--resume'), options);
+		assert.ok(!machine.log.some((line) => line.includes('busy')));
+		assert.strictEqual(results.meta.run!.load_at_start, LOAD_BUSY_ABOVE + 2);
+	});
+
 	test('a run stopped twice resumes twice', async () => {
 		const machine = create_machine();
 		machine.interrupt_after = 2;
@@ -372,6 +393,57 @@ describe('a timed run keeps a journal', () => {
 		assert.match(again.message, /came out differently/);
 		assert.strictEqual(resumed.spawned, 1);
 		assert.strictEqual(read_journal_ok().results.size, kept);
+	});
+
+	test('a process that loaded another version than planned stops the run, and is not journaled', async () => {
+		// a package upgraded on disk after the run was planned, before its third process
+		const machine = create_machine((spec) => {
+			const outcome = to_outcome(spec, STEADY);
+			if (machine.spawned < 3) return outcome;
+			const result: CellResult = JSON.parse(outcome.stdout);
+			result.versions = { ...result.versions, [Object.keys(result.versions)[0]!]: '99.0.0' };
+			return { ...outcome, stdout: JSON.stringify(result) + '\n' };
+		});
+		const error = await catch_run_error(parse(), machine.options);
+		assert.strictEqual(error.exit_code, 2);
+		assert.match(error.message, / 99\.0\.0, and the run was planned with /);
+		assert.match(error.message, /--resume/);
+		assert.strictEqual(read_journal_ok().results.size, 2);
+	});
+
+	test('a package changed or removed on disk by the end of the run writes nothing, and sets the journal aside', async () => {
+		const bumped = (adapters: Parameters<typeof to_bench_libraries>[0]) =>
+			to_bench_libraries(adapters).map((l) => (l.id === 'prism' ? { ...l, version: '99.0.0' } : l));
+		const removed = (): never => {
+			throw new Error('package "prismjs" is not installed');
+		};
+		for (const [read_libraries, says] of [
+			[
+				bumped,
+				/^prism is installed at prismjs 99\.0\.0 now, and the run was planned with prismjs /
+			],
+			[removed, /^the installed packages can't be read now: package "prismjs" is not installed/]
+		] as const) {
+			const machine = create_machine();
+			const error = await catch_run_error(parse(), { ...machine.options, read_libraries });
+			assert.strictEqual(error.exit_code, 2);
+			assert.match(error.message, says);
+			assert.match(
+				error.message,
+				new RegExp(
+					`the run starts over: the journal was set aside as .*${CHANGED_SUFFIX} and can not be resumed`
+				)
+			);
+			assert.strictEqual(machine.spawned, PLANNED);
+			assert.ok(!existsSync(out));
+			assert.ok(!existsSync(journal_path));
+			assert.ok(existsSync(journal_path + CHANGED_SUFFIX));
+			assert.ok(!existsSync(lock_path));
+			// the set-aside journal is not one a run resumes
+			const resumed = await catch_run_error(parse('--resume'), machine.options);
+			assert.match(resumed.message, /there is no journal to resume/);
+			rmSync(journal_path + CHANGED_SUFFIX);
+		}
 	});
 
 	test('a failed process fails the run and leaves the journal to resume', async () => {
@@ -690,7 +762,10 @@ describe('a timed run and the deterministic results file', () => {
 		writeFileSync(to_deterministic_path(dir), JSON.stringify(stale));
 		const refused = await catch_run_error(unfiltered(), machine.options);
 		assert.strictEqual(refused.exit_code, 2);
-		assert.match(refused.message, /doesn't describe this run, it measured fuz_code at another/);
+		assert.match(
+			refused.message,
+			/doesn't describe this run, it measured fuz_code with @fuzdev\/fuz_code 0\.0\.1, and this run has/
+		);
 		assert.strictEqual(machine.spawned, 0);
 		// `--plan` is refused where the run would be
 		assert.throws(
@@ -755,6 +830,10 @@ describe('before a timed run measures', () => {
 		assert.match(text, /output +.*run\.json\n/);
 		assert.match(text, /journal +.*run\.json\.journal\.jsonl\n/);
 		assert.match(text, /noise floor +none: /);
+		assert.match(text, /machine +.*, \d+ threads, governor /);
+		assert.match(text, /load +(\d+\.\d\d over the last minute|the machine is busy)/);
+		const busy = format_run_plan({ ...plan, load: LOAD_BUSY_ABOVE + 1 });
+		assert.match(busy, /load +the machine is busy: .* 2\.00, past 1/);
 		assert.match(text, /estimate +about .* a rough figure from the parameters, not a measurement/);
 		// in minutes once it is over one
 		const long = format_run_plan({ ...plan, processes: Array(400).fill(plan.processes[0]) });

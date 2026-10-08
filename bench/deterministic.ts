@@ -42,7 +42,7 @@ import type { HighlighterAdapter } from './adapter.ts';
 import { load_corpus_manifest } from './corpus.ts';
 import { LANG_ROSTER } from './langs.ts';
 import { ADAPTERS } from './libraries.ts';
-import { to_bench_coverage, to_bench_libraries } from './library_info.ts';
+import { find_library_change, to_bench_coverage, to_bench_libraries } from './library_info.ts';
 import { measure_outputs, to_deterministic_cells, type CellNumbers } from './outputs.ts';
 import { RESULTS_DIR } from './run_options.ts';
 import { FEATURE_SETS, to_bench_sets } from './sets.ts';
@@ -202,19 +202,8 @@ export const carry_deterministic = (
 	if (JSON.stringify(deterministic.sets) !== JSON.stringify(context.sets)) {
 		return { ok: false, reason: 'it measured other feature sets' };
 	}
-	const versions = (library: BenchLibrary | undefined): string =>
-		JSON.stringify(library && [library.package, library.version, library.extra_packages ?? {}]);
-	for (const library of context.libraries) {
-		const own = meta.libraries.find((l) => l.id === library.id);
-		if (versions(own) !== versions(library)) {
-			return {
-				ok: false,
-				reason: own
-					? `it measured ${library.id} at another version (${own.version}, or its extra packages)`
-					: `it has no library "${library.id}"`
-			};
-		}
-	}
+	const moved = find_library_change(meta.libraries, context.libraries);
+	if (moved !== null) return { ok: false, reason: moved };
 	const expected: CarriedDeterministic['expected'] = new Map();
 	const by_file = Map.groupBy(deterministic.cells, (cell) => cell.file);
 	const excluded = new Map(meta.excluded.map((e) => [JSON.stringify([e.cell, e.library]), e]));

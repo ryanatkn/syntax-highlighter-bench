@@ -6,7 +6,8 @@
  * node --expose-gc bench/cell.ts '<CellSpec as JSON>'
  * ```
  *
- * It prints one `CellResult` as JSON on stdout and nothing else.
+ * It prints one `CellResult` as JSON on stdout and nothing else, and exits once
+ * that is written, whatever the library leaves running.
  *
  * The process loads one library and nothing else that is measured, so no other
  * library can change its number. Two effects made that necessary. Libraries
@@ -17,7 +18,8 @@
  *
  * In order, before any timing:
  *
- * 1. The library sets up exactly the cell's language, once.
+ * 1. The library sets up exactly the cell's language, once, and the installed
+ *    versions of its packages are read, for the parent to check.
  * 2. Its output is checked: on the language's harness snippet, which decides
  *    whether it is measured on the language at all, then on the cell's input. A
  *    library that fails is reported as excluded, with the reason, and is not
@@ -41,6 +43,7 @@ import type { HighlighterAdapter } from './adapter.ts';
 import { check_output, check_snippet } from './check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from './corpus.ts';
 import { lang_is_timed, type Lang } from './langs.ts';
+import { read_package_versions } from './library_info.ts';
 import {
 	create_measure_deps,
 	measure_call,
@@ -88,6 +91,10 @@ export const CellResult = z
 		loaded_langs: z
 			.array(z.string().min(1))
 			.meta({ description: 'The languages the library was set up with.' }),
+		versions: z.record(z.string().min(1), z.string().min(1)).meta({
+			description:
+				"The installed version of the library's package and of each of its extra packages, by package name, as the process read them."
+		}),
 		measurement: CellMeasurement.nullable(),
 		excluded: z.string().min(1).nullable()
 	})
@@ -152,6 +159,7 @@ const read_rss_peak_bytes = (): number => process.resourceUsage().maxRSS * 1024;
  * @param spec - the input, the mode, the library, and how to measure
  * @param deps - the process's clock and collector
  * @param load - loads a library's adapter by id
+ * @param read_versions - reads the installed versions of the adapter's packages
  * @returns the library's measurement, or why it was excluded
  * @throws if the input or the library is unknown, the language isn't timed or
  * isn't claimed, or the library's output changes between rounds
@@ -159,7 +167,8 @@ const read_rss_peak_bytes = (): number => process.resourceUsage().maxRSS * 1024;
 export const run_cell = async (
 	spec: CellSpec,
 	deps: MeasureDeps = create_measure_deps(),
-	load: (id: string) => Promise<HighlighterAdapter> = load_adapter
+	load: (id: string) => Promise<HighlighterAdapter> = load_adapter,
+	read_versions: (adapter: HighlighterAdapter) => Record<string, string> = read_package_versions
 ): Promise<CellResult> => {
 	const { mode } = spec;
 	const manifest = load_corpus_manifest();
@@ -176,11 +185,14 @@ export const run_cell = async (
 	const loaded_langs = [lang];
 	const adapter = await load(spec.library);
 	await adapter.setup(loaded_langs);
+	// what this process loaded, which the parent holds against the versions the run planned with
+	const versions = read_versions(adapter);
 
 	const result = (outcome: Pick<CellResult, 'measurement' | 'excluded'>): CellResult => ({
 		cell: to_bench_cell_id(input.file, mode),
 		library: adapter.id,
 		loaded_langs,
+		versions,
 		...outcome
 	});
 
@@ -215,5 +227,7 @@ export const run_cell = async (
 if (import.meta.main) {
 	const spec = CellSpec.parse(JSON.parse(process.argv[2] ?? 'null'));
 	const result = await run_cell(spec);
-	process.stdout.write(JSON.stringify(result) + '\n');
+	// exits once the line is written, so a handle the library leaves open can't keep the process
+	// alive; the callback waits for the write, which is asynchronous to a pipe
+	process.stdout.write(JSON.stringify(result) + '\n', (error) => process.exit(error ? 1 : 0));
 }

@@ -30,12 +30,12 @@ import {
 } from 'node:fs';
 import { z } from 'zod';
 
-import { BenchRunFilters } from '../src/lib/results_schema.ts';
+import { BenchMachine, BenchRunFilters } from '../src/lib/results_schema.ts';
 import { CellResult } from './cell.ts';
 import { StartupResult } from './coldstart.ts';
 
 /** The version of the journal's format. A journal of another version is refused. */
-export const JOURNAL_VERSION = 2;
+export const JOURNAL_VERSION = 3;
 
 /**
  * What a journal says about the run it belongs to. A run resumes a journal only
@@ -63,12 +63,18 @@ export const JournalHeader = z.strictObject({
 			extra_packages: z.record(z.string(), z.string()).optional()
 		})
 	),
-	machine: z.strictObject({
-		name: z.string().min(1),
-		cpu: z.string().min(1),
-		governor: z.string().min(1).nullable()
+	machine: BenchMachine.pick({
+		name: true,
+		cpu: true,
+		threads: true,
+		governor: true,
+		cpufreq_driver: true,
+		epp: true,
+		boost: true
+	}).meta({
+		description: "What of the machine can change what is measured: not its memory's size."
 	}),
-	os_release: z.string().meta({ description: 'The OS release, as `os.release()` gives it.' }),
+	os_release: BenchMachine.shape.os_release,
 	node: z.string().min(1),
 	node_options: z.string().meta({
 		description: 'The `NODE_OPTIONS` the processes inherit, empty when it is unset.'
@@ -88,7 +94,11 @@ export const JournalEntry = z.discriminatedUnion('type', [
 	z.strictObject({
 		type: z.literal('segment'),
 		at_ms,
-		anchor_ns: z.number().positive().meta({ description: "The segment's opening anchor reading." })
+		anchor_ns: z.number().positive().meta({ description: "The segment's opening anchor reading." }),
+		load: z
+			.number()
+			.nonnegative()
+			.meta({ description: "The 1-minute load average when the segment's run was planned." })
 	}),
 	z.strictObject({
 		type: z.literal('result'),
@@ -132,6 +142,8 @@ export interface Journal {
 	startup: Map<string, StartupResult>;
 	/** Every anchor reading, in the order taken. */
 	readings_ns: Array<number>;
+	/** Each segment's load average at its start, in order. */
+	loads: Array<number>;
 	/** How many segments the journal records. */
 	segments: number;
 	/** How long those segments measured for, in milliseconds. */
@@ -165,6 +177,7 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 	const results: Map<string, CellResult> = new Map();
 	const startup: Map<string, StartupResult> = new Map();
 	const readings_ns: Array<number> = [];
+	const loads: Array<number> = [];
 	let segments = 0;
 	let duration_ms = 0;
 	let segment_ms = 0;
@@ -176,6 +189,7 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 		if (entry.type === 'segment') {
 			segments++;
 			duration_ms += segment_ms;
+			loads.push(entry.load);
 		} else if (segments === 0) {
 			return { ok: false, message: `line ${i + 1} comes before any segment` };
 		}
@@ -199,6 +213,7 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 		results,
 		startup,
 		readings_ns,
+		loads,
 		segments,
 		duration_ms: duration_ms + segment_ms,
 		complete_bytes

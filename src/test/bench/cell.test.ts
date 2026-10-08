@@ -12,6 +12,7 @@ import {
 import { MIN_SNIPPET_SPAN_KINDS } from '../../../bench/check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from '../../../bench/corpus.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
+import { resolve_package_version } from '../../../bench/library_info.ts';
 import type { MeasureDeps } from '../../../bench/measure.ts';
 import { SMOKE_PARAMS } from '../../../bench/run_options.ts';
 
@@ -84,7 +85,9 @@ const create_stub = (
 };
 
 const run_stub = (stub: ReturnType<typeof create_stub>, overrides: Partial<CellSpec> = {}) =>
-	run_cell(create_spec({ library: 'stub', ...overrides }), deps, stub.load);
+	run_cell(create_spec({ library: 'stub', ...overrides }), deps, stub.load, () => ({
+		stub: '1.0.0'
+	}));
 
 const catch_error = async (run: () => Promise<unknown>): Promise<unknown> => {
 	try {
@@ -139,6 +142,9 @@ describe('run_cell', () => {
 		assert.strictEqual(result.cell, `${SNIPPET}:tokenize`);
 		assert.strictEqual(result.library, 'fuz_code');
 		assert.deepStrictEqual(result.loaded_langs, ['json']);
+		assert.deepStrictEqual(result.versions, {
+			'@fuzdev/fuz_code': resolve_package_version('@fuzdev/fuz_code')
+		});
 		assert.strictEqual(result.excluded, null);
 		const measurement = result.measurement!;
 		assert.strictEqual(measurement.ns_per_op.length, SMOKE_PARAMS.rounds);
@@ -246,7 +252,7 @@ describe('CellSpec and CellResult', () => {
 	});
 
 	test('a result is a measurement or an exclusion, never both or neither', () => {
-		const base = { cell: 'c', library: 'l', loaded_langs: ['json'] };
+		const base = { cell: 'c', library: 'l', loaded_langs: ['json'], versions: { l: '1.0.0' } };
 		const measurement = {
 			tokens: 1,
 			output: { html_bytes: 1, spans: 0 },

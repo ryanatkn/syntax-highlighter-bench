@@ -20,13 +20,28 @@
 	const site = site_context.get();
 
 	const clean_commit = $derived(meta.commit?.replace(/-dirty$/, '') ?? null);
+
+	/** The machine's state, leaving out what the OS didn't expose. */
+	const machine_parts = $derived.by(() => {
+		const m = meta.machine;
+		if (!m) return [];
+		return [
+			m.cpu,
+			m.threads === null ? null : `${m.threads} threads`,
+			m.governor === null ? null : `${m.governor} governor`,
+			m.cpufreq_driver === null ? null : `${m.cpufreq_driver} driver`,
+			m.epp === null ? null : `energy preference ${m.epp}`,
+			m.boost === null ? null : `boost ${m.boost ? 'on' : 'off'}`,
+			`${m.memory_gb} GB`,
+			`kernel ${m.os_release}`
+		].filter((part) => part !== null);
+	});
 </script>
 
 {#if meta.machine && meta.generated_at && meta.commit}
 	<p>
-		Timed on <strong>{meta.machine.name}</strong>:
-		{meta.machine.cpu}{meta.machine.governor ? `, ${meta.machine.governor} governor` : ''},
-		{meta.machine.memory_gb} GB, Node {meta.node}. Run of {format_date(meta.generated_at)} at commit
+		Timed on <strong>{meta.machine.name}</strong>: {machine_parts.join(', ')}, Node {meta.node}. Run
+		of {format_date(meta.generated_at)} at commit
 		{#if site.repo_url}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a href="{site.repo_url}/commit/{clean_commit}" rel="external">

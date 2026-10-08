@@ -1,9 +1,12 @@
 import { assert, describe, test } from 'vitest';
 
-import { BENCH_ANCHOR_STABLE_BELOW, type BenchResults } from '$lib/results_schema.ts';
+import {
+	BENCH_ANCHOR_STABLE_BELOW,
+	describe_bench_run,
+	type BenchResults
+} from '$lib/results_schema.ts';
 import {
 	bench_results_are_timed,
-	describe_bench_run,
 	find_first_difference,
 	find_moved_since,
 	resolve_site_results
@@ -48,6 +51,7 @@ const UNPUBLISHABLE: Array<[label: string, change: (data: BenchResults) => void,
 		'filters: sources'
 	],
 	['a run from a dirty commit', (data) => (data.meta.commit += '-dirty'), '-dirty'],
+	['a run with no noise floor', (data) => (data.meta.noise_floor = null), 'noise floor: none'],
 	[
 		'a run whose anchor drifted',
 		(data) => (data.meta.anchor = { drift: BENCH_ANCHOR_STABLE_BELOW + 0.02, stable: false }),
@@ -259,6 +263,7 @@ test('describe_bench_run states the facts a refusal rests on, the drift as a per
 		'kind: full',
 		'filters: none',
 		`anchor: stable, drift ${(fixture.meta.anchor!.drift * 100).toFixed(1)}%`,
+		'noise floor: present',
 		'cells without a number: 0'
 	]) {
 		assert.include(description, part);

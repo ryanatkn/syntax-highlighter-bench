@@ -8,9 +8,8 @@
  */
 
 import {
-	bench_results_find_gaps,
-	bench_results_find_startup_gaps,
 	bench_results_is_publishable,
+	describe_bench_run,
 	parse_bench_results,
 	type BenchLibrary,
 	type BenchResults
@@ -59,29 +58,6 @@ export const bench_results_are_timed = (results: BenchResults): boolean =>
 	results.meta.run !== null ||
 	results.startup.length > 0 ||
 	results.cells.some((cell) => Object.keys(cell.values).length > 0);
-
-/** The facts of a run that decide whether it is publishable, as one line for an error. */
-export const describe_bench_run = (results: BenchResults): string => {
-	const { run, anchor, commit } = results.meta;
-	if (run === null) return 'it holds no timed run';
-	const filters = Object.entries(run.filters)
-		.filter(([, ids]) => ids !== null)
-		.map(([key]) => key);
-	return [
-		`kind: ${run.kind}`,
-		`filters: ${filters.length > 0 ? filters.join(', ') : 'none'}`,
-		`commit: ${commit ?? 'none'}`,
-		`anchor: ${
-			anchor === null
-				? 'none'
-				: anchor.stable
-					? `stable, drift ${(anchor.drift * 100).toFixed(1)}%`
-					: `drifted by ${(anchor.drift * 100).toFixed(1)}%, so the machine changed state during the run: run it again`
-		}`,
-		`cells without a number: ${bench_results_find_gaps(results).length}`,
-		`cold-start scenarios without a number: ${bench_results_find_startup_gaps(results).length}`
-	].join('; ');
-};
 
 /** A library's version and the versions of its extra packages, as one comparable string. */
 const to_versions = (library: BenchLibrary): string =>
@@ -193,7 +169,7 @@ export const resolve_site_results = (files: SiteResultsFiles): SiteResults => {
 	const latest = parse_bench_results(files.latest);
 	if (!bench_results_is_publishable(latest)) {
 		throw new Error(
-			`results/latest.json is not a publishable run, so the site won't show it as results: ${describe_bench_run(latest)}. Publish a complete full run from a clean commit on a machine that held still, or remove the file.`
+			`results/latest.json is not a publishable run, so the site won't show it as results: ${describe_bench_run(latest)}. Publish a complete full run from a clean commit on a calibrated machine that held still, or remove the file.`
 		);
 	}
 	const moved = find_moved_since(latest, deterministic);

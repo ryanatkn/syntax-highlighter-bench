@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 
 import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -16,6 +16,7 @@ import type { CellResult } from '../../../bench/cell.ts';
 import { plan_startup_round, plan_startup_scenarios } from '../../../bench/coldstart.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
+import { to_bench_libraries } from '../../../bench/library_info.ts';
 import {
 	RunError,
 	SIGNAL_EXIT,
@@ -24,12 +25,14 @@ import {
 	assert_passes_agree,
 	carry_noise_floor,
 	combine_passes,
+	find_mixed_governors,
 	format_run_summary,
 	passes_are_disturbed,
 	read_cell_result,
 	read_commit,
 	read_machine,
 	run_cells_in_turn,
+	to_planned_versions,
 	select_attempt,
 	to_cell_spec,
 	to_deviation,
@@ -74,9 +77,19 @@ const manifest = load_corpus_manifest();
 const MACHINE: BenchMachine = {
 	name: 'box',
 	cpu: 'Test CPU',
+	threads: 16,
 	governor: 'performance',
-	memory_gb: 16
+	cpufreq_driver: 'amd-pstate-epp',
+	epp: 'performance',
+	boost: true,
+	memory_gb: 16,
+	os_release: '6.12.0'
 };
+
+const LIBRARIES = to_bench_libraries(ADAPTERS);
+
+/** The versions installed, which a process reports. */
+const VERSIONS = to_planned_versions(LIBRARIES);
 
 /** What a process would report: an invented measurement, or an exclusion. */
 const create_cell_result = (
@@ -86,6 +99,7 @@ const create_cell_result = (
 	cell: planned.cell.id,
 	library: planned.library,
 	loaded_langs: [planned.cell.input.lang],
+	versions: VERSIONS.get(planned.library)!,
 	measurement:
 		options.excluded === undefined
 			? {
@@ -147,11 +161,13 @@ const create_record = (overrides: Partial<RunRecord> = {}): RunRecord => {
 		generated_at: '2026-01-01T00:00:00.000Z',
 		duration_ms: 1234,
 		segments: 1,
+		load_at_start: 0.25,
 		machine: MACHINE,
 		node: 'v24.14.1',
 		commit: '0'.repeat(40),
 		corpus_hash: manifest.corpus_hash,
 		adapters: ADAPTERS.filter((a) => options.filters.libraries?.includes(a.id) ?? true),
+		libraries: LIBRARIES.filter((l) => options.filters.libraries?.includes(l.id) ?? true),
 		processes: create_processes(options),
 		...create_startup(options),
 		anchor: { drift: 0.001, stable: true },
@@ -422,6 +438,7 @@ describe('run_cells_in_turn', () => {
 	): Promise<{ results: Array<ProcessResult>; asked: Array<PlannedProcess> }> => {
 		const asked: Array<PlannedProcess> = [];
 		const results = await run_cells_in_turn(run_cells, options, {
+			versions: VERSIONS,
 			measure: (planned) => {
 				asked.push(planned);
 				return answer(planned);
@@ -525,6 +542,7 @@ describe('run_cells_in_turn', () => {
 				cells,
 				{ kind: 'full', passes: 2, retries: 0 },
 				{
+					versions: VERSIONS,
 					measure: (planned) => {
 						asked.push(planned);
 						return create_cell_result(planned, {
@@ -544,6 +562,39 @@ describe('run_cells_in_turn', () => {
 		assert.deepStrictEqual([last.library, last.pass], ['prism', 1]);
 		assert.ok(asked.length < plan_processes(cells, 2).length);
 		assert.deepStrictEqual(kept, asked.slice(0, -1));
+	});
+
+	test('a process that loaded another version than the run planned stops the run as it arrives', async () => {
+		const kept: Array<PlannedProcess> = [];
+		let error: unknown;
+		try {
+			await run_cells_in_turn(
+				cells,
+				{ kind: 'full', passes: 2, retries: 0 },
+				{
+					versions: VERSIONS,
+					measure: (planned) => {
+						const result = create_cell_result(planned);
+						// a package upgraded on disk between two processes
+						return planned.library === 'prism' && planned.pass === 1
+							? { ...result, versions: { ...result.versions, prismjs: '99.0.0' } }
+							: result;
+					},
+					on_result: (planned) => kept.push(planned)
+				}
+			);
+		} catch (caught) {
+			error = caught;
+		}
+		assert.ok(error instanceof RunError);
+		assert.strictEqual(error.exit_code, 2);
+		assert.match(
+			error.message,
+			new RegExp(
+				`prism\\) loaded prismjs 99\\.0\\.0, and the run was planned with prismjs ${VERSIONS.get('prism')!.prismjs!.replaceAll('.', '\\.')}`
+			)
+		);
+		assert.ok(!kept.some((p) => p.library === 'prism' && p.pass === 1));
 	});
 });
 
@@ -608,7 +659,8 @@ describe('assemble_results', () => {
 			startup_compile_cache: 'disabled',
 			filters: SMALL_TS,
 			segments: 1,
-			duration_ms: 1234
+			duration_ms: 1234,
+			load_at_start: 0.25
 		});
 		assert.deepStrictEqual(results.meta.machine, MACHINE);
 		assert.strictEqual(results.meta.corpus_hash, manifest.corpus_hash);
@@ -774,17 +826,25 @@ describe('assemble_results', () => {
 		assert.deepStrictEqual(results.meta.noise_floor, noise_floor);
 	});
 
-	test('only a complete, steady, clean full run is publishable', () => {
+	test('records the roster read when the run was planned, not one read later', () => {
+		const libraries = LIBRARIES.map((l) => ({ ...l, version: '0.0.1' }));
+		const { results } = assemble_results(create_record({ options: create_options(), libraries }));
+		assert.deepStrictEqual(results.meta.libraries, libraries);
+	});
+
+	test('only a complete, steady, clean, calibrated full run is publishable', () => {
 		const options = create_options();
-		const complete = create_record({ options });
+		const noise_floor = { per_cell: 0.03, geomean: 0.005 };
+		const complete = create_record({ options, noise_floor });
 		assert.ok(bench_results_is_publishable(assemble_results(complete).results));
 		for (const overrides of [
 			{ options: create_options({ filters: SMALL_TS }) },
 			{ options: create_options({ kind: 'calibrate' }) },
 			{ anchor: { drift: 0.2, stable: false } },
-			{ commit: `${'0'.repeat(40)}-dirty` }
+			{ commit: `${'0'.repeat(40)}-dirty` },
+			{ noise_floor: null }
 		] satisfies Array<Partial<RunRecord>>) {
-			const { results } = assemble_results(create_record({ options, ...overrides }));
+			const { results } = assemble_results(create_record({ options, noise_floor, ...overrides }));
 			assert.ok(!bench_results_is_publishable(results), JSON.stringify(Object.keys(overrides)));
 		}
 	});
@@ -868,7 +928,8 @@ describe('carry_noise_floor', () => {
 		machine: MACHINE,
 		node: 'v24.14.1',
 		corpus_hash: manifest.corpus_hash,
-		params: FULL_PARAMS
+		params: FULL_PARAMS,
+		libraries: LIBRARIES
 	};
 	const create_calibration = (overrides: Partial<RunRecord> = {}): BenchResults => {
 		const options = overrides.options ?? create_options({ kind: 'calibrate' });
@@ -908,7 +969,7 @@ describe('carry_noise_floor', () => {
 		);
 	});
 
-	test('not from another machine, CPU, governor, Node version, or corpus', () => {
+	test('not from another machine, CPU, machine state, Node version, or corpus', () => {
 		assert_not_carried(
 			create_calibration({ machine: { ...MACHINE, name: 'other' } }),
 			/another machine/
@@ -925,8 +986,52 @@ describe('carry_noise_floor', () => {
 			create_calibration({ machine: { ...MACHINE, governor: null } }),
 			/governor null/
 		);
+		assert_not_carried(
+			create_calibration({ machine: { ...MACHINE, threads: 8 } }),
+			/threads 8, and this run has 16/
+		);
+		assert_not_carried(
+			create_calibration({ machine: { ...MACHINE, cpufreq_driver: 'acpi-cpufreq' } }),
+			/cpufreq_driver acpi-cpufreq/
+		);
+		assert_not_carried(
+			create_calibration({ machine: { ...MACHINE, epp: 'balance_performance' } }),
+			/epp balance_performance/
+		);
+		assert_not_carried(
+			create_calibration({ machine: { ...MACHINE, boost: false } }),
+			/boost false, and this run has true/
+		);
+		// memory and the OS release are recorded, and don't decide
+		assert.ok(
+			carry_noise_floor(
+				create_calibration({ machine: { ...MACHINE, memory_gb: 32, os_release: '6.13.0' } }),
+				context
+			).ok
+		);
 		assert_not_carried(create_calibration({ node: 'v26.0.0' }), /Node v26\.0\.0/);
 		assert_not_carried(create_calibration({ corpus_hash: 'f'.repeat(64) }), /another corpus/);
+	});
+
+	test('not from a calibration of another version of a library, or of its extra packages', () => {
+		const prism = LIBRARIES.find((l) => l.id === 'prism')!;
+		const bumped = create_calibration();
+		bumped.meta.libraries = bumped.meta.libraries.map((l) =>
+			l.id === 'prism' ? { ...l, version: '0.0.1' } : l
+		);
+		assert_not_carried(
+			bumped,
+			new RegExp(
+				`measured prism with prismjs 0\\.0\\.1, and this run has prismjs ${prism.version.replaceAll('.', '\\.')}`
+			)
+		);
+		const extra = create_calibration();
+		extra.meta.libraries = extra.meta.libraries.map((l) =>
+			l.id === 'prism' ? { ...l, extra_packages: { 'prism-svelte': '0.0.1' } } : l
+		);
+		assert_not_carried(extra, /measured prism with prism-svelte 0\.0\.1/);
+		// the commit is not compared: a commit that changes nothing measured keeps the floor
+		assert.ok(carry_noise_floor(create_calibration({ commit: '1'.repeat(40) }), context).ok);
 	});
 
 	test('not measured with other parameters', () => {
@@ -949,17 +1054,57 @@ describe('read_machine', () => {
 		const machine = read_machine('box');
 		BenchMachine.parse(machine);
 		assert.strictEqual(machine.name, 'box');
+		assert.ok(machine.threads === null || machine.threads > 0);
 	});
 
-	test('reads the governor where the OS exposes one, and is null where it does not', () => {
+	test('reads the frequency settings where the OS exposes them, and is null where it does not', () => {
 		const dir = mkdtempSync(join(tmpdir(), 'bench_run_test_'));
 		try {
-			const path = join(dir, 'scaling_governor');
-			writeFileSync(path, 'performance\n');
-			assert.strictEqual(read_machine('box', path).governor, 'performance');
-			assert.strictEqual(read_machine('box', join(dir, 'missing')).governor, null);
-			writeFileSync(path, '\n');
-			assert.strictEqual(read_machine('box', path).governor, null);
+			const write = (path: string, content: string): void => {
+				mkdirSync(join(dir, path, '..'), { recursive: true });
+				writeFileSync(join(dir, path), content);
+			};
+			const none = read_machine('box', join(dir, 'missing'));
+			assert.deepStrictEqual(
+				[none.governor, none.cpufreq_driver, none.epp, none.boost],
+				[null, null, null, null]
+			);
+			write('cpu0/cpufreq/scaling_governor', 'performance\n');
+			write('cpu0/cpufreq/scaling_driver', 'amd-pstate-epp\n');
+			write('cpu0/cpufreq/energy_performance_preference', 'performance\n');
+			write('intel_pstate/no_turbo', '1\n');
+			const machine = read_machine('box', dir);
+			assert.deepStrictEqual(
+				[machine.governor, machine.cpufreq_driver, machine.epp, machine.boost],
+				['performance', 'amd-pstate-epp', 'performance', false]
+			);
+			// the cpufreq switch comes first, and says it the right way round
+			write('cpufreq/boost', '1\n');
+			assert.strictEqual(read_machine('box', dir).boost, true);
+			write('cpu0/cpufreq/scaling_governor', '\n');
+			assert.strictEqual(read_machine('box', dir).governor, null);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	test('notes CPUs that run different governors', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'bench_run_test_'));
+		try {
+			const governor = (cpu: string, value: string): void => {
+				mkdirSync(join(dir, cpu, 'cpufreq'), { recursive: true });
+				writeFileSync(join(dir, cpu, 'cpufreq/scaling_governor'), value + '\n');
+			};
+			assert.strictEqual(find_mixed_governors(join(dir, 'missing')), null);
+			governor('cpu0', 'performance');
+			governor('cpu1', 'performance');
+			mkdirSync(join(dir, 'cpufreq'));
+			assert.strictEqual(find_mixed_governors(dir), null);
+			governor('cpu12', 'powersave');
+			assert.match(
+				find_mixed_governors(dir)!,
+				/different frequency governors \(performance, powersave\)/
+			);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
