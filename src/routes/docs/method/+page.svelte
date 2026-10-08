@@ -535,12 +535,13 @@ node bench/run.ts --help`;
 			</li>
 			<li>
 				<strong>What must match.</strong> The kind of run, its parameters and filters, the corpus
-				hash, every library's version, the machine's name, CPU, threads, and frequency settings
-				(governor, driver, energy-performance preference, and boost), the OS release, the Node
-				version, the <code>NODE_OPTIONS</code> the processes inherit, and the commit with its dirty
-				marker. A resume with any of them different is refused, naming what differs, so results from
-				two setups are never mixed. With a dirty working tree the journal can't tell whether the
-				uncommitted changes are the ones it started with, and a resume says so.
+				hash, every library's version and extra packages, the machine's name, CPU, threads, and
+				frequency settings (governor, driver, energy-performance preference, and boost), the OS
+				release, the Node version, the <code>NODE_OPTIONS</code> the processes inherit, and the
+				commit with its dirty marker. A resume with any of them different is refused, naming what
+				differs, so results from two setups are never mixed. With a dirty working tree the journal
+				can't tell whether the uncommitted changes are the ones it started with, and a resume says
+				so.
 			</li>
 			<li>
 				<strong>Nothing installed mid-run.</strong> Every cell process reports the versions of its
@@ -809,13 +810,14 @@ node bench/run.ts --help`;
 		<TomeSectionHeader text="Reproducing a run" />
 		<p>
 			A results file records the commit, the Node version, the machine, the corpus hash, and every
-			library's version. From a checkout of that commit, <code>npm ci</code> installs the same
-			versions, and the command for the kind of run measures it again. The deterministic numbers
-			come out the same anywhere, and a run stops if one of its processes disagrees with the
-			committed <TomeLink slug="deterministic" />. A full run with no filters is refused unless that
-			file describes it, so run the smoke run first: it checks every cell and every first highlight
-			against the file, before a long run can stop on a disagreement. The timed ones depend on the
-			machine, so compare the ratios between libraries rather than the times.
+			library's version and extra packages. From a checkout of that commit, <code>npm ci</code>
+			installs the same versions, and the command for the kind of run measures it again. The
+			deterministic numbers come out the same anywhere, and a run stops if one of its processes
+			disagrees with the committed <TomeLink slug="deterministic" />. A full run with no filters is
+			refused unless that file describes it, so run the smoke run first: it checks every cell and
+			every first highlight against the file, before a long run can stop on a disagreement. The
+			timed ones depend on the machine, so compare the ratios between libraries rather than the
+			times.
 		</p>
 		<p>
 			A quiet machine matters more than a fast one: close other programs, and prefer a fixed CPU

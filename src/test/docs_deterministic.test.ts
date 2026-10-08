@@ -8,7 +8,6 @@ import {
 	BenchHeap,
 	BenchInstall
 } from '$lib/results_schema.ts';
-import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '$lib/bench_constants.ts';
 import { HEAP_NODE_FLAGS } from '../../bench/heap.ts';
 import { ADAPTERS } from '../../bench/libraries.ts';
 import { BROTLI_QUALITY, GZIP_LEVEL } from '../../bench/sizes.ts';
@@ -18,8 +17,7 @@ const docs = {
 	tome: readFileSync(
 		new URL('../routes/docs/deterministic/+page.svelte', import.meta.url),
 		'utf8'
-	).replace(/<\/?code>/g, '`'),
-	readme: readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
+	).replace(/<\/?code>/g, '`')
 };
 
 /** Collapses the line wrapping of prose, so a phrase is found across a line break. */
@@ -55,13 +53,6 @@ test('the deterministic docs give every flag a heap process runs with', () => {
 			assert.ok(text.includes(`\`${flag}\``), `${name} lacks ${flag}`);
 		}
 	}
-});
-
-test('the README states the heap tolerance as the check applies it', () => {
-	// the tome renders it from the constants
-	assert.ok(
-		unwrap(docs.readme).includes(`${HEAP_TOLERANCE_KB} KiB or ${HEAP_TOLERANCE_RATIO * 100}%`)
-	);
 });
 
 test('the deterministic docs give the command and its check', () => {

@@ -1,8 +1,9 @@
 # Results
 
 What the files in this directory are, and how a timed run is published. The
-method itself is in [the README](../README.md#the-timed-harness) and in the
-method page of the site's docs (../src/routes/docs/method/+page.svelte).
+method is summarized in [the README](../README.md#method-in-brief) and given in
+full on the method page of the site's docs, [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method) (its source is
+../src/routes/docs/method/+page.svelte).
 
 ## What is in this directory
 
@@ -47,7 +48,8 @@ The harness reads the first CPU's frequency settings, and is null for any the
 OS doesn't expose. It logs when the CPUs run different governors.
 
 The file also records the commit (`meta.commit`), the corpus hash
-(`meta.corpus_hash`), and every library's version (`meta.libraries`). What the
+(`meta.corpus_hash`), and every library's version and extra packages
+(`meta.libraries`). What the
 file doesn't record is written here by hand when the run is published.
 
 ## Quieting the machine
@@ -85,8 +87,11 @@ the unit names on a machine are its own: look at what it runs.
   ```bash
   sudo swapoff -a && sudo swapon -a
   ```
-- **Wi-Fi off if nothing needs it.** A run is fully local after `npm ci`. With
-  NetworkManager: `nmcli radio wifi off`.
+- **The network off.** Everything after `npm ci` runs offline, the corpus
+  included, so turning the network off for the run is safe, and it removes a
+  source of noise: no sync, update check, or notification wakes up mid-batch.
+  With NetworkManager: `nmcli networking off`, or `nmcli radio wifi off` for
+  Wi-Fi alone.
 - **A thermal settle.** On a hard flat surface, idle for a few minutes before
   starting, so every run starts from about the same temperature. A long run
   heats a laptop, and the anchor and the retries are what catch throttling.
@@ -267,10 +272,10 @@ node -e "const m=require('./results/latest.json').meta;console.log(m.commit,m.no
   [the caveats](../README.md#caveats).
 - **No noise floor for cold start.** A calibration measures the timed cells
   only. Read a cold-start difference against the two scenarios' `p10_ms` to
-  `p90_ms` bands. See [cold start](../README.md#cold-start).
+  `p90_ms` bands. See [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method).
 - **Memory is a whole process.** `rss_peak_bytes` is the peak resident size of
   a process: Node, the library, and the input, not what the library adds. See
-  [what the numbers mean](../README.md#what-the-numbers-mean).
+  [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method).
 - **Some inputs are a library's own samples.** They are labelled with that
   library and kept out of the headline figures. See
   [the corpus](../README.md#corpus).

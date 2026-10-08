@@ -14,9 +14,11 @@ import { FULL_PARAMS, RUN_FLAGS } from '../../bench/run_options.ts';
 
 // these docs state by hand what the harness defines, because the site never imports it
 const docs = {
-	tome: readFileSync(new URL('../routes/docs/method/+page.svelte', import.meta.url), 'utf8'),
-	readme: readFileSync(new URL('../../README.md', import.meta.url), 'utf8')
+	tome: readFileSync(new URL('../routes/docs/method/+page.svelte', import.meta.url), 'utf8')
 };
+
+// the README summarizes the method and links the tome, so it is held to what it quotes
+const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
 
 /** Collapses the line wrapping of prose, so a phrase is found across a line break. */
 const unwrap = (text: string): string => text.replace(/\s+/g, ' ');
@@ -84,5 +86,36 @@ test('the method docs state how many cold-start samples a full run keeps and dis
 	const samples = `keeps ${FULL_PARAMS.startup_samples} samples of each scenario, after ${FULL_PARAMS.startup_discard} discarded rounds`;
 	for (const [name, text] of Object.entries(docs)) {
 		assert.ok(unwrap(text).includes(samples), `${name} lacks "${samples}"`);
+	}
+});
+
+test('every npm script and flag the README quotes exists', () => {
+	const scripts: Record<string, string> = JSON.parse(
+		readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
+	).scripts;
+	for (const [, script] of readme.matchAll(/npm run ([\w:]+)/g)) {
+		assert.ok(Object.hasOwn(scripts, script!), `no script "${script}"`);
+	}
+	const known = new Set([
+		...RUN_FLAGS.map(({ flag }) => flag),
+		// of the corpus scripts, `bench/deterministic.ts`, `gro build`, and `npm install`
+		'--check',
+		'--repos',
+		'--no-install',
+		'--save-dev'
+	]);
+	for (const [flag] of readme.matchAll(/(?<![\w-])--[a-z][a-z-]*/g)) {
+		assert.ok(known.has(flag), `unknown flag ${flag}`);
+	}
+});
+
+test('the README states the parameters of a full run', () => {
+	const { passes, rounds, target_ms, warmup_ms, rewarm_ms, startup_samples, startup_discard } =
+		FULL_PARAMS;
+	for (const phrase of [
+		`in ${passes} processes per cell, each timing ${rounds} rounds of ${target_ms}ms batches, after a ${warmup_ms}ms warmup, with a ${rewarm_ms}ms rewarm`,
+		`keeps ${startup_samples} samples of each scenario, after ${startup_discard} discarded rounds`
+	]) {
+		assert.ok(unwrap(readme).includes(phrase), `the README lacks "${phrase}"`);
 	}
 });
