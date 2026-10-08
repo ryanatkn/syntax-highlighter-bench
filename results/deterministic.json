@@ -94,6 +94,7 @@
 		"excluded": [],
 		"startup_excluded": [],
 		"noise_floor": null,
+		"process_noise": null,
 		"bundler": {
 			"vite": "7.3.6",
 			"rollup": "4.62.2",

@@ -179,6 +179,13 @@ node bench/run.ts --help`;
 					</td>
 				</tr>
 				<tr>
+					<td><code>pass_medians_ns</code></td>
+					<td>
+						each pass's own median over its rounds, in pass order: one number per process, so how
+						far the processes disagreed can be read apart from the rounds
+					</td>
+				</tr>
+				<tr>
 					<td><code>iterations</code></td>
 					<td>
 						calls per batch. Each process calibrates for itself, and this is the median across them
@@ -608,7 +615,7 @@ node bench/run.ts --help`;
 			as if it were two libraries: each gets twice the passes, split alternately into two arms, and
 			each arm is exactly what a full run would measure. The two arms should be equal. How far apart
 			they are is what the machine and the method produce when nothing differs, including what
-			varies from one process to the next. <DeclarationLink name="BenchNoiseFloor" /> holds two
+			varies from one process to the next. <DeclarationLink name="BenchNoiseFloor" /> holds three
 			numbers:
 		</p>
 		<ul>
@@ -619,6 +626,12 @@ node bench/run.ts --help`;
 			<li>
 				<code>geomean</code> takes each library's two geometric means over all cells, and is their
 				difference for the library where it was largest.
+			</li>
+			<li>
+				<code>per_process</code> is the 95th percentile of the difference between two passes of one
+				arm, over every pair of passes, arm, cell, and library: how far two single processes
+				measuring the same thing come apart. It reads higher than <code>per_cell</code>, which
+				compares values that each pool several processes.
 			</li>
 		</ul>
 		<p>
@@ -640,6 +653,19 @@ node bench/run.ts --help`;
 			retries. The rule looks only at an arm's own rounds, never at how far apart the two arms are,
 			so it can't steer the floor. A calibration file's values are the first arm's, and so are their
 			<code>attempts</code>.
+		</p>
+		<p>
+			Every run with more than one pass also measures its own process noise, an A/A figure taken
+			from the run itself: each library on each cell was measured by several processes that should
+			agree, and every pair of a value's <code>pass_medians_ns</code> gives a difference.
+			<DeclarationLink name="BenchProcessNoise" /> records how many pairs there were and their
+			median, 95th percentile, and largest difference, as <code>meta.process_noise</code>. Pairs are
+			only ever taken within one library on one cell. Its 95th percentile is the run's counterpart
+			of the calibration's <code>per_process</code>, and the run's summary and the provenance line
+			on the results page print the two side by side. Both are the 95th percentile of one sample, so
+			either is higher about as often as not: a run's figure several times the calibration's is what
+			says its processes disagreed more than the calibration's did. The reader compares them, and
+			the site does not refuse a run over it.
 		</p>
 		{#if docs.noise_floor && docs.machine}
 			<p>
@@ -692,9 +718,12 @@ node bench/run.ts --help`;
 		<TomeSectionHeader text="One run at a time" />
 		<p>
 			Two measurement runs at once make each other wrong, not just noisy. A run takes a machine-wide
-			lock, a file in the OS temp directory that names its process, and holds it for as long as it
-			measures, as does each segment of a resumed run. A second run is refused and told who holds
-			the lock. A lock whose process is gone is taken over.
+			lock, the file <code>/tmp/fuz_benchmark.lock</code> that names its process, and holds it for
+			as long as it measures, as does each segment of a resumed run. The path is fixed and ignores
+			<code>TMPDIR</code>, and the lock is fuz_util's benchmark lock, so any other benchmark that
+			uses fuz_util's benchmark lock takes the same one and never measures at the same time as this
+			one. A second run is refused and told who holds the lock. A lock whose process is gone is
+			taken over.
 		</p>
 	</TomeSection>
 	<TomeSection>

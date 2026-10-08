@@ -60,7 +60,17 @@ import {
 import { availableParallelism, cpus, hostname, loadavg, release, totalmem } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stats_median, stats_percentile } from '@fuzdev/fuz_util/stats.js';
+import {
+	benchmark_lock_acquire,
+	benchmark_lock_format_refusal,
+	type BenchmarkLock
+} from '@fuzdev/fuz_util/benchmark_lock.js';
+import {
+	stats_median,
+	stats_pairwise_deviation,
+	stats_percentile,
+	stats_ratio_deviation
+} from '@fuzdev/fuz_util/stats.js';
 import { time_format_adaptive } from '@fuzdev/fuz_util/time.js';
 
 import {
@@ -74,6 +84,7 @@ import {
 	type BenchLibrary,
 	type BenchMachine,
 	type BenchNoiseFloor,
+	type BenchProcessNoise,
 	type BenchResults,
 	type BenchStartup,
 	type BenchStartupExcluded
@@ -128,12 +139,6 @@ import {
 	to_bench_libraries,
 	to_package_versions
 } from './library_info.ts';
-import {
-	acquire_machine_lock,
-	format_lock_holder,
-	MACHINE_LOCK_PATH,
-	type MachineLock
-} from './lock.ts';
 import { summarize_passes } from './measure.ts';
 import { to_bench_cell, type CellNumbers } from './outputs.ts';
 import {
@@ -821,9 +826,6 @@ export const to_startup_entries = (
 export const to_geomean = (values: ReadonlyArray<number>): number =>
 	Math.exp(values.reduce((sum, value) => sum + Math.log(value), 0) / values.length);
 
-/** How far a ratio is from one, the same whichever side is larger. */
-export const to_deviation = (ratio: number): number => Math.max(ratio, 1 / ratio) - 1;
-
 /** One library measured as two on one cell of a calibration. */
 export interface CalibrationPair {
 	cell: string;
@@ -839,22 +841,45 @@ export interface CalibrationPair {
  *   library.
  * - `geomean` takes each library's ratios across its cells, and is the deviation
  *   of their geometric mean, for the library where it is largest.
+ * - `per_process` is the 95th percentile of the deviation between two passes of
+ *   one arm, over every arm of every cell and library: what `to_process_noise`
+ *   measures in a run, so the two compare like with like.
  *
+ * @param pairs - each library-cell's two arms, as a ratio
+ * @param arms - each arm's pass medians, every arm of every library-cell
  * @returns null when nothing was measured twice
  */
-export const to_noise_floor = (pairs: ReadonlyArray<CalibrationPair>): BenchNoiseFloor | null => {
+export const to_noise_floor = (
+	pairs: ReadonlyArray<CalibrationPair>,
+	arms: ReadonlyArray<ReadonlyArray<number>>
+): BenchNoiseFloor | null => {
 	if (pairs.length === 0) return null;
 	const by_library = Map.groupBy(pairs, (pair) => pair.library);
 	return {
 		per_cell: stats_percentile(
-			pairs.map((pair) => to_deviation(pair.ratio)),
+			pairs.map((pair) => stats_ratio_deviation(pair.ratio)),
 			0.95
 		),
 		geomean: Math.max(
-			...[...by_library.values()].map((own) => to_deviation(to_geomean(own.map((p) => p.ratio))))
-		)
+			...[...by_library.values()].map((own) =>
+				stats_ratio_deviation(to_geomean(own.map((p) => p.ratio)))
+			)
+		),
+		per_process: stats_pairwise_deviation(arms)?.p95 ?? null
 	};
 };
+
+/**
+ * Derives a run's own A/A figure: how far apart its processes came out on the
+ * same library and cell. Each value's pass medians are one group, and groups are
+ * never compared with each other.
+ *
+ * @returns null when no value has two passes
+ */
+export const to_process_noise = (cells: ReadonlyArray<BenchCell>): BenchProcessNoise | null =>
+	stats_pairwise_deviation(
+		cells.flatMap((cell) => Object.values(cell.values).map((value) => value.pass_medians_ns))
+	);
 
 /**
  * Checks that two of a library's passes on a cell agree on what is
@@ -917,6 +942,8 @@ export type LibraryOutcome =
 			value: BenchCellValue;
 			/** In a calibration, the first arm's time over the second's. */
 			ratio: number | null;
+			/** In a calibration, each arm's pass medians, the first arm's first. */
+			arms: Array<Array<number>> | null;
 	  };
 
 /**
@@ -990,7 +1017,8 @@ export const combine_passes = (
 		tokens: first.measurement!.tokens,
 		output: first.measurement!.output,
 		value: value!,
-		ratio: other ? value!.ns_per_op / other.ns_per_op : null
+		ratio: other ? value!.ns_per_op / other.ns_per_op : null,
+		arms: other ? [value!.pass_medians_ns, other.pass_medians_ns] : null
 	};
 };
 
@@ -1120,6 +1148,7 @@ export const assemble_results = (
 	const calibrate = options.kind === 'calibrate';
 	const excluded: Array<BenchExcluded> = [];
 	const pairs: Array<CalibrationPair> = [];
+	const arms: Array<Array<number>> = [];
 	const by_cell = Map.groupBy(record.processes, (p) => p.planned.cell);
 	const cells = [...by_cell].map(([cell, processes]): BenchCell => {
 		const { input } = cell;
@@ -1141,6 +1170,7 @@ export const assemble_results = (
 			values[library] = outcome.value;
 			numbers.push([library, { tokens: outcome.tokens, output: outcome.output }]);
 			if (outcome.ratio !== null) pairs.push({ cell: cell.id, library, ratio: outcome.ratio });
+			if (outcome.arms !== null) arms.push(...outcome.arms);
 		}
 		return to_bench_cell(input, cell.mode, numbers, values);
 	});
@@ -1178,7 +1208,8 @@ export const assemble_results = (
 			libraries: [...record.libraries],
 			excluded,
 			startup_excluded: startup.excluded,
-			noise_floor: calibrate ? to_noise_floor(pairs) : record.noise_floor,
+			noise_floor: calibrate ? to_noise_floor(pairs, arms) : record.noise_floor,
+			process_noise: to_process_noise(cells),
 			bundler: record.deterministic?.bundler ?? null
 		},
 		langs: [...LANG_ROSTER],
@@ -1192,6 +1223,20 @@ export const assemble_results = (
 		coverage: to_bench_coverage(record.adapters)
 	} satisfies BenchResults);
 	return { results, pairs };
+};
+
+/** How many issues of a schema error a refusal prints. */
+const MAX_ISSUES_LISTED = 5;
+
+/**
+ * Shortens a schema error to its first few issues and a count of the rest: a
+ * file from an older harness can fail once for every value it holds.
+ */
+export const cap_issues = (message: string, max = MAX_ISSUES_LISTED): string => {
+	// `z.prettifyError` starts every issue on a line of its own with this mark
+	const issues = message.split(/\n(?=✖)/);
+	if (issues.length <= max) return message;
+	return `${issues.slice(0, max).join('\n')}\nand ${issues.length - max} more issues`;
 };
 
 /** Where Linux describes the CPUs. */
@@ -1376,15 +1421,30 @@ export const format_run_summary = (
 	}
 	lines.push(
 		meta.noise_floor
-			? `noise floor: ${format_percent(meta.noise_floor.per_cell)} per cell, ${format_percent(meta.noise_floor.geomean)} for a geomean`
+			? `noise floor: ${format_percent(meta.noise_floor.per_cell)} per cell, ${format_percent(meta.noise_floor.geomean)} for a geomean${meta.noise_floor.per_process === null ? '' : `, ${format_percent(meta.noise_floor.per_process)} between two processes`}`
 			: 'noise floor: none'
 	);
+	if (meta.process_noise) {
+		const { pairs, median, p95, max } = meta.process_noise;
+		const floor = meta.noise_floor?.per_process ?? null;
+		const beside =
+			run.kind !== 'calibrate' && floor !== null
+				? `; the calibration's: ${format_percent(floor)} at the 95th percentile`
+				: '';
+		lines.push(
+			`process noise: ${format_percent(p95)} at the 95th percentile, median ${format_percent(median)}, worst ${format_percent(max)}, over ${pairs} pairs of passes${beside}`
+		);
+	} else if (cells_measured) {
+		lines.push('process noise: none, one pass per library and cell');
+	}
 	for (const { id } of meta.libraries) {
 		const own = pairs.filter((pair) => pair.library === id);
 		if (own.length === 0) continue;
-		const worst = own.reduce((a, b) => (to_deviation(b.ratio) > to_deviation(a.ratio) ? b : a));
+		const worst = own.reduce((a, b) =>
+			stats_ratio_deviation(b.ratio) > stats_ratio_deviation(a.ratio) ? b : a
+		);
 		lines.push(
-			`  ${id.padEnd(12)} geomean deviation ${format_percent(to_deviation(to_geomean(own.map((pair) => pair.ratio))))}, worst ${format_percent(to_deviation(worst.ratio))} (${worst.cell})`
+			`  ${id.padEnd(12)} geomean deviation ${format_percent(stats_ratio_deviation(to_geomean(own.map((pair) => pair.ratio))))}, worst ${format_percent(stats_ratio_deviation(worst.ratio))} (${worst.cell})`
 		);
 	}
 	lines.push(
@@ -1438,7 +1498,11 @@ export const format_run_summary = (
  * a process is run and the anchor read.
  */
 export interface RunBenchOptions {
-	/** The lock file. Tests pass their own so they neither take nor wait on the machine's. */
+	/**
+	 * The lock file, `BENCHMARK_LOCK_PATH` by default: the one fuz_util's benchmark
+	 * lock fixes for every benchmark on the machine. Tests pass their own so they
+	 * neither take nor wait on the machine's.
+	 */
 	lock_path?: string;
 	/** The results directory. */
 	results_dir?: string;
@@ -1687,7 +1751,7 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 				calibration = parse_bench_results(JSON.parse(readFileSync(calibration_path, 'utf8')));
 			} catch (error) {
 				throw new RunError(
-					`${calibration_path} is not a results file: fix or remove it\n${(error as Error).message}`,
+					`${calibration_path} is not a results file of this harness: run the calibration again, or remove it\n${cap_issues((error as Error).message)}`,
 					2
 				);
 			}
@@ -1996,7 +2060,7 @@ const measure_smoke = async (
 const measure_segment = async (
 	plan: RunPlan,
 	bench_options: RunBenchOptions,
-	lock: MachineLock,
+	lock: BenchmarkLock,
 	on_progress: OnProgress,
 	log: (line: string) => void
 ): Promise<Measured> => {
@@ -2187,11 +2251,10 @@ export const run_bench = async (
 		throw new RunError(`can't write to ${path}: ${(error as Error).message}`, 2);
 	}
 
-	const acquired = acquire_machine_lock(
-		`${options.kind} run`,
-		bench_options.lock_path ?? MACHINE_LOCK_PATH
-	);
-	if (!acquired.ok) throw new RunError(format_lock_holder(acquired.path, acquired.holder), 2);
+	const acquired = benchmark_lock_acquire(`syntax-highlighter-bench ${options.kind} run`, {
+		path: bench_options.lock_path
+	});
+	if (!acquired.ok) throw new RunError(benchmark_lock_format_refusal(acquired), 2);
 	const { lock } = acquired;
 	const release_on_exit = (): void => void lock.release();
 	process.once('exit', release_on_exit);

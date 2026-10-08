@@ -19,6 +19,15 @@
 
 	const site = site_context.get();
 
+	/** The calibration's figure for two processes, shown beside the run's own. */
+	const process_floor = $derived(meta.noise_floor?.per_process ?? null);
+
+	const process_floor_note = $derived(
+		process_floor === null
+			? ''
+			: `, against ${format_percent(process_floor)} at the 95th percentile in the calibration`
+	);
+
 	const clean_commit = $derived(meta.commit?.replace(/-dirty$/, '') ?? null);
 
 	/** The machine's state, leaving out what the OS didn't expose. */
@@ -60,6 +69,11 @@
 		{:else}
 			The machine has no calibrated noise floor for this run, so small differences can't be told
 			from noise.
+		{/if}
+		{#if meta.process_noise}
+			Two processes measuring the same library on the same cell in this run were
+			{format_percent(meta.process_noise.p95)} apart at the 95th percentile and
+			{format_percent(meta.process_noise.median)} at the median{process_floor_note}.
 		{/if}
 		{@render children?.()}
 	</p>

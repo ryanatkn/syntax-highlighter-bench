@@ -54,7 +54,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { stats_median, stats_min_max, stats_percentile } from '@fuzdev/fuz_util/stats.js';
+import { stats_median, stats_percentile, stats_spread } from '@fuzdev/fuz_util/stats.js';
 import { z } from 'zod';
 
 import {
@@ -566,13 +566,12 @@ export type StartupSummary = Omit<BenchStartup, keyof BenchStartupKey>;
  */
 export const summarize_startup = (samples: ReadonlyArray<StartupSample>): StartupSummary => {
 	const times = samples.map((sample) => sample.ms);
-	const { min, max } = stats_min_max(times);
 	return {
 		samples: samples.length,
 		median_ms: stats_median(times),
 		p10_ms: stats_percentile(times, 0.1),
 		p90_ms: stats_percentile(times, 0.9),
-		spread: max / min,
+		spread: stats_spread(times),
 		rss_peak_bytes: Math.round(stats_median(samples.map((sample) => sample.rss_peak_bytes)))
 	};
 };

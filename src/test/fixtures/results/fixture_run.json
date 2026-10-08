@@ -147,7 +147,14 @@
 		],
 		"noise_floor": {
 			"per_cell": 0.033,
-			"geomean": 0.006
+			"geomean": 0.006,
+			"per_process": 0.03
+		},
+		"process_noise": {
+			"pairs": 114,
+			"median": 0.015228045939689738,
+			"p95": 0.03475977603964852,
+			"max": 0.04489795944714614
 		},
 		"bundler": {
 			"vite": "7.0.0",
@@ -464,6 +471,11 @@
 					"p10_ns": 211173,
 					"p90_ns": 214997,
 					"spread": 1.02,
+					"pass_medians_ns": [
+						212448,
+						212448,
+						212448
+					],
 					"iterations": 94,
 					"rss_peak_bytes": 90409600,
 					"attempts": 1
@@ -475,6 +487,11 @@
 					"p10_ns": 164506,
 					"p90_ns": 170500,
 					"spread": 1.04,
+					"pass_medians_ns": [
+						164838.96,
+						166504,
+						168502.05
+					],
 					"iterations": 120,
 					"rss_peak_bytes": 90532480,
 					"attempts": 1
@@ -486,6 +503,11 @@
 					"p10_ns": 516750,
 					"p90_ns": 550004,
 					"spread": 1.07,
+					"pass_medians_ns": [
+						517278.3,
+						527835,
+						540503.04
+					],
 					"iterations": 38,
 					"rss_peak_bytes": 91269760,
 					"attempts": 1
@@ -497,6 +519,11 @@
 					"p10_ns": 2803270,
 					"p90_ns": 2879646,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						2814585.36,
+						2828729,
+						2851358.83
+					],
 					"iterations": 7,
 					"rss_peak_bytes": 95734400,
 					"attempts": 2
@@ -508,6 +535,11 @@
 					"p10_ns": 1911598,
 					"p90_ns": 2107305,
 					"spread": 1.11,
+					"pass_medians_ns": [
+						1947181.49,
+						1976834,
+						2016370.68
+					],
 					"iterations": 10,
 					"rss_peak_bytes": 94505600,
 					"attempts": 1
@@ -542,6 +574,11 @@
 					"p10_ns": 335096,
 					"p90_ns": 350405,
 					"spread": 1.05,
+					"pass_medians_ns": [
+						340199,
+						340199,
+						341559.8
+					],
 					"iterations": 59,
 					"rss_peak_bytes": 90409600,
 					"attempts": 1
@@ -553,6 +590,11 @@
 					"p10_ns": 353712,
 					"p90_ns": 417852,
 					"spread": 1.19,
+					"pass_medians_ns": [
+						371341.08,
+						375092,
+						381093.47
+					],
 					"iterations": 53,
 					"rss_peak_bytes": 90532480,
 					"attempts": 1
@@ -564,6 +606,11 @@
 					"p10_ns": 714637,
 					"p90_ns": 734107,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						706704.46,
+						721127,
+						721127
+					],
 					"iterations": 28,
 					"rss_peak_bytes": 91269760,
 					"attempts": 1
@@ -575,6 +622,11 @@
 					"p10_ns": 3434446,
 					"p90_ns": 3687807,
 					"spread": 1.08,
+					"pass_medians_ns": [
+						3501305.5,
+						3518900,
+						3561126.8
+					],
 					"iterations": 6,
 					"rss_peak_bytes": 95734400,
 					"attempts": 1
@@ -586,6 +638,11 @@
 					"p10_ns": 3047473,
 					"p90_ns": 3102658,
 					"spread": 1.02,
+					"pass_medians_ns": [
+						3019879.98,
+						3065868,
+						3139448.83
+					],
 					"iterations": 7,
 					"rss_peak_bytes": 94505600,
 					"attempts": 1
@@ -635,6 +692,11 @@
 					"p10_ns": 16584,
 					"p90_ns": 17188,
 					"spread": 1.04,
+					"pass_medians_ns": [
+						16785,
+						16785,
+						16919.28
+					],
 					"iterations": 1192,
 					"rss_peak_bytes": 90047200,
 					"attempts": 1
@@ -646,6 +708,11 @@
 					"p10_ns": 21962,
 					"p90_ns": 23375,
 					"spread": 1.07,
+					"pass_medians_ns": [
+						22208.67,
+						22433,
+						22881.66
+					],
 					"iterations": 892,
 					"rss_peak_bytes": 90061360,
 					"attempts": 1
@@ -657,6 +724,11 @@
 					"p10_ns": 191075,
 					"p90_ns": 196281,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						188953.8,
+						192810,
+						193581.24
+					],
 					"iterations": 104,
 					"rss_peak_bytes": 90660800,
 					"attempts": 1
@@ -668,6 +740,11 @@
 					"p10_ns": 258744,
 					"p90_ns": 285234,
 					"spread": 1.11,
+					"pass_medians_ns": [
+						266236.13,
+						267574,
+						271855.18
+					],
 					"iterations": 75,
 					"rss_peak_bytes": 90519200,
 					"attempts": 1
@@ -701,6 +778,11 @@
 					"p10_ns": 34799,
 					"p90_ns": 36389,
 					"spread": 1.05,
+					"pass_medians_ns": [
+						34799.07,
+						35329,
+						35329
+					],
 					"iterations": 566,
 					"rss_peak_bytes": 90047200,
 					"attempts": 1
@@ -712,6 +794,11 @@
 					"p10_ns": 27140,
 					"p90_ns": 32061,
 					"spread": 1.19,
+					"pass_medians_ns": [
+						28780,
+						28780,
+						29125.36
+					],
 					"iterations": 695,
 					"rss_peak_bytes": 90061360,
 					"attempts": 1
@@ -723,6 +810,11 @@
 					"p10_ns": 288736,
 					"p90_ns": 296602,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						288444.42,
+						291358,
+						298350.59
+					],
 					"iterations": 69,
 					"rss_peak_bytes": 90660800,
 					"attempts": 1
@@ -734,6 +826,11 @@
 					"p10_ns": 367949,
 					"p90_ns": 395093,
 					"spread": 1.08,
+					"pass_medians_ns": [
+						369457.06,
+						376997,
+						380012.98
+					],
 					"iterations": 53,
 					"rss_peak_bytes": 90519200,
 					"attempts": 1
@@ -779,6 +876,11 @@
 					"p10_ns": 3193,
 					"p90_ns": 3251,
 					"spread": 1.02,
+					"pass_medians_ns": [
+						3195.94,
+						3212,
+						3276.24
+					],
 					"iterations": 6227,
 					"rss_peak_bytes": 90008480,
 					"attempts": 1
@@ -790,6 +892,11 @@
 					"p10_ns": 5455,
 					"p90_ns": 5654,
 					"spread": 1.04,
+					"pass_medians_ns": [
+						5438.19,
+						5521,
+						5543.08
+					],
 					"iterations": 3623,
 					"rss_peak_bytes": 90011024,
 					"attempts": 1
@@ -801,6 +908,11 @@
 					"p10_ns": 8612,
 					"p90_ns": 9166,
 					"spread": 1.07,
+					"pass_medians_ns": [
+						8797,
+						8797,
+						8937.75
+					],
 					"iterations": 2274,
 					"rss_peak_bytes": 90026288,
 					"attempts": 1
@@ -812,6 +924,11 @@
 					"p10_ns": 95065,
 					"p90_ns": 97655,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						94968.72,
+						95928,
+						95928
+					],
 					"iterations": 208,
 					"rss_peak_bytes": 90118720,
 					"attempts": 1
@@ -823,6 +940,11 @@
 					"p10_ns": 52972,
 					"p90_ns": 58395,
 					"spread": 1.11,
+					"pass_medians_ns": [
+						53684.4,
+						54780,
+						55437.36
+					],
 					"iterations": 365,
 					"rss_peak_bytes": 90093280,
 					"attempts": 1
@@ -857,6 +979,11 @@
 					"p10_ns": 4724,
 					"p90_ns": 4940,
 					"spread": 1.05,
+					"pass_medians_ns": [
+						4772.02,
+						4796,
+						4911.1
+					],
 					"iterations": 4170,
 					"rss_peak_bytes": 90008480,
 					"attempts": 1
@@ -868,6 +995,11 @@
 					"p10_ns": 7901,
 					"p90_ns": 9334,
 					"spread": 1.19,
+					"pass_medians_ns": [
+						8253.32,
+						8379,
+						8446.03
+					],
 					"iterations": 2387,
 					"rss_peak_bytes": 90011024,
 					"attempts": 1
@@ -879,6 +1011,11 @@
 					"p10_ns": 4518,
 					"p90_ns": 4641,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						4559,
+						4559,
+						4650.18
+					],
 					"iterations": 4387,
 					"rss_peak_bytes": 90026288,
 					"attempts": 1
@@ -890,6 +1027,11 @@
 					"p10_ns": 107209,
 					"p90_ns": 115118,
 					"spread": 1.08,
+					"pass_medians_ns": [
+						108746.55,
+						109845,
+						110284.38
+					],
 					"iterations": 182,
 					"rss_peak_bytes": 90118720,
 					"attempts": 1
@@ -901,6 +1043,11 @@
 					"p10_ns": 76351,
 					"p90_ns": 77734,
 					"spread": 1.02,
+					"pass_medians_ns": [
+						75275.76,
+						76812,
+						78040.99
+					],
 					"iterations": 260,
 					"rss_peak_bytes": 90093280,
 					"attempts": 1
@@ -950,6 +1097,11 @@
 					"p10_ns": 1060495,
 					"p90_ns": 1099136,
 					"spread": 1.04,
+					"pass_medians_ns": [
+						1068008.13,
+						1073375,
+						1073375
+					],
 					"iterations": 19,
 					"rss_peak_bytes": 94096000,
 					"attempts": 1
@@ -961,6 +1113,11 @@
 					"p10_ns": 828509,
 					"p90_ns": 881825,
 					"spread": 1.07,
+					"pass_medians_ns": [
+						833586.79,
+						846281,
+						856436.37
+					],
 					"iterations": 24,
 					"rss_peak_bytes": 95324800,
 					"attempts": 1
@@ -972,6 +1129,11 @@
 					"p10_ns": 3056578,
 					"p90_ns": 3139855,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						3084337,
+						3084337,
+						3158361.09
+					],
 					"iterations": 6,
 					"rss_peak_bytes": 102697600,
 					"attempts": 1
@@ -983,6 +1145,11 @@
 					"p10_ns": 10412282,
 					"p90_ns": 11478275,
 					"spread": 1.11,
+					"pass_medians_ns": [
+						10659936.87,
+						10767613,
+						10853753.9
+					],
 					"iterations": 2,
 					"rss_peak_bytes": 147344000,
 					"attempts": 1
@@ -994,6 +1161,11 @@
 					"p10_ns": 14246328,
 					"p90_ns": 14897175,
 					"spread": 1.05,
+					"pass_medians_ns": [
+						14174011.46,
+						14463277,
+						14752542.54
+					],
 					"iterations": 1,
 					"rss_peak_bytes": 135056000,
 					"attempts": 1
@@ -1028,6 +1200,11 @@
 					"p10_ns": 1846333,
 					"p90_ns": 2181140,
 					"spread": 1.19,
+					"pass_medians_ns": [
+						1948145.33,
+						1957935,
+						1965766.74
+					],
 					"iterations": 10,
 					"rss_peak_bytes": 94096000,
 					"attempts": 1
@@ -1039,6 +1216,11 @@
 					"p10_ns": 1989772,
 					"p90_ns": 2043984,
 					"spread": 1.03,
+					"pass_medians_ns": [
+						1977725.36,
+						2007843,
+						2039968.49
+					],
 					"iterations": 10,
 					"rss_peak_bytes": 95324800,
 					"attempts": 1
@@ -1050,6 +1232,11 @@
 					"p10_ns": 2807370,
 					"p90_ns": 3014471,
 					"spread": 1.08,
+					"pass_medians_ns": [
+						2876404,
+						2876404,
+						2876404
+					],
 					"iterations": 7,
 					"rss_peak_bytes": 102697600,
 					"attempts": 1
@@ -1061,6 +1248,11 @@
 					"p10_ns": 16907907,
 					"p90_ns": 17214087,
 					"spread": 1.02,
+					"pass_medians_ns": [
+						16839867.33,
+						17009967,
+						17214086.6
+					],
 					"iterations": 1,
 					"rss_peak_bytes": 147344000,
 					"attempts": 1
@@ -1072,6 +1264,11 @@
 					"p10_ns": 14050953,
 					"p90_ns": 18373131,
 					"spread": 1.31,
+					"pass_medians_ns": [
+						15181845.42,
+						15491679,
+						15863479.3
+					],
 					"iterations": 1,
 					"rss_peak_bytes": 135056000,
 					"attempts": 3

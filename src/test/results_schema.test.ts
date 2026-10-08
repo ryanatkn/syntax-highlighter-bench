@@ -48,6 +48,26 @@ const to_filled = (cell: BenchResults['cells'][number]): Array<(typeof SECTIONS)
 	to_stated(cell)
 ];
 
+/** Removes every cell value, and the process noise taken from them. */
+const clear_values = (data: BenchResults): void => {
+	for (const cell of data.cells) cell.values = {};
+	data.meta.process_noise = null;
+};
+
+/**
+ * Recounts the process noise's pairs after values were removed, so a test of
+ * another rule isn't refused for the count. The figures are left as they were.
+ */
+const fit_process_noise = (data: BenchResults): BenchResults => {
+	const noise = data.meta.process_noise;
+	if (noise) {
+		const passes = data.meta.run!.passes;
+		const values = data.cells.reduce((n, cell) => n + Object.keys(cell.values).length, 0);
+		noise.pairs = (values * passes * (passes - 1)) / 2;
+	}
+	return data;
+};
+
 /** Removes the bundle sizes, and what they were built with. */
 const clear_bundle = (data: BenchResults): void => {
 	data.bundle = {};
@@ -105,7 +125,56 @@ describe('sections later filled', () => {
 		data.cells = [];
 		data.inputs = [];
 		data.meta.excluded = [];
+		data.meta.process_noise = null;
 		BenchResults.parse(data);
+	});
+
+	test('every value has a median for each pass', () => {
+		const data = load_fixture();
+		const value = Object.values(data.cells[0]!.values)[0]!;
+		value.pass_medians_ns.pop();
+		assert_rejects(data, "a median for each of the run's 3 passes");
+	});
+
+	test('the process noise is there exactly when a value has two passes', () => {
+		const data = load_fixture();
+		data.meta.process_noise = null;
+		assert_rejects(data, 'process noise is set exactly when');
+		const one_pass = to_smoke(load_fixture());
+		one_pass.meta.run!.passes = 1;
+		for (const cell of one_pass.cells) {
+			for (const value of Object.values(cell.values)) value.pass_medians_ns = [value.ns_per_op];
+		}
+		assert_rejects(one_pass, 'process noise is set exactly when');
+		one_pass.meta.process_noise = null;
+		BenchResults.parse(one_pass);
+	});
+
+	test('the process noise is ordered and has a pair', () => {
+		const data = load_fixture();
+		data.meta.process_noise!.median = data.meta.process_noise!.p95 + 0.01;
+		assert_rejects(data, 'the median is at most the 95th percentile');
+		const data2 = load_fixture();
+		data2.meta.process_noise!.max = data2.meta.process_noise!.p95 / 2;
+		assert_rejects(data2, 'the median is at most the 95th percentile');
+		const data3 = load_fixture();
+		data3.meta.process_noise!.pairs = 0;
+		assert_rejects(data3, 'process_noise.pairs');
+	});
+
+	test('the process noise counts every pair of passes of every value', () => {
+		const data = load_fixture();
+		const values = data.cells.reduce((n, cell) => n + Object.keys(cell.values).length, 0);
+		// three passes give three pairs a value
+		assert.strictEqual(data.meta.process_noise!.pairs, values * 3);
+		data.meta.process_noise!.pairs += 1;
+		assert_rejects(data, `meta.process_noise.pairs: ${values * 3} pairs`);
+		// a value removed is three pairs fewer
+		const data2 = load_fixture();
+		const [cell] = data2.cells;
+		const [library] = Object.keys(cell!.values);
+		delete cell!.values[library!];
+		assert_rejects(data2, `meta.process_noise.pairs: ${(values - 1) * 3} pairs`);
 	});
 
 	test('the noise floor is null until calibrated', () => {
@@ -116,7 +185,7 @@ describe('sections later filled', () => {
 
 	test('a cell can carry deterministic numbers without timed ones', () => {
 		const data = load_fixture();
-		for (const cell of data.cells) cell.values = {};
+		clear_values(data);
 		BenchResults.parse(data);
 	});
 });
@@ -332,7 +401,7 @@ describe('unsupported and excluded', () => {
 /** The fixture with every timed number removed. */
 const load_deterministic_fixture = (): BenchResults => {
 	const data = load_fixture();
-	for (const cell of data.cells) cell.values = {};
+	clear_values(data);
 	clear_startup(data);
 	return data;
 };
@@ -353,7 +422,7 @@ describe('anchor', () => {
 
 	test('rejects a null anchor when startup was measured', () => {
 		const data = load_fixture();
-		for (const cell of data.cells) cell.values = {};
+		clear_values(data);
 		data.meta.anchor = null;
 		assert_rejects(data, 'a run with timed numbers needs an anchor');
 	});
@@ -366,7 +435,7 @@ describe('run', () => {
 		assert_rejects(data, 'a run with timed numbers records how they were measured');
 		// cold start alone is timed too, and its samples are among the parameters
 		const data2 = load_fixture();
-		for (const cell of data2.cells) cell.values = {};
+		clear_values(data2);
 		data2.meta.run = null;
 		assert_rejects(data2, 'a run with timed numbers records how they were measured');
 	});
@@ -457,7 +526,7 @@ describe('run', () => {
 			sources: [cell.source],
 			metrics: ['throughput']
 		};
-		return data;
+		return fit_process_noise(data);
 	};
 
 	test('filters are null, or describe what the file holds', () => {
@@ -546,6 +615,7 @@ describe('run', () => {
 	const remove_library = (data: BenchResults, cell_id: string, library: string): void => {
 		const cell = data.cells.find((c) => c.id === cell_id)!;
 		for (const section of SECTIONS) delete cell[section][library];
+		fit_process_noise(data);
 	};
 
 	test('a run with no filters has every claiming library in every cell, or excludes it', () => {
@@ -595,6 +665,7 @@ describe('run', () => {
 		// a whole mode missing can't be seen from the file, like an input missing altogether
 		const data = load_fixture();
 		data.cells = data.cells.filter((c) => c.mode === 'tokenize');
+		fit_process_noise(data);
 		data.meta.excluded = data.meta.excluded.filter((e) => e.cell.endsWith(':tokenize'));
 		assert.deepStrictEqual(bench_results_find_gaps(data), []);
 		BenchResults.parse(data);
@@ -608,7 +679,7 @@ describe('run', () => {
 		remove_library(smoke, 'neutral/ts/checker_excerpt.ts:html', 'prism');
 		BenchResults.parse(smoke);
 		const untimed = load_fixture();
-		for (const cell of untimed.cells) cell.values = {};
+		clear_values(untimed);
 		BenchResults.parse(untimed);
 	});
 
@@ -873,6 +944,7 @@ describe('startup', () => {
 		const filtered = load_fixture();
 		filtered.meta.run!.filters.langs = ['ts'];
 		filtered.cells = filtered.cells.filter((c) => c.lang === 'ts');
+		fit_process_noise(filtered);
 		filtered.inputs = filtered.inputs.filter((i) => i.lang === 'ts');
 		filtered.meta.excluded = [];
 		filtered.startup = filtered.startup.filter((s) => s.lang === null || s.lang === 'ts');
@@ -892,7 +964,7 @@ describe('startup', () => {
 		data3.meta.run!.filters.metrics = ['startup'];
 		assert_rejects(data3, `cells: timed cells are outside the run's metrics filter`);
 		// cold start alone: the cells are not timed
-		for (const cell of data3.cells) cell.values = {};
+		clear_values(data3);
 		BenchResults.parse(data3);
 		const data4 = load_fixture();
 		data4.meta.run!.kind = 'calibrate';
@@ -988,6 +1060,7 @@ describe('inputs', () => {
 	test('an input no cell measured is allowed in a run that is not complete', () => {
 		const data = load_fixture();
 		data.cells = data.cells.filter((c) => c.file !== data.inputs[0]!.file);
+		fit_process_noise(data);
 		assert_rejects(data, 'has no tokenize cell');
 		// any filter makes the run partial, and a partial run lists what it has
 		data.meta.run!.filters.sizes = ['micro', 'small', 'medium', 'large'];
@@ -1351,7 +1424,7 @@ describe('a deterministic-only file', () => {
 
 	test('a timed file is not held to it: a filtered run lists what it has', () => {
 		const data = load_fixture();
-		for (const cell of data.cells) cell.values = {};
+		clear_values(data);
 		delete data.cells[0]!.tokens.prism;
 		data.meta.run!.filters.sizes = ['micro', 'small', 'medium', 'large'];
 		BenchResults.parse(data);
@@ -1364,7 +1437,7 @@ describe('a deterministic-only file', () => {
 			assert_rejects(data, `meta.${key}: a run with timed numbers records its ${key}`);
 			// cold start alone is timed too
 			const data2 = load_fixture();
-			for (const cell of data2.cells) cell.values = {};
+			clear_values(data2);
 			data2.meta[key] = null;
 			assert_rejects(data2, `meta.${key}: a run with timed numbers records its ${key}`);
 		}

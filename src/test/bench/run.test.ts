@@ -35,9 +35,10 @@ import {
 	to_planned_versions,
 	select_attempt,
 	to_cell_spec,
-	to_deviation,
 	to_geomean,
+	cap_issues,
 	to_noise_floor,
+	to_process_noise,
 	type ChildOutcome,
 	type ProcessResult,
 	type RunRecord
@@ -598,15 +599,19 @@ describe('run_cells_in_turn', () => {
 	});
 });
 
+describe('cap_issues', () => {
+	test('keeps the first few issues of a schema error and counts the rest', () => {
+		const message = `invalid bench results: ${Array.from({ length: 8 }, (_, i) => `✖ issue ${i}\n  → at cells.${i}`).join('\n')}`;
+		const capped = cap_issues(message, 3);
+		assert.ok(capped.includes('issue 2') && !capped.includes('issue 3'));
+		assert.ok(capped.endsWith('and 5 more issues'));
+		assert.strictEqual(cap_issues(message, 8), message);
+	});
+});
+
 describe('to_noise_floor', () => {
 	test('nothing measured twice is no noise floor', () => {
-		assert.strictEqual(to_noise_floor([]), null);
-	});
-
-	test('the deviation is the same whichever measurement was slower', () => {
-		assert.closeTo(to_deviation(1.25), 0.25, 1e-12);
-		assert.closeTo(to_deviation(0.8), 0.25, 1e-12);
-		assert.strictEqual(to_deviation(1), 0);
+		assert.strictEqual(to_noise_floor([], []), null);
 	});
 
 	test('per cell is the 95th percentile of the deviation', () => {
@@ -616,20 +621,40 @@ describe('to_noise_floor', () => {
 			// deviations of 0% to 10%, alternating which side is slower
 			ratio: i % 2 === 0 ? 1 + i / 1000 : 1 / (1 + i / 1000)
 		}));
-		assert.closeTo(to_noise_floor(pairs)!.per_cell, 0.095, 1e-9);
+		assert.closeTo(to_noise_floor(pairs, [])!.per_cell, 0.095, 1e-9);
 	});
 
 	test('the geomean is of each library across its cells, for the worst library', () => {
-		const floor = to_noise_floor([
-			// cancels out across its cells
-			{ cell: 'c1', library: 'a', ratio: 1.25 },
-			{ cell: 'c2', library: 'a', ratio: 0.8 },
-			// consistently faster the second time, by 2%
-			{ cell: 'c3', library: 'b', ratio: 1 / 1.02 },
-			{ cell: 'c4', library: 'b', ratio: 1 / 1.02 }
-		])!;
+		const floor = to_noise_floor(
+			[
+				// cancels out across its cells
+				{ cell: 'c1', library: 'a', ratio: 1.25 },
+				{ cell: 'c2', library: 'a', ratio: 0.8 },
+				// consistently faster the second time, by 2%
+				{ cell: 'c3', library: 'b', ratio: 1 / 1.02 },
+				{ cell: 'c4', library: 'b', ratio: 1 / 1.02 }
+			],
+			[]
+		)!;
 		assert.closeTo(floor.geomean, 0.02, 1e-9);
 		assert.ok(floor.per_cell > 0.2);
+	});
+
+	test('per process is the 95th percentile within each arm, never across arms', () => {
+		const floor = to_noise_floor(
+			[{ cell: 'c1', library: 'a', ratio: 2 }],
+			[
+				[100, 110],
+				[200, 200]
+			]
+		)!;
+		// the arms are far apart, but within each the passes are 10% and 0% apart
+		assert.closeTo(floor.per_process!, 0.095, 1e-9);
+		// one pass an arm has no pair
+		assert.strictEqual(
+			to_noise_floor([{ cell: 'c1', library: 'a', ratio: 1 }], [[1], [1]])!.per_process,
+			null
+		);
 	});
 
 	test('to_geomean', () => {
@@ -821,7 +846,7 @@ describe('assemble_results', () => {
 	});
 
 	test('a full run carries the noise floor it is given', () => {
-		const noise_floor = { per_cell: 0.03, geomean: 0.005 };
+		const noise_floor = { per_cell: 0.03, geomean: 0.005, per_process: 0.04 };
 		const { results } = assemble_results(create_record({ noise_floor }));
 		assert.deepStrictEqual(results.meta.noise_floor, noise_floor);
 	});
@@ -834,7 +859,7 @@ describe('assemble_results', () => {
 
 	test('only a complete, steady, clean, calibrated full run is publishable', () => {
 		const options = create_options();
-		const noise_floor = { per_cell: 0.03, geomean: 0.005 };
+		const noise_floor = { per_cell: 0.03, geomean: 0.005, per_process: 0.04 };
 		const complete = create_record({ options, noise_floor });
 		assert.ok(bench_results_is_publishable(assemble_results(complete).results));
 		for (const overrides of [
@@ -849,6 +874,35 @@ describe('assemble_results', () => {
 		}
 	});
 
+	test("a run's process noise is over every pair of passes of each value, never across values", () => {
+		const options = create_options({ filters: SMALL_TS });
+		// the passes of a library-cell are 0%, 10%, and 20% slower than its first
+		const processes = create_processes(options, (planned) =>
+			create_cell_result(planned, { ns: [1000 * (1 + planned.pass / 10)] })
+		);
+		const { results } = assemble_results(create_record({ options, processes }));
+		const values = results.cells.flatMap((cell) => Object.values(cell.values));
+		for (const value of values) assert.deepStrictEqual(value.pass_medians_ns, [1000, 1100, 1200]);
+		const noise = results.meta.process_noise!;
+		assert.strictEqual(noise.pairs, values.length * 3);
+		assert.closeTo(noise.median, 0.1, 1e-9);
+		assert.closeTo(noise.max, 0.2, 1e-9);
+		assert.ok(noise.median <= noise.p95 && noise.p95 <= noise.max);
+		assert.deepStrictEqual(to_process_noise(results.cells), noise);
+		// one pass has no pair
+		assert.strictEqual(
+			to_process_noise(
+				results.cells.map((cell) => ({
+					...cell,
+					values: Object.fromEntries(
+						Object.entries(cell.values).map(([id, v]) => [id, { ...v, pass_medians_ns: [1000] }])
+					)
+				}))
+			),
+			null
+		);
+	});
+
 	test('a calibration measures every library as two arms and derives its noise floor', () => {
 		const options = create_options({ kind: 'calibrate', filters: SMALL_TS });
 		// twice the passes of a full run, alternating between the arms
@@ -861,16 +915,26 @@ describe('assemble_results', () => {
 		);
 		// a carried floor is ignored: the calibration measured its own
 		const { results, pairs } = assemble_results(
-			create_record({ options, processes, noise_floor: { per_cell: 0.5, geomean: 0.5 } })
+			create_record({
+				options,
+				processes,
+				noise_floor: { per_cell: 0.5, geomean: 0.5, per_process: 0.5 }
+			})
 		);
 		assert.strictEqual(pairs.length, results.cells.length * ADAPTERS.length);
 		for (const pair of pairs) assert.closeTo(pair.ratio, 1.04, 1e-12);
 		assert.closeTo(results.meta.noise_floor!.per_cell, 0.04, 1e-9);
 		assert.closeTo(results.meta.noise_floor!.geomean, 0.04, 1e-9);
+		// within an arm every pass agreed, however far apart the arms were
+		assert.strictEqual(results.meta.noise_floor!.per_process, 0);
+		assert.strictEqual(results.meta.process_noise!.p95, 0);
 		// the file records the passes of one arm, which is what a full run uses
 		assert.strictEqual(results.meta.run!.passes, FULL_PARAMS.passes);
 		for (const cell of results.cells) {
-			for (const value of Object.values(cell.values)) assert.strictEqual(value.ns_per_op, 1040);
+			for (const value of Object.values(cell.values)) {
+				assert.strictEqual(value.ns_per_op, 1040);
+				assert.deepStrictEqual(value.pass_medians_ns, Array(FULL_PARAMS.passes).fill(1040));
+			}
 		}
 	});
 
@@ -923,7 +987,7 @@ describe('assert_matches_deterministic', () => {
 });
 
 describe('carry_noise_floor', () => {
-	const noise_floor = { per_cell: 0.03, geomean: 0.005 };
+	const noise_floor = { per_cell: 0.03, geomean: 0.005, per_process: 0.04 };
 	const context = {
 		machine: MACHINE,
 		node: 'v24.14.1',

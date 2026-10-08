@@ -211,11 +211,11 @@ Everything below runs on the publishing machine, from the root of the checkout.
 The build in step 12 enforces four of these: a stable anchor, a clean commit,
 a whole, unfiltered full run, and a noise floor. The rest are yours to read,
 and the build passes whatever they say: the exclusions, the disturbed cells,
-the size of the noise floor, and the versions. The summary a run prints has a line for most of them, and the
+the size of the noise floor, the process noise, and the versions. The summary a run prints has a line for most of them, and the
 file holds the same facts. To read them from the file:
 
 ```bash
-node -e "const m=require('./results/latest.json').meta;console.log(m.commit,m.node,m.machine,m.anchor,m.noise_floor,m.run.segments,m.excluded.length,m.startup_excluded.length,m.libraries.map(l=>l.id+'@'+l.version).join(' '))"
+node -e "const m=require('./results/latest.json').meta;console.log(m.commit,m.node,m.machine,m.anchor,m.noise_floor,m.process_noise,m.run.segments,m.excluded.length,m.startup_excluded.length,m.libraries.map(l=>l.id+'@'+l.version).join(' '))"
 ```
 
 - [ ] **The anchor is stable.** `anchor drift` is within 3% either way and the
@@ -239,6 +239,15 @@ node -e "const m=require('./results/latest.json').meta;console.log(m.commit,m.no
       between two libraries that is smaller than the floor is not a difference,
       so a floor larger than the differences the results are read for means the
       machine was not quiet enough: quiet it and calibrate again.
+- [ ] **The processes agreed about as well as the calibration's did.**
+      `process noise` gives the 95th percentile gap between two processes
+      measuring the same library on the same cell (`meta.process_noise.p95`),
+      beside the calibration's figure for the same thing
+      (`meta.noise_floor.per_process`). Compare them. Each is the 95th
+      percentile of one sample, so the run's is higher about half the time: a
+      run's several times the calibration's is the thing to look for, and means
+      the machine was busier than when it was calibrated, so quiet it and run
+      again. The build doesn't check it.
 - [ ] **A resumed run held still.** `resumed: measured in … segments` is fine
       when the anchor is stable: its drift is taken across every segment
       (`meta.run.segments`).

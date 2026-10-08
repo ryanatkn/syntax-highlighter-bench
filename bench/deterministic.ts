@@ -96,6 +96,7 @@ export const build_deterministic_results = async (
 			excluded,
 			startup_excluded: [],
 			noise_floor: null,
+			process_noise: null,
 			bundler: await read_bundler()
 		},
 		langs: [...LANG_ROSTER],

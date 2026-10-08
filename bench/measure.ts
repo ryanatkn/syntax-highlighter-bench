@@ -25,7 +25,7 @@
  * @module
  */
 
-import { stats_median, stats_min_max, stats_percentile } from '@fuzdev/fuz_util/stats.js';
+import { stats_median, stats_percentile, stats_spread } from '@fuzdev/fuz_util/stats.js';
 
 import type { BenchCellValue } from '../src/lib/results_schema.ts';
 
@@ -225,7 +225,9 @@ export type PassSummary = Omit<BenchCellValue, 'attempts'>;
 /**
  * Reduces a library's passes on one cell to the numbers a results cell carries.
  * The rounds of every pass are pooled, so `spread` and the percentiles cover the
- * disagreement between processes as well as between rounds.
+ * disagreement between processes as well as between rounds. `pass_medians_ns`
+ * keeps each pass's own median, in the order given, so the disagreement between
+ * processes can be read apart from the rounds.
  *
  * @param passes - what each process measured
  * @param bytes - the size of the input, for throughput
@@ -236,14 +238,14 @@ export const summarize_passes = (
 ): PassSummary => {
 	const samples = passes.flatMap((pass) => pass.ns_per_op);
 	const median = stats_median(samples);
-	const { min, max } = stats_min_max(samples);
 	return {
 		ns_per_op: median,
 		ops_per_sec: 1e9 / median,
 		mb_per_sec: bytes / 1e6 / (median / 1e9),
 		p10_ns: stats_percentile(samples, 0.1),
 		p90_ns: stats_percentile(samples, 0.9),
-		spread: max / min,
+		spread: stats_spread(samples),
+		pass_medians_ns: passes.map((pass) => stats_median(pass.ns_per_op)),
 		// each process calibrates for itself, so the counts can differ a little
 		iterations: Math.round(stats_median(passes.map((pass) => pass.iterations))),
 		rss_peak_bytes: Math.max(...passes.map((pass) => pass.rss_peak_bytes))

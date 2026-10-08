@@ -66,6 +66,7 @@ export const to_deterministic_only = (data: BenchResults): BenchResults => {
 		run: null,
 		anchor: null,
 		noise_floor: null,
+		process_noise: null,
 		startup_excluded: []
 	});
 	return data;

@@ -44,7 +44,9 @@
 				color schemes their default themes cover; the excluded list for cells, and
 				<code>startup_excluded</code> for cold-start scenarios, in
 				<DeclarationLink name="BenchStartupExcluded" />; the anchor's drift; the machine's noise
-				floor; what the bundle sizes were built with, in <DeclarationLink name="BenchBundler" />
+				floor; the run's own process noise, in <DeclarationLink name="BenchProcessNoise" />, from
+				every pair of a value's passes; what the bundle sizes were built with, in
+				<DeclarationLink name="BenchBundler" />
 			</li>
 			<li>
 				<DeclarationLink name="BenchLang" /> and <DeclarationLink name="BenchSet" /> — the language
@@ -61,7 +63,9 @@
 				states the token counts and an <code>html</code> cell the output sizes, so each is stated
 				once for an input. Each value carries <code>attempts</code>: how many times the library was
 				measured there, more than 1 when its rounds disagreed and it was retried. A retried value's
-				spread and percentiles are those of the attempt that was kept
+				spread and percentiles are those of the attempt that was kept. Each value also carries
+				<code>pass_medians_ns</code>, the kept attempt's median for each pass, so the processes'
+				disagreement can be recomputed from the file
 			</li>
 			<li>
 				<DeclarationLink name="BenchStartup" /> — one cold-start scenario: what a fresh process
@@ -243,6 +247,12 @@
 			</li>
 			<li>a smoke run carries no noise floor, allows no retries, and is one segment</li>
 			<li>no value has more attempts than the run's retries allow</li>
+			<li>
+				a value has a pass median for each of the run's passes, and the process noise is there
+				exactly when a cell has a value and the run measured more than one pass, counting every pair
+				of passes of every value, with its median at most its 95th percentile and that at most its
+				largest
+			</li>
 			<li>a run with no filters has no gap, as above</li>
 			<li>
 				each startup entry carries the fields its scenario needs and no others, for languages the

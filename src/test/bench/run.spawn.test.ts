@@ -294,7 +294,7 @@ describe('run_bench', () => {
 		writeFileSync(join(results_dir, 'calibration_box.json'), '{"meta": {}}');
 		await assert_refused(
 			['--machine', 'box', '--langs', 'json', '--sizes', 'micro'],
-			/calibration_box\.json is not a results file/,
+			/calibration_box\.json is not a results file of this harness: run the calibration again/,
 			{ results_dir }
 		);
 	});

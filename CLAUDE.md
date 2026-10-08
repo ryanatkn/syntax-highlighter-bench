@@ -74,7 +74,6 @@ bench/                       the Node harness; never imported by the site
   journal.ts                 the journal of a timed run: header, entries, read, append, header diff
   measure.ts                 the timing engine: calibration, collections, timed batches, pooled stats
   anchor.ts                  the reference workload that detects machine drift
-  lock.ts                    the machine-wide lock
   corpus.ts                  the corpus manifest: schema, build, load
   corpus_manifest.ts         CLI: regenerate or check the manifest
   corpus_fetch.ts            CLI: download inputs by their pins and verify them
@@ -285,6 +284,18 @@ A cell value's `attempts` is how many times the library was measured there (1
 unless retried), and is at most `meta.run.retries + 1`. The value's spread and
 percentiles are the kept attempt's alone. In a calibration file the values, and
 so their `attempts`, are the first arm's.
+
+A cell value's `pass_medians_ns` is each pass's median over its own rounds, in
+pass order, exactly `meta.run.passes` of them (the schema checks the length),
+for the kept attempt (the first arm's in a calibration). From them comes
+`meta.process_noise` (`BenchProcessNoise`, fuz_util's `StatsPairwiseDeviation`
+restated so the schema depends on zod alone): `to_process_noise` runs
+`stats_pairwise_deviation` with each value's pass medians as one group, so
+pairs are only ever within one library on one cell, and records `pairs`,
+`median`, `p95`, and `max`. The schema requires `median ≤ p95 ≤ max`, `pairs`
+to be the values times `passes·(passes−1)/2`, and that it is null exactly when no cell has a value or the run
+measured one pass (a smoke run, and the deterministic file). It is an in-run
+A/A figure for the reader: `bench_results_is_publishable` doesn't look at it.
 
 A cell's id is `<file>:<mode>`, built by `to_bench_cell_id` and enforced by the
 schema; `meta.excluded` refers to cells by it. `BenchResults` also checks that
@@ -609,7 +620,9 @@ a port. Statistics come from
 fuz_util's `stats.js` and terminal formatting from its `time.js`. Its
 `BenchmarkStats` and `benchmark_format_*` don't fit: they drop outliers and
 report a mean over many samples, and here a sample is a whole round and the
-rounds are few.
+rounds are few. The spreads (`stats_spread`), the deviation of a ratio
+(`stats_ratio_deviation`), the process noise (`stats_pairwise_deviation`), and
+the machine lock (`benchmark_lock.ts`) are fuz_util's too.
 
 **One process, one library.** Every number is one library alone in a fresh
 process, so the roster can't move another library's number. Two effects made
@@ -740,8 +753,9 @@ the engine is tested with a fake clock; `create_measure_deps` throws without
   are carried, and the run logs why when they aren't.
 - `assemble_results` groups the results by cell and library and
   `combine_passes` pools them: for each attempt `summarize_passes` takes the
-  median, p10/p90, and spread over the rounds of every pass, the median of the
-  passes' iterations, and the largest peak RSS, and `select_attempt` keeps one
+  median, p10/p90, and spread over the rounds of every pass, each pass's own
+  median (`pass_medians_ns`), the median of the passes' iterations, and the
+  largest peak RSS, and `select_attempt` keeps one
   attempt. The file is written atomically, and it is the value `BenchResults`
   parsed.
 - `RunError.exit_code` is 2 when the caller must change something (flags, a
@@ -898,9 +912,19 @@ dirty, so committing a calibration and then running doesn't mark the run.
 **Calibration.** A `calibrate` run gives every library twice the passes and
 splits them alternately into two arms, each exactly what a full run measures.
 `to_noise_floor` takes each pair's ratio: `per_cell` is the 95th percentile of
-the deviation `max(r, 1/r) − 1` over cells and libraries, and `geomean` is the
-deviation of a library's geometric mean of ratios, for the library where it is
-largest. The arms are separate processes, so the floor includes
+the deviation `max(r, 1/r) − 1` (`stats_ratio_deviation`) over cells and
+libraries, and `geomean` is the deviation of a library's geometric mean of
+ratios, for the library where it is largest. `per_process` is
+`stats_pairwise_deviation`'s `p95` with each arm's pass medians as a group
+(null when an arm has one pass): the same figure as a run's
+`process_noise.p95`, so the two compare like with like. `per_cell` doesn't:
+it compares values that each pool several processes, so it reads lower than
+the gap between two single processes, and holding `process_noise` against it
+would flag ordinary runs. The run summary and `Provenance.svelte` print a run's
+`process_noise` and the carried `per_process` side by side, with no verdict:
+both are the 95th percentile of one sample, so either is higher about as often
+as not, and a run's several times the calibration's is what the reader looks
+for. The arms are separate processes, so the floor includes
 process-to-process variation. The cells of a calibration file carry the first
 arm, and `meta.run.passes` is one arm's passes. Each arm is retried on its own
 (`to_arm_count`, `PassUnit`), by the rule a full run applies to a library: the
@@ -925,13 +949,20 @@ With two readings that is the plain change. It only brackets what was measured,
 so the summary also lists every library-cell whose `spread` still exceeds
 `SPREAD_DISTURBED_ABOVE` after its retries.
 
-**The lock** (`bench/lock.ts`): an exclusively created file in the OS temp
-directory naming the holder's process, held for as long as a segment
-measures. A second run is refused with exit 2 and the holder's pid. A lock whose
+**The lock** is fuz_util's `benchmark_lock.ts`: `benchmark_lock_acquire` takes
+`BENCHMARK_LOCK_PATH`, the fixed `/tmp/fuz_benchmark.lock`, which ignores
+`TMPDIR` on purpose, so this harness and any other benchmark that uses
+fuz_util's benchmark lock share one lock and never measure at once. It names the holder's
+process and is held for as long as a segment measures. A second run is refused
+with exit 2 and `benchmark_lock_format_refusal`'s message. A lock whose
 process is gone is taken over. `release` reports whether the lock was still
-this process's, and a run that lost it writes nothing. Tests pass their own
-lock path and results directory to `run_bench`, so `gro check` neither takes
-nor waits on the machine's.
+this process's, and a run that lost it writes nothing. The only private lock
+is `RunBenchOptions.lock_path`: tests pass their own with their results
+directory, so `gro check` neither takes nor waits on the machine's. The CLI has
+no such flag, and setting `TMPDIR` no longer separates two runs, so a second
+smoke run started while any benchmark holds the lock is refused: wait for it.
+That is right, since a smoke run's parallel processes would disturb the run
+that holds it. The lock's own behaviour is tested in fuz_util.
 
 **Keep the spawning tests few.** `src/test/bench/run.spawn.test.ts` is the only
 file that starts harness processes, and each costs a Node start. How a

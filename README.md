@@ -286,6 +286,7 @@ so the rewarm is long enough that every library in the roster has recovered.
 | `ops_per_sec`, `mb_per_sec` | the same as calls, and megabytes of input, per second |
 | `p10_ns`, `p90_ns` | the 10th and 90th percentile across those rounds |
 | `spread` | the slowest round over the fastest, across passes too; near 1 means they agreed |
+| `pass_medians_ns` | each pass's own median, in pass order: one per process, so the processes' disagreement reads apart from the rounds |
 | `iterations` | calls per batch, as calibrated: the median across passes |
 | `rss_peak_bytes` | the peak resident size of the library's process, the largest across passes |
 | `attempts` | how many times the library was measured on the cell: 1 unless it was retried |
@@ -505,11 +506,25 @@ full run would measure. The two should be equal, and how far apart they are is
 the noise, including what varies from one process to the next. The 95th
 percentile across cells and libraries is the floor for one cell, and the largest
 gap between a library's two geometric means is the floor for a geometric mean.
-A later full run carries the floor in its results file if the calibration
+A third figure, `per_process`, is the 95th percentile gap between two passes
+within one arm: how far two single processes measuring the same thing come
+apart, which reads higher than the floor for one cell since a cell's value
+pools several processes. A later full run carries the floor in its results file if the calibration
 describes it: unfiltered, steady, and on the same machine in the same state
 (threads and frequency settings), with the same Node version, corpus,
 parameters, retries included, and library versions. A difference smaller than
 the floor is not a result.
+
+**Process noise.** A run with more than one pass also records how far its own
+processes came apart, as `meta.process_noise`: every pair of a value's
+`pass_medians_ns`, within one library on one cell, gives a gap, and the file
+keeps how many pairs there were and their median, 95th percentile, and
+largest. Its 95th percentile is the run's counterpart of the calibration's
+`per_process`, and the run's summary and the results page print the two side
+by side. Both are the 95th percentile of one sample, so either is higher about
+as often as not: a run's figure several times the calibration's is what says
+its processes disagreed more than the calibration's did. The reader compares
+them, and the site does not refuse a run over it.
 
 **The anchor.** A run measures a fixed workload, involving no measured library,
 before its first process and after its last. A drift past 3% means the machine
@@ -522,10 +537,12 @@ and not hidden. A segment stopped by a signal or a failure still takes its
 closing reading; one killed outright can't, and the next segment's opening
 reading stands in.
 
-**The lock.** One measurement run at a time, machine-wide: a run holds a lock
-file in the OS temp directory for as long as it measures, and a second
+**The lock.** One measurement run at a time, machine-wide: a run holds the
+lock file `/tmp/fuz_benchmark.lock` for as long as it measures, and a second
 run is refused and told who holds it. Each segment of a resumed run holds it
-for as long as it measures.
+for as long as it measures. The lock is fuz_util's benchmark lock at its fixed
+path, which ignores `TMPDIR`, so any other benchmark that uses fuz_util's
+benchmark lock can't measure at the same time as this one.
 
 ### Caveats
 

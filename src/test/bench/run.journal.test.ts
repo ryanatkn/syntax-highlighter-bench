@@ -1,4 +1,5 @@
 import { afterEach, assert, beforeEach, describe, test } from 'vitest';
+import { spawnSync } from 'node:child_process';
 
 import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
 import {
@@ -148,6 +149,7 @@ const create_machine = (
 			lock_path,
 			// holds no deterministic file, unless a test puts one there
 			results_dir: dir,
+			read_load: () => 0,
 			log: (line: string) => machine.log.push(line),
 			spawn_cell: (spec: CellSpec): ChildOutcome => {
 				if (machine.spawned >= machine.interrupt_after) return INTERRUPTED;
@@ -457,6 +459,19 @@ describe('a timed run keeps a journal', () => {
 		assert.match(error.message, /failed \(exit 1\):\nError: boom/);
 		assert.ok(!existsSync(out));
 		assert.ok(existsSync(journal_path));
+	});
+
+	test('a stale lock, whose process is gone, is taken over and released', async () => {
+		// a process that has already exited, so its pid names no one
+		const { pid } = spawnSync(process.execPath, ['-e', '']);
+		writeFileSync(
+			lock_path,
+			JSON.stringify({ pid, label: 'full run', cwd: '/elsewhere', started_at: 'now' })
+		);
+		const { results } = await run_bench(parse(), create_machine().options);
+		assert.ok(results.cells.length > 0);
+		assert.ok(existsSync(out));
+		assert.ok(!existsSync(lock_path));
 	});
 
 	test('a run that lost the machine lock sets its journal aside, however it ends', async () => {

@@ -462,6 +462,7 @@ const create_machine = (answer: (planned: PlannedStartup) => ChildOutcome = to_o
 			lock_path: join(dir, 'bench.lock'),
 			// holds no deterministic file
 			results_dir: dir,
+			read_load: () => 0,
 			log: (line: string) => machine.log.push(line),
 			spawn_startup: (planned: PlannedStartup): ChildOutcome => {
 				if (machine.spawned + machine.cells_spawned >= machine.interrupt_after) return INTERRUPTED;

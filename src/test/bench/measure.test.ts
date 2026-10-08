@@ -172,6 +172,8 @@ describe('summarize_passes', () => {
 		assert.closeTo(value.mb_per_sec, 2000 / 1e6 / (1055 / 1e9), 1e-9);
 		// the spread covers the disagreement between passes
 		assert.closeTo(value.spread, 1200 / 900, 1e-12);
+		// and each pass keeps its own median, in order
+		assert.deepStrictEqual(value.pass_medians_ns, [1050, 1050, 1055]);
 		assert.ok(value.p10_ns >= 900 && value.p10_ns <= 1000);
 		assert.ok(value.p90_ns >= 1100 && value.p90_ns <= 1200);
 		// each pass calibrates for itself: the median count

@@ -188,9 +188,41 @@ export const BenchNoiseFloor = z.strictObject({
 	geomean: z.number().nonnegative().meta({
 		description:
 			"The deviation of a geometric mean across cells: how far apart the two measurements' geometric means were, for the library where they differed most; 0.01 is 1%."
+	}),
+	per_process: z.number().nonnegative().nullable().meta({
+		description:
+			"The deviation two processes of one library on one cell can show by chance: the 95th percentile, over every pair of passes within an arm, of how far their medians were apart. It is what a run's `process_noise.p95` is compared with, since `per_cell` compares values that each pool several processes and so reads lower. Null when each arm measured one pass."
 	})
 });
 export type BenchNoiseFloor = z.infer<typeof BenchNoiseFloor>;
+
+/**
+ * How far apart a run's own processes came out: an A/A figure from the run
+ * itself. Each library on each cell was measured by several processes, which
+ * should agree, and every pair of them gives a deviation. It is fuz_util's
+ * `StatsPairwiseDeviation`, restated here so the schema depends on zod alone.
+ */
+export const BenchProcessNoise = z
+	.strictObject({
+		pairs: z.number().int().positive().meta({
+			description:
+				"How many pairs of processes the figures are taken over: every pair of a value's `pass_medians_ns`, over every cell and library."
+		}),
+		median: z.number().nonnegative().meta({
+			description:
+				'The median deviation of a pair, as the larger median over the smaller less one; 0.01 is 1%.'
+		}),
+		p95: z.number().nonnegative().meta({
+			description:
+				"The 95th percentile deviation of a pair: the run's own counterpart of the noise floor's `per_process`."
+		}),
+		max: z.number().nonnegative().meta({ description: 'The largest deviation of a pair.' })
+	})
+	.refine((noise) => noise.median <= noise.p95 && noise.p95 <= noise.max, {
+		path: ['p95'],
+		message: 'the median is at most the 95th percentile, which is at most the largest'
+	});
+export type BenchProcessNoise = z.infer<typeof BenchProcessNoise>;
 
 /** An input's size tier, by real file size. */
 export const BenchSize = z.enum(BENCH_SIZES);
@@ -445,6 +477,10 @@ export const BenchMeta = z.strictObject({
 		description:
 			'Null until the machine has been calibrated with the parameters of this run. A calibration run carries the floor it measured.'
 	}),
+	process_noise: BenchProcessNoise.nullable().meta({
+		description:
+			"How far apart this run's processes came out on the same library and cell, from every value's `pass_medians_ns`. Null exactly when no cell has a value or the run measured one pass. In a calibration file it is the first arm's."
+	}),
 	bundler: BenchBundler.nullable().meta({
 		description: 'Null exactly when `bundle` is empty: no sizes were measured.'
 	})
@@ -625,6 +661,10 @@ export const BenchCellValue = z
 			.number()
 			.min(1)
 			.meta({ description: 'Slowest round over fastest. Near 1 means the rounds agreed.' }),
+		pass_medians_ns: z.array(z.number().positive()).min(1).meta({
+			description:
+				"Each pass's median nanoseconds per call over its own rounds, in pass order: one number per process, `meta.run.passes` of them, so the disagreement between processes can be read apart from the rounds. Of the kept attempt, and in a calibration file of the first arm."
+		}),
 		iterations: z.number().int().positive().meta({
 			description:
 				'Calls per timed batch, calibrated for this library. Each process calibrates for itself, and this is the median across them.'
@@ -1202,6 +1242,12 @@ export const BenchResults = z
 							`more attempts than the run's ${run.retries} retries allow`
 						);
 					}
+					if (value.pass_medians_ns.length !== run.passes) {
+						issue(
+							['cells', i, 'values', library, 'pass_medians_ns'],
+							`a median for each of the run's ${run.passes} passes`
+						);
+					}
 				}
 			}
 			if (filters.metrics && !filters.metrics.includes('throughput') && cells_timed) {
@@ -1232,7 +1278,24 @@ export const BenchResults = z
 			if (timed && run.kind === 'full' && bench_run_is_complete(run)) {
 				for (const gap of bench_results_find_startup_gaps(results)) issue(gap.path, gap.message);
 			}
-		} else if (!cells_timed) {
+		}
+		// process noise is over every pair of a value's passes, so it is there exactly when a pair is
+		const { process_noise } = results.meta;
+		const passes = run?.passes ?? 0;
+		const values_count = results.cells.reduce((n, cell) => n + Object.keys(cell.values).length, 0);
+		const pairs = (values_count * passes * (passes - 1)) / 2;
+		if ((process_noise !== null) !== pairs > 0) {
+			issue(
+				['meta', 'process_noise'],
+				'process noise is set exactly when a cell has a value and the run measured more than one pass'
+			);
+		} else if (process_noise !== null && process_noise.pairs !== pairs) {
+			issue(
+				['meta', 'process_noise', 'pairs'],
+				`${pairs} pairs: every pair of passes of every value, with ${values_count} values of ${passes} passes`
+			);
+		}
+		if (!run && !cells_timed) {
 			// a deterministic-only file has no filters, so it covers everything it lists
 			for (const gap of bench_results_find_gaps(results, 'deterministic')) {
 				issue(gap.path, gap.message);
