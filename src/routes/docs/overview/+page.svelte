@@ -127,7 +127,8 @@
 			<li>the maintainer's library is flagged in the results file and on the site</li>
 			<li>
 				every input is labelled by its source, and real code that no measured library authored is
-				the primary set; a snippet written for this benchmark is labelled as that, never as neutral
+				the primary set; a snippet or a stress input written for this benchmark is labelled as that,
+				never as neutral, and no stress input is tuned to a library
 			</li>
 			<li>
 				each library is driven through one adapter with notes on the entry points it uses, so its

@@ -11,7 +11,7 @@ describe('group_inputs', () => {
 	test('groups every input by source, a home input under its owner', () => {
 		assert.deepStrictEqual(
 			groups.map((group) => group.source_key),
-			['neutral', 'shiki', 'home:fuz_code', 'home:twinkleplop', 'harness']
+			['neutral', 'shiki', 'home:fuz_code', 'home:twinkleplop', 'harness', 'stress']
 		);
 		assert.strictEqual(
 			groups.reduce((sum, group) => sum + group.inputs.length, 0),

@@ -22,6 +22,7 @@ gro sync      # regenerate files and run svelte-kit sync
 gro format 'bench/**/*' # format the harness (plain `gro format` covers `src/`)
 npm run corpus:check    # the corpus manifest matches the files and their pins
 npm run corpus:manifest # regenerate the manifest and the inputs table
+npm run corpus:stress   # regenerate the stress inputs, then the manifest (`-- --check` to compare)
 npm run bench:smoke     # every library on every cell and cold-start scenario once, in parallel
 npm run bench -- --machine <name>           # a full timed run, written to results/
 npm run bench:calibrate -- --machine <name> # the machine's noise floor
@@ -78,6 +79,7 @@ bench/                       the Node harness; never imported by the site
   corpus_manifest.ts         CLI: regenerate or check the manifest
   corpus_fetch.ts            CLI: download inputs by their pins and verify them
   corpus_harvest_svelte.ts   CLI: build the synthetic large Svelte input
+  corpus_stress.ts           CLI: generate the stress inputs (minified neutral inputs, pathological files) and their entries
   corpus/                    the inputs, by source then language; manifest.json, INPUTS.md
   langs.ts                   the language ids every adapter maps onto
   sets.ts                    the feature sets bundle size is measured over
@@ -197,7 +199,12 @@ tuned to flatter a result. Adding a set is one line.
 `src/lib/results_schema.ts` exports zod `strictObject` schemas, each with a
 type of the same name. `BenchResults` is the whole file; `parse_bench_results`
 validates and throws one readable error. `BenchInput` is also the shape of a
-corpus manifest entry.
+corpus manifest entry. Its provenance rules are the ones
+`build_corpus_manifest` reports for the corpus: a harness input has no
+provenance and only `BENCH_WRITTEN_SOURCES` may have none; only a stress input
+has a `derivation`, and then it has pins and is synthetic; a stress input with
+no pins is not synthetic; one pin without a derivation is a verbatim copy whose
+hash matches; several pins make the input synthetic.
 
 Two classes of number, kept apart:
 
@@ -429,14 +436,19 @@ tiers, and commands, and the generated `bench/corpus/INPUTS.md` for the list.
 
 - **Sources**: `neutral` (pinned real files no measured library authored, the
   primary set), `shiki` (Shiki's benchmark samples), `home` (a library's own
-  samples), `harness` (micro snippets written here).
+  samples), `harness` (micro snippets written here), `stress` (worst-case
+  inputs, below).
 - **Tiers** come from byte size alone (`to_size_tier`, limits in
   `SIZE_TIER_LIMITS`).
 - **`manifest.json`** is the list of `BenchInput` entries plus `corpus_hash`.
-  Size, lines, hash, and tier are derived; `synthetic` and `provenance` are
-  hand-written and carried forward by `npm run corpus:manifest`.
+  Size, lines, hash, and tier are derived; `synthetic`, `provenance`, and
+  `derivation` are hand-written (or written by the stress generator) and
+  carried forward by `npm run corpus:manifest`.
 - **Provenance** is a list of pins (repository, commit, path, hash, license).
-  None for a harness input. One means a verbatim copy whose hash must match.
+  None for a harness input or a written stress input (`BENCH_WRITTEN_SOURCES`),
+  and only for those. One with a null `derivation` means a verbatim copy whose
+  hash must match; one with a `derivation` is a derived stress input, synthetic,
+  whose hash differs.
   Several mean a synthetic input and its constituents. A verbatim copy can
   itself be synthetic, when the upstream built the file by joining or repeating
   others.
@@ -445,10 +457,26 @@ tiers, and commands, and the generated `bench/corpus/INPUTS.md` for the list.
   neutral input from the components listed in `SVELTE_HARVEST_SOURCES`. Both
   need something outside the repo (the network, a checkout of the harvested
   projects), so they are run by hand and not by the tests.
+- **Stress** (`stress/<lang>/`, `bench/corpus_stress.ts`): inputs that find
+  each library's worst cases, never pooled with another source and kept out of
+  the headline (which reads `neutral` only). The generator owns the directory:
+  it writes every file, removes any other, and writes the manifest entries of
+  its inputs. Never edit a file there. Two kinds: **derived** (a neutral input
+  minified by esbuild through Vite's `transformWithEsbuild`, or JSON
+  reserialized without whitespace; the source's pins as provenance, synthetic,
+  and a `derivation` naming the esbuild version, since another version may give
+  other bytes) and **written** (a pathological file per timed language, its
+  first comment saying what it stresses; no provenance). Nothing is tuned to a
+  library: a failure or a crawl on one is a finding, reported, never smoothed by
+  changing the input. Shiki's TextMate engines are far slower on the long-line
+  inputs than anywhere else, which lengthens a full run and the Shiki corpus
+  tests.
 
 `src/test/bench/corpus.test.ts` rebuilds the manifest from disk and compares it
 to the committed one, so a file added, removed, or changed without regenerating
-fails the suite.
+fails the suite. `src/test/bench/corpus_stress.test.ts` regenerates the stress
+inputs in memory and compares them, and their entries, with the committed ones:
+`corpus:check` alone can't verify a derived input.
 
 ## Deterministic metrics
 
@@ -964,7 +992,7 @@ and `logo.ts`:
 
 | module | what it does |
 | --- | --- |
-| `bench_constants.ts` | `BENCH_SIZES`, `BENCH_MODES`, `BENCH_SOURCES`, `SPREAD_DISTURBED_ABOVE`: the schema builds its enums from the lists, and the harness and the pages import them |
+| `bench_constants.ts` | `BENCH_SIZES`, `BENCH_MODES`, `BENCH_SOURCES`, `BENCH_WRITTEN_SOURCES`, `SPREAD_DISTURBED_ABOVE`: the schema builds its enums from the lists, and the harness and the pages import them |
 | `matrix.ts` | the table model: `MatrixEntry` (value, unsupported, excluded, none, unmeasured), `MatrixRow`, `MatrixGroup`; baseline, ratios, completeness, `to_geomean_row` |
 | `ratio.ts` | `to_ratio`, the shared color scale (`to_ratio_level`, `to_ratio_color`), `ratio_is_within_floor`, `to_geomean` |
 | `cell_groups.ts` | cells grouped by language and source; source keys (`home:<library>`); why a library has no number in a cell |

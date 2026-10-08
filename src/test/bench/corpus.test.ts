@@ -119,7 +119,7 @@ describe('entries', () => {
 	});
 
 	test('a copied input is the pinned upstream file, byte for byte', () => {
-		for (const input of inputs.filter((i) => i.provenance.length === 1)) {
+		for (const input of inputs.filter((i) => i.provenance.length === 1 && i.derivation === null)) {
 			assert.strictEqual(input.provenance[0]!.sha256, input.sha256, input.file);
 		}
 	});
@@ -381,7 +381,8 @@ describe('build_corpus_manifest', () => {
 				lines: 1,
 				sha256: hash_sha256('a\n'),
 				synthetic: false,
-				provenance: []
+				provenance: [],
+				derivation: null
 			},
 			{
 				file: COPIED,
@@ -393,7 +394,8 @@ describe('build_corpus_manifest', () => {
 				lines: 2,
 				sha256: hash_sha256('b\nb\n'),
 				synthetic: false,
-				provenance: [to_pin('b\nb\n')]
+				provenance: [to_pin('b\nb\n')],
+				derivation: null
 			}
 		]);
 		CorpusManifest.parse(built);
@@ -457,6 +459,47 @@ describe('build_corpus_manifest', () => {
 		]);
 		assert.deepStrictEqual(joined.problems, []);
 		assert.ok(joined.manifest.inputs[0]!.synthetic);
+	});
+
+	test('a stress input may be written here, or derived from a pin it differs from', () => {
+		const WRITTEN = 'stress/ts/a.ts';
+		const DERIVED = 'stress/js/b.min.js';
+		const derived = { file: DERIVED, synthetic: true, provenance: [to_pin('b\n')] };
+		const { manifest: built, problems } = build({ [WRITTEN]: 'a\n', [DERIVED]: 'b' }, [
+			{ ...derived, derivation: 'minified' }
+		]);
+		assert.deepStrictEqual(problems, []);
+		assert.deepStrictEqual(
+			built.inputs.map((i) => [i.file, i.source, i.provenance.length, i.derivation]),
+			[
+				[DERIVED, 'stress', 1, 'minified'],
+				[WRITTEN, 'stress', 0, null]
+			]
+		);
+		CorpusManifest.parse(built);
+		// without its derivation it reads as a copy that changed
+		assert.match(
+			build({ [DERIVED]: 'b' }, [derived]).problems[0]!,
+			/not the verbatim copy its provenance pins/
+		);
+		assert.match(
+			build({ [DERIVED]: 'b' }, [{ ...derived, synthetic: false, derivation: 'minified' }])
+				.problems[0]!,
+			/must be marked synthetic/
+		);
+		assert.match(
+			build({ [COPIED]: 'b' }, [{ ...derived, file: COPIED, derivation: 'minified' }]).problems[0]!,
+			/only a stress input is derived/
+		);
+		assert.match(
+			build({ [WRITTEN]: 'a\n' }, [{ file: WRITTEN, synthetic: true }]).problems[0]!,
+			/so it is not synthetic/
+		);
+		assert.match(
+			build({ [WRITTEN]: 'a\n' }, [{ file: WRITTEN, synthetic: true, derivation: 'minified' }])
+				.problems[0]!,
+			/names the file it was derived from/
+		);
 	});
 
 	test('drops an entry whose file is gone', () => {

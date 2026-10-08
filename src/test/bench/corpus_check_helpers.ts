@@ -26,7 +26,9 @@ export const describe_corpus_output_check = (adapter_ids: ReadonlyArray<string>)
 
 		test(
 			'passes the output check on every corpus input it claims',
-			{ timeout: 180_000 },
+			// Shiki's TextMate engines take seconds per call on the long-line stress inputs, so its
+			// files run for minutes on a slower machine
+			{ timeout: 600_000 },
 			async () => {
 				const failures: Array<string> = [];
 				let checked = 0;

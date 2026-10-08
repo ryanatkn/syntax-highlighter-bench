@@ -34,7 +34,9 @@ const SOURCE_NOTES: Record<BenchSource, string> = {
 	neutral: 'real code no measured library authored',
 	shiki: "Shiki's own benchmark samples",
 	home: 'home turf',
-	harness: 'snippets written for this benchmark by its maintainer, who also maintains fuz_code'
+	harness: 'snippets written for this benchmark by its maintainer, who also maintains fuz_code',
+	stress:
+		'pathological and minified inputs, generated for this benchmark by its maintainer, who also maintains fuz_code, to find worst cases; Shiki is timed with its per-line limit out of reach, so it highlights lines its default would cut off'
 };
 
 /** A source key's label: the source, naming the owner of a home input. */

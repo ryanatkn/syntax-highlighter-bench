@@ -41,6 +41,7 @@
 						<td class="num">{format_count(input.lines)}</td>
 						<td>{[...new Set(input.provenance.map((p) => p.license))].join(', ')}</td>
 						<td>
+							{#if input.derivation !== null}<div><small>{input.derivation}, from</small></div>{/if}
 							{#each input.provenance as provenance (provenance.repo + provenance.path)}
 								<div>
 									<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->

@@ -40,7 +40,8 @@ describe('the options and the defaults', () => {
 			'shiki',
 			'home:fuz_code',
 			'home:twinkleplop',
-			'harness'
+			'harness',
+			'stress'
 		]);
 		assert.deepStrictEqual(options.set, ['docs', 'web_rust']);
 		assert.deepStrictEqual(options.engines, ['scanner', 'grammar_vm', 'regex', 'textmate']);

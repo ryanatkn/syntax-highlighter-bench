@@ -1,5 +1,5 @@
 {
-	"corpus_hash": "fbcb036c3a4d840323b2910449c255fb0013fccee0f37dc09489dad77633028b",
+	"corpus_hash": "e649d70d435efac06e26c753d9424bbf30122fcae8e8037396b3cc340ea1c101",
 	"inputs": [
 		{
 			"file": "harness/bash/snippet.sh",
@@ -11,7 +11,8 @@
 			"lines": 21,
 			"sha256": "d2aae64b16927c79e2097b87e78ab96ececa75ef5f701359be0b434aa172fe5a",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/css/snippet.css",
@@ -23,7 +24,8 @@
 			"lines": 24,
 			"sha256": "79a9612b6e179843d8fe8390eec841bb93f50659aeaa860882a7a3e1b1bf90c8",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/html/snippet.html",
@@ -35,7 +37,8 @@
 			"lines": 21,
 			"sha256": "c6c448995ba1b47afe82319022dfa33cf1f75cb531259b9b88f2a6b92e288e68",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/js/snippet.js",
@@ -47,7 +50,8 @@
 			"lines": 14,
 			"sha256": "3685f5fafd559c9916c9a9ce652c9bb27ddf306cd56517cbcff519e81a1cacd1",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/json/snippet.json",
@@ -59,7 +63,8 @@
 			"lines": 18,
 			"sha256": "028cdab0ba3e98fb2409985718cfb94774aa677e6208dc2072cc705b08629978",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/md/snippet.md",
@@ -71,7 +76,8 @@
 			"lines": 21,
 			"sha256": "16624d3276e8fb8f0af0d72e67c1af6a4b1ba99a73c2e2cbecf0a62e7ac11b51",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/rust/snippet.rs",
@@ -83,7 +89,8 @@
 			"lines": 24,
 			"sha256": "e4d238fa0ca48bb52376e98641d9aea2da40f473553d4ac7a3341549077c04a5",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/svelte/snippet.svelte",
@@ -95,7 +102,8 @@
 			"lines": 29,
 			"sha256": "f31e3b0a1576b710888a1984cf7b0d91835a420252bcb82c69bd36ff835c21a0",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/ts/snippet.ts",
@@ -107,7 +115,8 @@
 			"lines": 19,
 			"sha256": "4aaf305fa033881151b8cc84f29a56eb5d89ca5951a172bed258a841cd14f65a",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "harness/xml/snippet.xml",
@@ -119,7 +128,8 @@
 			"lines": 12,
 			"sha256": "4d3663a1bcb39f80ff9a481a0b70f5d6f9b00b2a42d5aa76bbee4f581ea7efea",
 			"synthetic": false,
-			"provenance": []
+			"provenance": [],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/bash/sample_complex.sh",
@@ -140,7 +150,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/css/sample_complex.css",
@@ -161,7 +172,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/html/sample_complex.html",
@@ -182,7 +194,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/json/sample_complex.json",
@@ -203,7 +216,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/md/sample_complex.md",
@@ -224,7 +238,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/rust/sample_complex.rs",
@@ -245,7 +260,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/svelte/sample_complex.svelte",
@@ -266,7 +282,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/ts/sample_complex.ts",
@@ -287,7 +304,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/bash/bash.large.sh",
@@ -308,7 +326,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 28 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/bash/bash.medium.sh",
@@ -329,7 +348,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/bash/bash.small.sh",
@@ -350,7 +370,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 3 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/bash/deploy.sh",
@@ -371,7 +392,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: corpus/seed/bash/deploy.sh"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/css/css.large.css",
@@ -392,7 +414,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 8 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/css/css.medium.css",
@@ -413,7 +436,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 4 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/css/css.small.css",
@@ -434,7 +458,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 3 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/css/site.css",
@@ -455,7 +480,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/_site/src/app.css, lib/_site/src/lib/styles/docs.css, lib/_site/src/lib/styles/explore.css"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/html/app.html",
@@ -476,7 +502,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/_site/src/app.html"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/html/html.large.html",
@@ -497,7 +524,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 88 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/html/html.medium.html",
@@ -518,7 +546,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 9 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/html/html.small.html",
@@ -539,7 +568,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/js/bench-suite.js",
@@ -560,7 +590,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/bench/src/library/tokenization-suite.bench.js, lib/bench/src/library/micro-optimizations.bench.js, lib/bench/src/library/data-structures-suite.bench.js"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/js/javascript.large.js",
@@ -581,7 +612,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 8 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/js/javascript.medium.js",
@@ -602,7 +634,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 13 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/js/javascript.small.js",
@@ -623,7 +656,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 1 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/json/compiled-grammar.json",
@@ -644,7 +678,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: compiled-json-grammar.json"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/json/json.large.json",
@@ -665,7 +700,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 205 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/json/json.medium.json",
@@ -686,7 +722,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 21 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/json/json.small.json",
@@ -707,7 +744,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/md/architecture.md",
@@ -728,7 +766,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: architecture.md"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/md/grammar-docs.md",
@@ -749,7 +788,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: grammar.md, TRANSFORMER_SPEC.md"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/md/markdown.large.md",
@@ -770,7 +810,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 10 unit(s) cycled from 4 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/md/markdown.medium.md",
@@ -791,7 +832,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 7 unit(s) cycled from 4 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/md/markdown.small.md",
@@ -812,7 +854,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 2 unit(s) cycled from 4 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/rust/pipeline.rs",
@@ -833,7 +876,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: corpus/seed/rust/pipeline.rs"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/rust/rust.large.rs",
@@ -854,7 +898,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 24 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/rust/rust.medium.rs",
@@ -875,7 +920,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/rust/rust.small.rs",
@@ -896,7 +942,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/svelte/site-codepanel.svelte",
@@ -917,7 +964,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/_site/src/lib/components/CodePanel.svelte"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/svelte/site-inspectorpanel.svelte",
@@ -938,7 +986,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/_site/src/lib/components/InspectorPanel.svelte"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/svelte/svelte.large.svelte",
@@ -959,7 +1008,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 21 unit(s) cycled from 4 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/svelte/svelte.medium.svelte",
@@ -980,7 +1030,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 4 unit(s) cycled from 4 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/svelte/svelte.small.svelte",
@@ -1001,7 +1052,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 1 unit(s) cycled from 4 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/ts/core-frames.ts",
@@ -1022,7 +1074,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/core/src/frame_track.ts, lib/core/src/fidelity.ts, lib/core/src/matched_bracket.ts, lib/core/src/compound_compose.ts"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/ts/core-runtime.ts",
@@ -1043,7 +1096,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/core/src/tokenizer.ts, lib/core/src/scan.ts, lib/core/src/compiler.ts"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/ts/core-types.ts",
@@ -1064,7 +1118,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `real` family, built from: lib/core/src/types.ts"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/ts/typescript.large.ts",
@@ -1085,7 +1140,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: large tier, target ~100KB, 4 unit(s) cycled from 5 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/ts/typescript.medium.ts",
@@ -1106,7 +1162,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: medium tier, target ~10KB, 3 unit(s) cycled from 5 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/twinkleplop/ts/typescript.small.ts",
@@ -1127,7 +1184,8 @@
 					"license": "MIT",
 					"note": "twinkleplop's `sized` family: small tier, target ~1KB, 1 unit(s) cycled from 5 distinct source(s)"
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/bash/headerscheck",
@@ -1148,7 +1206,8 @@
 					"license": "PostgreSQL",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/bash/nvm.sh",
@@ -1169,7 +1228,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/bash/postgres-wrapper.sh",
@@ -1190,7 +1250,8 @@
 					"license": "PostgreSQL",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/css/bulma.css",
@@ -1211,7 +1272,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/css/default.css",
@@ -1232,7 +1294,8 @@
 					"license": "LicenseRef-W3C-Software-and-Document-2023",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/css/text.css",
@@ -1253,7 +1316,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/html/Overview.src.html",
@@ -1274,7 +1338,8 @@
 					"license": "LicenseRef-W3C-Software-and-Document-2023",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/html/index.html",
@@ -1295,7 +1360,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/html/results.template.html",
@@ -1316,7 +1382,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/js/class.js",
@@ -1337,7 +1404,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/js/client.js",
@@ -1358,7 +1426,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/js/parse.js",
@@ -1379,7 +1448,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/json/ast.json",
@@ -1400,7 +1470,8 @@
 					"license": "Apache-2.0",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/json/kit.tsconfig.json",
@@ -1421,7 +1492,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/json/typesMap.json",
@@ -1442,7 +1514,8 @@
 					"license": "Apache-2.0",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/md/02-state.md",
@@ -1463,7 +1536,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/md/Explainer.md",
@@ -1484,7 +1558,8 @@
 					"license": "Apache-2.0",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/md/postgres.README.md",
@@ -1505,7 +1580,8 @@
 					"license": "PostgreSQL",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/rust/dent.rs",
@@ -1526,7 +1602,8 @@
 					"license": "Unlicense OR MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/rust/raw_query.rs",
@@ -1547,7 +1624,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/rust/table.rs",
@@ -1568,7 +1646,8 @@
 					"license": "MIT OR Apache-2.0",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/svelte/Breadcrumb.svelte",
@@ -1589,7 +1668,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/svelte/Layer.svelte",
@@ -1610,7 +1690,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/svelte/harvest.svelte",
@@ -1671,7 +1752,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/ts/core.ts",
@@ -1692,7 +1774,8 @@
 					"license": "Apache-2.0",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/ts/options.ts",
@@ -1713,7 +1796,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/ts/transform.ts",
@@ -1734,7 +1818,8 @@
 					"license": "Apache-2.0",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/bash/shellscript.sample",
@@ -1755,7 +1840,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/css/css.sample",
@@ -1776,7 +1862,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/html/html.sample",
@@ -1797,7 +1884,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/js/javascript.sample",
@@ -1818,7 +1906,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/json/json.sample",
@@ -1839,7 +1928,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/md/markdown.sample",
@@ -1860,7 +1950,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/rust/rust.sample",
@@ -1881,7 +1972,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/svelte/svelte.sample",
@@ -1902,7 +1994,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/ts/typescript.sample",
@@ -1923,7 +2016,217 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
+		},
+		{
+			"file": "stress/bash/nested.sh",
+			"source": "stress",
+			"home": null,
+			"lang": "bash",
+			"size": "small",
+			"bytes": 2233,
+			"lines": 58,
+			"sha256": "9105d8047dde66c03de9586bd97d109882fba830f00d38d159106f6cc6fd0390",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/css/default.min.css",
+			"source": "stress",
+			"home": null,
+			"lang": "css",
+			"size": "medium",
+			"bytes": 8359,
+			"lines": 1,
+			"sha256": "42110431629de89c996a72775934e76ab1baa0b3cc2a4744c1b5c49e1ddfa65e",
+			"synthetic": true,
+			"provenance": [
+				{
+					"repo": "https://github.com/w3c/csswg-drafts",
+					"commit": "0da42c8afd3a2a237be8fcfe1831b40d0d35aca4",
+					"path": "shared/style/default.css",
+					"sha256": "4d82015e94c8caac1e883956ac048a731f6375cf4894d04a3b686660ebbcc63d",
+					"license": "LicenseRef-W3C-Software-and-Document-2023",
+					"note": null
+				}
+			],
+			"derivation": "minified by Vite 7.3.6's transformWithEsbuild, esbuild 0.28.1"
+		},
+		{
+			"file": "stress/css/selectors.css",
+			"source": "stress",
+			"home": null,
+			"lang": "css",
+			"size": "medium",
+			"bytes": 29316,
+			"lines": 135,
+			"sha256": "f3acc39235e3522ddee0a76f47ba4ef3c6d94ff8bfb0f059a2de76a866d66229",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/html/unclosed.html",
+			"source": "stress",
+			"home": null,
+			"lang": "html",
+			"size": "medium",
+			"bytes": 20358,
+			"lines": 80,
+			"sha256": "2c6ea8542ae51863dcc64c2c953d1dd674fa8150c6b02db56a433d58624dcd72",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/js/client.min.js",
+			"source": "stress",
+			"home": null,
+			"lang": "js",
+			"size": "medium",
+			"bytes": 28413,
+			"lines": 11,
+			"sha256": "6a1796a75a979a9f1955899342ed1736ad39632f1ad88421c8f77bc1ab470ddb",
+			"synthetic": true,
+			"provenance": [
+				{
+					"repo": "https://github.com/sveltejs/kit",
+					"commit": "55ac0d5264036a11eace0feb7d193432c90bd135",
+					"path": "packages/kit/src/runtime/client/client.js",
+					"sha256": "b72002d71b3ba698e8015539f610cdd95a21c887b413965cf6606993250ece44",
+					"license": "MIT",
+					"note": null
+				}
+			],
+			"derivation": "minified by Vite 7.3.6's transformWithEsbuild, esbuild 0.28.1"
+		},
+		{
+			"file": "stress/js/nested_templates.js",
+			"source": "stress",
+			"home": null,
+			"lang": "js",
+			"size": "medium",
+			"bytes": 14828,
+			"lines": 86,
+			"sha256": "1e9793b21f85d16b9b681348f9cda6e3260a0cad802c03a6c6d2d3fbe28aa5fd",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/js/unterminated.js",
+			"source": "stress",
+			"home": null,
+			"lang": "js",
+			"size": "medium",
+			"bytes": 17013,
+			"lines": 409,
+			"sha256": "a06d7b1b337ef60b01d017f5ca14ee681e2282c4b404c068bec826a83155c4f8",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/json/ast.min.json",
+			"source": "stress",
+			"home": null,
+			"lang": "json",
+			"size": "large",
+			"bytes": 68385,
+			"lines": 1,
+			"sha256": "62526710d1529e8b4a3288d069635db3e7e2fcab7693a4e73c27a6ca68cf6ce5",
+			"synthetic": true,
+			"provenance": [
+				{
+					"repo": "https://github.com/microsoft/typescript-go",
+					"commit": "89d5d5b2849a0db0957065889ca58536fa6d2e4a",
+					"path": "_scripts/ast.json",
+					"sha256": "bd6e75d7b217f97293c7750f0fdb441f0e6d5533075ce42cdb629248278e70d6",
+					"license": "Apache-2.0",
+					"note": null
+				}
+			],
+			"derivation": "minified: parsed and serialized again with no whitespace"
+		},
+		{
+			"file": "stress/json/nested.json",
+			"source": "stress",
+			"home": null,
+			"lang": "json",
+			"size": "medium",
+			"bytes": 18559,
+			"lines": 457,
+			"sha256": "9c31a1fbfa5b5f6a67bdc3045009e470b56ffb35b94ec173657c4fbff888ce4f",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/md/nested.md",
+			"source": "stress",
+			"home": null,
+			"lang": "md",
+			"size": "medium",
+			"bytes": 7494,
+			"lines": 114,
+			"sha256": "193837bad3731eb54fd26e3c01a80093cee1d898a3dc203655d8ef01778ea992",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/rust/nested.rs",
+			"source": "stress",
+			"home": null,
+			"lang": "rust",
+			"size": "medium",
+			"bytes": 5441,
+			"lines": 139,
+			"sha256": "0862b037b3c2f054c549ec42374405699a74030fb16237119ad847092da37e27",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/svelte/nested_blocks.svelte",
+			"source": "stress",
+			"home": null,
+			"lang": "svelte",
+			"size": "medium",
+			"bytes": 4732,
+			"lines": 108,
+			"sha256": "c865dbeca21225b9feb9828a29c8514eae74a6d6fe0bfaa9526f51cf6d2fa95e",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/ts/long_line.ts",
+			"source": "stress",
+			"home": null,
+			"lang": "ts",
+			"size": "medium",
+			"bytes": 28857,
+			"lines": 14,
+			"sha256": "c63851f1ff91cdfad482fee73d2b8e230d5d88f16f967e4f842780581c7e8192",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
+		},
+		{
+			"file": "stress/ts/nested_blocks.ts",
+			"source": "stress",
+			"home": null,
+			"lang": "ts",
+			"size": "medium",
+			"bytes": 11864,
+			"lines": 197,
+			"sha256": "877182912bed5979b226166fc8413e19461f426d64e13ec985a3f07b33ae2c0d",
+			"synthetic": false,
+			"provenance": [],
+			"derivation": null
 		}
 	]
 }

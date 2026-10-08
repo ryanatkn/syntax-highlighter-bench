@@ -32,7 +32,8 @@ describe('source keys', () => {
 			'shiki',
 			'home:fuz_code',
 			'home:twinkleplop',
-			'harness'
+			'harness',
+			'stress'
 		]);
 	});
 
@@ -59,7 +60,8 @@ describe('group_cells', () => {
 			'shiki',
 			'home:fuz_code',
 			'home:twinkleplop',
-			'harness'
+			'harness',
+			'stress'
 		]);
 		assert.strictEqual(
 			groups.reduce((sum, group) => sum + group.cells.length, 0),

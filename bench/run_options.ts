@@ -581,7 +581,11 @@ export const PROCESS_OVERHEAD_MS = 500;
 /**
  * Estimates how long a run measures for, from its parameters. It is rough: a
  * call longer than a batch's target stretches the batch, and retries add
- * processes that can't be known ahead.
+ * processes that can't be known ahead. A call longer than `target_ms` makes a
+ * process cost about eleven calls (the output check's two, the warmup's one, and
+ * per round a rewarm and a batch of one), so the estimate misses Shiki's cells
+ * on the long-line stress inputs, which take seconds a call and dominate a full
+ * run's time by tens of minutes.
  *
  * @param processes - how many processes the run plans
  * @param params - how each measures

@@ -51,7 +51,7 @@ node bench/run.ts --help`;
 			<code>html</code>, measured across the libraries that claim its language. Its id is
 			<code>&lt;file&gt;:&lt;mode&gt;</code>. A cell carries its input's source and size tier, so a
 			reader can compare on the neutral inputs alone, or see whether a result holds on a library's
-			home turf.
+			home turf or on the stress inputs.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -732,9 +732,20 @@ node bench/run.ts --help`;
 				inputs.
 			</li>
 			<li>
+				<strong>Stress inputs.</strong> Some inputs are built to find each library's worst case:
+				minified code, deep nesting, very long lines, constructs that never close. They say little
+				about typical code, so they are summarized on their own and left out of the default view and
+				the headline figures. A slow call there can be far slower than anywhere else, and a run
+				shows it as measured. Shiki is called with its per-line time limit out of reach, as
+				everywhere in this benchmark, so a stress number is the cost of highlighting every line in
+				full. With Shiki's default limit (500ms per line), a line that takes longer comes back with
+				its rest as one plain token: a consumer with default options gets a fallback on that line,
+				not this number.
+			</li>
+			<li>
 				<strong>Synthetic inputs.</strong> A few inputs were built by joining or repeating files to
-				reach a size, and are marked. A repeated file is more regular than real code of the same
-				size.
+				reach a size, or derived from one by minifying it, and are marked. A repeated file is more
+				regular than real code of the same size.
 			</li>
 			<li>
 				<strong>Steady state.</strong> In a cell, every library is warm when it is timed. What a

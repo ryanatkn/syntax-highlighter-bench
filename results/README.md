@@ -158,7 +158,9 @@ Everything below runs on the publishing machine, from the root of the checkout.
    `noise floor` must say it is carried from the calibration, and otherwise it
    gives the reason. `bundle sizes` must say they are carried from the
    deterministic results file. `commit` must have no `-dirty`. `output` is the
-   file the run will write.
+   file the run will write. The estimate assumes calls shorter than a batch, so
+   it misses Shiki's cells on the long-line stress inputs, where a call takes
+   seconds: expect the run to take tens of minutes longer than it says.
 8. **The full run.**
    ```bash
    npm run bench -- --machine <name>

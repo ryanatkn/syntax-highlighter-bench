@@ -365,7 +365,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "shiki/rust/rust.sample",
@@ -386,7 +387,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "home/fuz_code/svelte/sample.svelte",
@@ -407,7 +409,8 @@
 					"license": "MIT",
 					"note": null
 				}
-			]
+			],
+			"derivation": null
 		},
 		{
 			"file": "neutral/json/package_lock.json",
@@ -436,7 +439,8 @@
 					"license": "MIT",
 					"note": "Repeated to reach the size."
 				}
-			]
+			],
+			"derivation": null
 		}
 	],
 	"cells": [

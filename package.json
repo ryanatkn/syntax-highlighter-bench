@@ -21,7 +21,8 @@
     "corpus:manifest": "node bench/corpus_manifest.ts",
     "corpus:check": "node bench/corpus_manifest.ts --check",
     "corpus:fetch": "node bench/corpus_fetch.ts",
-    "corpus:harvest": "node bench/corpus_harvest_svelte.ts"
+    "corpus:harvest": "node bench/corpus_harvest_svelte.ts",
+    "corpus:stress": "node bench/corpus_stress.ts"
   },
   "type": "module",
   "engines": {

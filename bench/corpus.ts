@@ -6,12 +6,16 @@
  * - `shiki/<lang>/` — Shiki's own benchmark samples
  * - `home/<library>/<lang>/` — a measured library's own samples
  * - `neutral/<lang>/` — real code no measured library authored
+ * - `stress/<lang>/` — pathological inputs, written or derived from neutral ones
+ *   by `bench/corpus_stress.ts`, to find each library's worst cases
  *
  * `manifest.json` lists every input with its size, hash, and where it came
  * from. Sizes and hashes are derived from the files; whether an input is
- * synthetic and its provenance are written by hand and carried forward when the
- * manifest is regenerated. An input with one upstream file is a verbatim copy, so
- * its hash must equal the one its provenance pins. An input built from several is
+ * synthetic, its provenance, and its derivation are written by hand (or by the
+ * stress generator) and carried forward when the manifest is regenerated. An
+ * input with one upstream file and no derivation is a verbatim copy, so its hash
+ * must equal the one its provenance pins. A derived input names the
+ * transformation that made it from its pin. An input built from several is
  * synthetic and lists them all.
  *
  * Node-only: this module reads the corpus from disk.
@@ -20,7 +24,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
@@ -56,7 +60,8 @@ export const CorpusManifestSeed = z.looseObject({
 		z.looseObject({
 			file: z.string().min(1),
 			synthetic: z.boolean().optional(),
-			provenance: z.array(BenchProvenance).optional()
+			provenance: z.array(BenchProvenance).optional(),
+			derivation: z.string().min(1).nullable().optional()
 		})
 	)
 });
@@ -115,7 +120,7 @@ const NON_INPUT_FILE_MATCHER =
 	/^(manifest\.json|README\.md|INPUTS\.md|shiki\/LICENSE|home\/[^/]+\/LICENSE|neutral\/NOTICE\.md|neutral\/licenses\/[^/]+)$/;
 
 const INPUT_FILE_MATCHER =
-	/^(?:(?<source>harness|shiki|neutral)|(?<home_source>home)\/(?<home>[a-z][a-z0-9_]*))\/(?<lang>[^/]+)\/(?<name>[^/]+)$/;
+	/^(?:(?<source>harness|shiki|neutral|stress)|(?<home_source>home)\/(?<home>[a-z][a-z0-9_]*))\/(?<lang>[^/]+)\/(?<name>[^/]+)$/;
 
 /** What an input's path says about it. */
 export interface CorpusPathInfo {
@@ -151,7 +156,8 @@ export interface CorpusBuild {
 
 /**
  * Builds the manifest from the files on disk. Sizes, line counts, hashes, and
- * tiers come from the files; `synthetic` and `provenance` come from `previous`.
+ * tiers come from the files; `synthetic`, `provenance`, and `derivation` come
+ * from `previous`.
  *
  * @param previous - the hand-written fields of the manifest being regenerated
  * @param dir - the corpus directory
@@ -199,10 +205,22 @@ export const build_corpus_manifest = (
 		const before = previous_by_file.get(file);
 		const provenance = before?.provenance ?? [];
 		const synthetic = before?.synthetic ?? false;
+		const derivation = before?.derivation ?? null;
 		if (info.source === 'harness') {
 			if (provenance.length > 0) problems.push(`${file}: a harness input has no provenance`);
 		} else if (provenance.length === 0) {
-			problems.push(`${file}: add its provenance to the manifest by hand`);
+			// a stress input may be written here; `bench/corpus_stress.ts` checks its bytes
+			if (info.source !== 'stress') {
+				problems.push(`${file}: add its provenance to the manifest by hand`);
+			} else if (derivation !== null) {
+				problems.push(`${file}: a derived input names the file it was derived from`);
+			} else if (synthetic) {
+				problems.push(`${file}: written here from no upstream file, so it is not synthetic`);
+			}
+		} else if (derivation !== null) {
+			// the stress generator derives it again and compares, since its hash is not its pin's
+			if (info.source !== 'stress') problems.push(`${file}: only a stress input is derived`);
+			else if (!synthetic) problems.push(`${file}: a derived input must be marked synthetic`);
 		} else if (provenance.length === 1 && provenance[0]!.sha256 !== sha256) {
 			problems.push(
 				`${file}: not the verbatim copy its provenance pins (${provenance[0]!.sha256})`
@@ -220,7 +238,8 @@ export const build_corpus_manifest = (
 			lines: count_lines(content),
 			sha256,
 			synthetic,
-			provenance
+			provenance,
+			derivation
 		});
 	}
 	const dropped = [...previous_by_file.keys()].filter((file) => !files.includes(file)).sort();
@@ -238,7 +257,8 @@ const SOURCE_TITLES: Record<BenchInput['source'], string> = {
 	neutral: 'neutral — real code no measured library authored',
 	shiki: "shiki — Shiki's own benchmark samples",
 	home: "home — a measured library's own samples",
-	harness: 'harness — snippets written for this benchmark'
+	harness: 'harness — snippets written for this benchmark',
+	stress: 'stress — pathological inputs, written or derived here to find worst cases'
 };
 
 /** Renders the manifest as the Markdown table of inputs committed beside it. */
@@ -246,7 +266,8 @@ export const render_corpus_inputs = (manifest: CorpusManifest): string => {
 	const to_upstream = (input: BenchInput): string =>
 		input.provenance.length === 0
 			? 'written here'
-			: input.provenance
+			: (input.derivation === null ? '' : `${input.derivation}, from `) +
+				input.provenance
 					.map(
 						({ repo, commit, path }) =>
 							`[${repo.replace('https://github.com/', '')}@${commit.slice(0, 10)}](${repo}/blob/${commit}/${path.split('/').map(encodeURIComponent).join('/')}) \`${path}\``
@@ -288,6 +309,22 @@ export const render_corpus_inputs = (manifest: CorpusManifest): string => {
 		'',
 		...sections
 	].join('\n');
+};
+
+/**
+ * Builds the manifest from the files on disk and, when the corpus has no
+ * problems, writes it and the table of inputs.
+ *
+ * @param previous - the hand-written fields of the manifest being regenerated
+ * @returns the build, written only when its `problems` are empty
+ */
+export const write_corpus_manifest = (previous: CorpusManifestSeed['inputs']): CorpusBuild => {
+	const built = build_corpus_manifest(previous);
+	if (built.problems.length === 0) {
+		writeFileSync(CORPUS_MANIFEST_PATH, serialize_corpus_manifest(built.manifest));
+		writeFileSync(CORPUS_INPUTS_PATH, render_corpus_inputs(built.manifest));
+	}
+	return built;
 };
 
 /** A loaded manifest, with each input's language narrowed to the harness's ids. */

@@ -113,7 +113,10 @@ one scheme, light.
   the clock before every match only while a limit is set, so 0 would also skip
   work that the default does, and read faster than a consumer with default
   options gets. Where the default limit would not have been reached, the output
-  and the work are the same.
+  and the work are the same. This matters most on the stress inputs: on a line
+  long enough, the default limit would cut highlighting off, so a stress number
+  measures full highlighting that a consumer with default options would not
+  get.
 - **Shiki falls back to plain text for the names `text`, `plaintext`, `txt`,
   and `plain`, and for a missing `lang` option**, returning one token per line.
   The adapter maps only its declared ids and refuses any language `setup` was

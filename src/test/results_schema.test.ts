@@ -1021,12 +1021,60 @@ describe('inputs', () => {
 			lines: 5,
 			sha256: 'a'.repeat(64),
 			synthetic: false,
-			provenance: []
+			provenance: [],
+			derivation: null
 		};
 		BenchInput.parse(input);
 		const pin = load_fixture().inputs[0]!.provenance[0]!;
 		assert.ok(!BenchInput.safeParse({ ...input, provenance: [pin] }).success);
 		assert.ok(!BenchInput.safeParse({ ...input, source: 'neutral' }).success);
+		// a stress input may be written here too, or come from upstream
+		BenchInput.parse({ ...input, file: 'stress/ts/a.ts', source: 'stress' });
+		BenchInput.parse({
+			...input,
+			file: 'stress/ts/a.ts',
+			source: 'stress',
+			sha256: pin.sha256,
+			provenance: [pin]
+		});
+	});
+
+	test('a derived input differs from its one pin, names how, and is synthetic', () => {
+		const input = load_fixture().inputs.find((i) => i.provenance.length === 1)!;
+		const derived = {
+			...input,
+			file: 'stress/ts/a.min.ts',
+			source: 'stress' as const,
+			sha256: 'b'.repeat(64),
+			synthetic: true,
+			derivation: 'minified'
+		};
+		BenchInput.parse(derived);
+		assert.ok(!BenchInput.safeParse({ ...derived, derivation: null }).success);
+		assert.ok(!BenchInput.safeParse({ ...derived, synthetic: false }).success);
+		assert.ok(!BenchInput.safeParse({ ...derived, provenance: [] }).success);
+		assert.ok(!BenchInput.safeParse({ ...derived, derivation: '' }).success);
+	});
+
+	test('only a stress input is derived, and a written one is not synthetic', () => {
+		const input = load_fixture().inputs.find((i) => i.provenance.length === 1)!;
+		const derived = {
+			...input,
+			file: 'stress/ts/a.min.ts',
+			source: 'stress' as const,
+			sha256: 'b'.repeat(64),
+			synthetic: true,
+			derivation: 'minified'
+		};
+		BenchInput.parse(derived);
+		const neutral = { ...derived, file: 'neutral/ts/a.min.ts', source: 'neutral' as const };
+		assert.match(
+			JSON.stringify(BenchInput.safeParse(neutral).error?.issues),
+			/only a stress input is derived/
+		);
+		const written = { ...derived, provenance: [], derivation: null, synthetic: false };
+		BenchInput.parse(written);
+		assert.ok(!BenchInput.safeParse({ ...written, synthetic: true }).success);
 	});
 
 	test('one upstream file is a verbatim copy, and several make the input synthetic', () => {

@@ -27,7 +27,12 @@
 
 import { z } from 'zod';
 
-import { BENCH_MODES, BENCH_SIZES, BENCH_SOURCES } from './bench_constants.ts';
+import {
+	BENCH_MODES,
+	BENCH_SIZES,
+	BENCH_SOURCES,
+	BENCH_WRITTEN_SOURCES
+} from './bench_constants.ts';
 
 /** An id used as a key or a cross-reference: a set or a cell. */
 const Id = z.string().min(1);
@@ -529,11 +534,15 @@ export const BenchInput = z
 		sha256: Sha256.meta({ description: "The hash of the input's bytes." }),
 		synthetic: z.boolean().meta({
 			description:
-				'Whether the input was built by joining or repeating files to reach its size, rather than being one real file.'
+				'Whether the input is not one real file as published: built by joining or repeating files to reach its size, or derived from a file by a transformation.'
 		}),
 		provenance: z.array(BenchProvenance).meta({
 			description:
-				'The upstream files the input came from. Empty exactly when the source is harness: the input was written here. One entry is a verbatim copy with the same hash. Several are the files a synthetic input was built from.'
+				'The upstream files the input came from. Empty for an input written here, which only the harness and stress sources hold, and always for harness. One entry without a derivation is a verbatim copy with the same hash. Several are the files a synthetic input was built from.'
+		}),
+		derivation: z.string().min(1).nullable().meta({
+			description:
+				'How the input was made from its provenance by a transformation, naming the tool and its version, so its hash differs from the upstream file. Null for a copy, a join, or an input written here.'
 		})
 	})
 	.superRefine((input, ctx) => {
@@ -544,18 +553,54 @@ export const BenchInput = z
 				message: 'home is set exactly when the source is home'
 			});
 		}
-		if ((input.source === 'harness') !== (input.provenance.length === 0)) {
+		if (input.source === 'harness' && input.provenance.length > 0) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['provenance'],
-				message: 'provenance is empty exactly when the source is harness'
+				message: 'a harness input is written here, so it has no provenance'
 			});
 		}
-		if (input.provenance.length === 1 && input.provenance[0]!.sha256 !== input.sha256) {
+		if (
+			input.provenance.length === 0 &&
+			!(BENCH_WRITTEN_SOURCES as ReadonlyArray<string>).includes(input.source)
+		) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['provenance'],
+				message: `only a ${BENCH_WRITTEN_SOURCES.join(' or ')} input may be written here, without provenance`
+			});
+		}
+		if (input.derivation !== null && input.source !== 'stress') {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['derivation'],
+				message: 'only a stress input is derived'
+			});
+		}
+		if (input.source === 'stress' && input.provenance.length === 0 && input.synthetic) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['synthetic'],
+				message: 'a stress input written here comes from no upstream file, so it is not synthetic'
+			});
+		}
+		if (input.derivation !== null && (input.provenance.length === 0 || !input.synthetic)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['derivation'],
+				message: 'a derived input names what it was derived from, and is synthetic'
+			});
+		}
+		if (
+			input.derivation === null &&
+			input.provenance.length === 1 &&
+			input.provenance[0]!.sha256 !== input.sha256
+		) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['provenance', 0, 'sha256'],
-				message: 'an input with one upstream file is a verbatim copy, so the hashes match'
+				message:
+					'an input with one upstream file and no derivation is a verbatim copy, so the hashes match'
 			});
 		}
 		if (input.provenance.length > 1 && !input.synthetic) {
