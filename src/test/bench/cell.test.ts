@@ -20,7 +20,7 @@ import { SMOKE_PARAMS } from '../../../bench/run_options.ts';
 // process does.
 
 /** The real clock, and collections that do nothing: the test process has no `gc`. */
-const deps: MeasureDeps = { now: () => process.hrtime.bigint(), collect: () => {} };
+const deps: MeasureDeps = { now: () => process.hrtime.bigint(), collect_minor: () => {} };
 
 const manifest = load_corpus_manifest();
 const SNIPPET = 'harness/json/snippet.json';

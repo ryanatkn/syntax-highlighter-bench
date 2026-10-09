@@ -33,8 +33,8 @@ const create_fake = (
 		calls: () => calls,
 		deps: {
 			now: () => clock,
-			collect: (kind) => {
-				log.push(kind);
+			collect_minor: () => {
+				log.push('minor');
 			}
 		},
 		call: {
@@ -95,14 +95,20 @@ describe('measure_call', () => {
 		}
 	});
 
-	test('before every timed batch: a full collection, a rewarm, and a minor collection', () => {
+	test('before every timed batch: a rewarm and a minor collection, and never a full one', () => {
 		const fake = create_fake(0.5 * NS_PER_MS);
 		const { iterations } = measure_call(fake.call, { ...OPTIONS, rounds: 2 }, fake.deps);
 		const rewarm_calls = OPTIONS.rewarm_ms / 0.5;
-		const batch = ['full', rewarm_calls, 'minor', iterations];
-		// the warmup and the calibration probes are one stretch, with no collection in it
-		assert.strictEqual(typeof fake.log[0], 'number');
-		assert.deepStrictEqual(fake.log.slice(1), [...batch, ...batch]);
+		// nothing is collected between a batch and the next rewarm, so the log joins them, and the
+		// warmup and the calibration probes run straight into the first rewarm the same way
+		const first = fake.log[0];
+		assert.ok(typeof first === 'number' && first > rewarm_calls);
+		assert.deepStrictEqual(fake.log.slice(1), [
+			'minor',
+			iterations + rewarm_calls,
+			'minor',
+			iterations
+		]);
 	});
 
 	test('a slow library pays no call it does not need', () => {
@@ -112,7 +118,8 @@ describe('measure_call', () => {
 		// the warmup showed one call exceeds the target, so there is no probe: one
 		// warmup call, then a rewarm and a batch of one call each, for each round
 		assert.strictEqual(fake.calls(), 1 + 2 * 2);
-		assert.deepStrictEqual(fake.log, [1, 'full', 1, 'minor', 1, 'full', 1, 'minor', 1]);
+		// the warmup call and the first rewarm, then each batch joined with the next rewarm
+		assert.deepStrictEqual(fake.log, [2, 'minor', 2, 'minor', 1]);
 	});
 
 	test('no rewarm when its duration is zero', () => {

@@ -240,8 +240,9 @@ until the machine is calibrated, and `meta.anchor` may be null only when the run
 timed nothing (no cell `values`, no `startup`). `meta.run` (`BenchRun`) says
 how the timed numbers were measured — the kind of run (`full`, `smoke`,
 `calibrate`), passes, rounds and durations, the retries allowed, the
-loaded-language rule, how cold start was sampled (`startup_samples`,
-`startup_discard`, `startup_compile_cache`), the filters, how many segments
+loaded-language rule, the collection before each batch (`collection`), how
+cold start was sampled (`startup_samples`, `startup_discard`,
+`startup_compile_cache`), the filters, how many segments
 it was measured in, the duration, and `load_at_start` (the 1-minute load
 average when the run was planned, the highest of its segments' for a resumed
 run) — and may be null only when nothing was
@@ -798,18 +799,44 @@ and optimised. In
    enough. `to_iterations` gives the calls that fill `target_ms`, at least
    `MIN_ITERATIONS` while they fit in `MAX_MEASUREMENT_MS`, and one when two
    calls no longer fit in it.
-3. For each round: a full collection, a rewarm of `rewarm_ms` (at least one
-   call), a minor collection, then the timed batch. The batch keeps its last
-   result; after the clock stops the result is counted, and a count unlike the
-   checked one throws (Shiki stops silently at its per-line time limit).
+3. For each round: a rewarm of `rewarm_ms` (at least one call), a minor
+   collection, then the timed batch. The batch keeps its last result; after the
+   clock stops the result is counted, and a count unlike the checked one throws
+   (Shiki stops silently at its per-line time limit).
 
-The rewarm is longer than the warmup because libraries recover from a forced
-collection at different speeds, Shiki more slowly than the others, and a
-library still recovering when its batch is timed reads slow. It is long enough
-that every library in the roster has recovered: don't shorten it without
-checking the slowest recoverer. `MeasureDeps` (clock, collector) is injected so
-the engine is tested with a fake clock; `create_measure_deps` throws without
-`--expose-gc`.
+**No full collection is forced between rounds.** One forced before every round
+puts some libraries through a race each round:
+
+- A mark-compact clears hidden classes that only live objects hold. A
+  library that makes a fresh class instance per call loses the class between
+  calls, and V8 discards every optimised function embedding it ("embedded weak
+  objects cleared" under `--trace-deopt`), so the next batch re-optimises
+  inside the clock.
+- A library that allocates outside the JavaScript heap per call (a typed
+  array's backing store) gets that memory back only at a collection, so a
+  forced one re-rolls how the next batch reuses it, and a process settles at
+  one of two speeds per round.
+
+A minor collection does neither, leaves garbage from earlier batches in place,
+and lets the engine schedule its own full collections, which may land inside a
+batch. Against a forced full collection it lowers round spread for most
+libraries and barely moves the medians of libraries with neither pattern.
+When a full collection the engine runs on its own slows a library, the numbers
+show it, and it is the library's to fix: report it. `run.collection` records
+the choice (`'minor'`), so a full run, `--plan` included, refuses a calibration
+taken by another method (exit 2) until the machine is calibrated again, and
+`JOURNAL_VERSION` moves with the method, so a run never resumes a journal
+measured the other way.
+
+The rewarm is longer than the warmup because the engine's own full collections
+can still leave code cold, libraries recover at different speeds, Shiki more
+slowly than the others, and a library still recovering when its batch is timed
+reads slow. It is sized for recovery from a full collection forced just before
+it, which covers the engine's own, and is long enough that every library in the
+roster has recovered: don't shorten it without checking the slowest recoverer.
+`MeasureDeps` (clock, minor collector) is injected so the engine is tested with
+a fake clock; `create_measure_deps` throws without `--expose-gc`. Don't give it
+a full collector without measuring the roster under both methods.
 
 **A run** (`bench/run.ts`, `run_bench`):
 

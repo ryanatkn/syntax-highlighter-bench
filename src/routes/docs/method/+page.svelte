@@ -105,12 +105,14 @@ node bench/run.ts --help`;
 				once per batch.
 			</li>
 			<li>
-				<strong>
-					A full collection, a rewarm, and a minor collection before every timed batch.
-				</strong>
-				The full collection means a batch inherits no garbage from the one before it. A forced
-				collection leaves code cold, so the library then runs untimed, and a minor collection clears
-				what the rewarm allocated, so that collection doesn't land inside the batch.
+				<strong>A rewarm and a minor collection before every timed batch.</strong> The library runs
+				untimed until it is back to speed, and a minor collection then clears what the rewarm
+				allocated, so that collection doesn't land inside the batch. No full collection is forced
+				between batches. One forced before every batch puts some libraries through a race each
+				round: it can discard optimised code whose hidden classes only short-lived objects hold, so
+				the library re-optimises inside the clock, and it re-rolls how memory a library allocates
+				outside the JavaScript heap is reused, so a process settles at one of two speeds. A minor
+				collection does neither.
 			</li>
 			<li>
 				<strong>Results are kept and counted.</strong> A batch keeps its last result, and after the
@@ -129,7 +131,7 @@ node bench/run.ts --help`;
 			</li>
 		</ul>
 		<p>
-			The collections need the process started with <code>--expose-gc</code>, which
+			The collection needs the process started with <code>--expose-gc</code>, which
 			<code>bench/run.ts</code> passes to each process.
 		</p>
 		<p>
@@ -137,10 +139,10 @@ node bench/run.ts --help`;
 			batches, after a 100ms warmup, with a 300ms rewarm before each batch.
 		</p>
 		<p>
-			The rewarm is longer than the warmup on purpose. A forced collection leaves code cold, and
-			libraries recover from it at different speeds, Shiki more slowly than the others. A library
-			still recovering when its batch is timed reads slow, so the rewarm is long enough that every
-			library in the roster has recovered.
+			The rewarm is longer than the warmup on purpose. The engine still runs full collections of its
+			own during a run, and one can leave code cold. Libraries recover from that at different
+			speeds, Shiki more slowly than the others, and a library still recovering when its batch is
+			timed reads slow, so the rewarm is long enough that every library in the roster has recovered.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -796,9 +798,12 @@ node bench/run.ts --help`;
 				about a page.
 			</li>
 			<li>
-				<strong>Forced collections.</strong> Every batch follows a forced collection and a rewarm,
-				so a library is timed just after it has recovered from one, which is not how every
-				application runs it.
+				<strong>Collections.</strong> Every batch follows a rewarm and a forced minor collection,
+				and full collections happen only when the engine schedules them, so garbage from earlier
+				batches carries into later ones and a full collection can still land inside a batch. A
+				library pays for what it allocates (in the JavaScript heap or outside it) as the engine
+				collects it during the run, which is close to, but not the same as, how a page collects
+				between highlights.
 			</li>
 			<li>
 				<strong>Measured alone.</strong> A page that loads several highlighters, or a busy

@@ -681,6 +681,7 @@ describe('assemble_results', () => {
 			kind: 'full',
 			...FULL_PARAMS,
 			loaded_langs: 'cell',
+			collection: 'minor',
 			startup_compile_cache: 'disabled',
 			filters: SMALL_TS,
 			segments: 1,

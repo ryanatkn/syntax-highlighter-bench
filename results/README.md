@@ -136,7 +136,9 @@ Everything below runs on the publishing machine, from the root of the checkout.
    to `scratch/`. `npm run bench:smoke -- --plan` prints an estimate.
 5. **Quiet the machine**, as above. Everything from here on is a measurement.
 6. **Calibrate**, unless this machine has a calibration that still describes
-   the run: the plan in step 7 says so on its `noise floor` line.
+   the run: the plan in step 7 says so on its `noise floor` line. A
+   calibration from an earlier measurement method doesn't parse, and the plan
+   refuses it: calibrate again.
    ```bash
    npm run bench:calibrate -- --machine <name> --plan  # what it would do
    npm run bench:calibrate -- --machine <name>

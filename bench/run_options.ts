@@ -54,11 +54,12 @@ export interface RunParams extends MeasureOptions {
  * Three rather than two, so the median of the pooled rounds comes from the
  * middle pass and not from between two that disagree.
  *
- * The rewarm is longer than the warmup. A forced collection leaves code cold,
- * and libraries recover from it at different speeds: Shiki more slowly than
- * the others. With a rewarm as short as the warmup a slow recoverer was still
- * recovering when its batch was timed, and read slow for it. The rewarm is long
- * enough that every library in the roster has recovered.
+ * The rewarm is longer than the warmup. A full collection, which the engine
+ * still runs on its own during a run, can leave code cold, and libraries
+ * recover from it at different speeds: Shiki more slowly than the others. The
+ * rewarm is long enough for every library in the roster to recover from a full
+ * collection forced just before it, the coldest a collection leaves code, so it
+ * covers the engine's own.
  *
  * The retries are few: a library-cell that stays disturbed after them says the
  * machine is busy, and measuring it again and again would only hide that.

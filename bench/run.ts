@@ -1204,6 +1204,7 @@ export const assemble_results = (
 				rewarm_ms: options.rewarm_ms,
 				retries: options.retries,
 				loaded_langs: 'cell',
+				collection: 'minor',
 				// how cold start was sampled, for a run that planned any
 				...(run_measures(options, 'startup')
 					? {

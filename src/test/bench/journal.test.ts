@@ -275,6 +275,8 @@ describe('a journal', () => {
 			'{"type":"hea',
 			'not json\n',
 			JSON.stringify({ ...HEADER, journal: JOURNAL_VERSION + 1 }) + '\n',
+			// an earlier version: another format, or results measured by another method
+			JSON.stringify({ ...HEADER, journal: JOURNAL_VERSION - 1 }) + '\n',
 			JSON.stringify({ ...HEADER, extra: true }) + '\n'
 		]) {
 			const journal = parse_journal(Buffer.from(text));

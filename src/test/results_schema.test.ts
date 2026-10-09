@@ -436,6 +436,15 @@ describe('anchor', () => {
 });
 
 describe('run', () => {
+	test('a run records that only a minor collection came before each batch', () => {
+		// a file measured with a forced full collection per round never parses, so it is never carried
+		const data = load_fixture();
+		delete (data.meta.run as any).collection;
+		assert_rejects(data, 'meta.run.collection');
+		(data.meta.run as any).collection = 'full';
+		assert_rejects(data, 'meta.run.collection');
+	});
+
 	test('a run with timed numbers records how they were measured', () => {
 		const data = load_fixture();
 		data.meta.run = null;

@@ -176,10 +176,10 @@ another's number: libraries that share code (Shiki's two engines) change how V8
 optimises it for each other, and V8 sizes its young generation from recent
 allocation, so a time depended on what ran beside it. The process sets up
 exactly the cell's language, checks the output, calibrates its iterations, and
-times its rounds, each after a full collection, a rewarm, and a minor
-collection. The last result of each batch is counted after the clock stops, and
-in `html` mode one character of the string is read inside it, so a string the
-engine hasn't flattened is paid for.
+times its rounds, each after a rewarm and a minor collection (no full
+collection is forced between rounds). The last result of each batch is counted
+after the clock stops, and in `html` mode one character of the string is read
+inside it, so a string the engine hasn't flattened is paid for.
 
 **Passes and rotation.** Each library is measured on a cell in several
 processes, and its number pools the rounds of all of them, since the same code
@@ -213,7 +213,7 @@ discarded, and nothing is retried.
   the same work.
 - Token counts differ between libraries, and fewer tokens is less work, not
   faster work.
-- In a cell every library is warm, and just recovered from a forced
+- In a cell every library is warm, and just rewarmed after a minor
   collection. What a first call costs is in cold start.
 - A cold-start time is a Node process with its files in the page cache. A
   browser parses, compiles, and fetches differently; there the bundle sizes
@@ -387,13 +387,14 @@ structural. By design:
 
 The measurement method builds on the comparison harness of
 [twinkleplop](https://github.com/pngwn/twinkleplop) (MIT). Kept from it: a
-fresh process for each cell, iterations calibrated per library, a forced
-collection and an untimed rewarm before timing, token counts recorded, machine
+fresh process for each cell, iterations calibrated per library, an untimed
+rewarm and a minor collection before timing, token counts recorded, machine
 drift detected, and a machine lock. Changed here: twinkleplop measures a cell's
 libraries together in one process, alternating within each round, and this
 harness gives each library a process of its own, rotates the order of the
-processes, pools several passes, collects before every batch, and reads the HTML
-inside the timed call. The anchor workload is ported from it, and the adapter
+processes, pools several passes, forces no full collection before a batch
+(twinkleplop's forces one every round), and reads the HTML inside the timed
+call. The anchor workload is ported from it, and the adapter
 rules come from the same harness.
 
 Cold start generalises twinkleplop's cold-start harness across libraries. Kept

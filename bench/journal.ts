@@ -34,8 +34,12 @@ import { BenchMachine, BenchRunFilters } from '../src/lib/results_schema.ts';
 import { CellResult } from './cell.ts';
 import { StartupResult } from './coldstart.ts';
 
-/** The version of the journal's format. A journal of another version is refused. */
-export const JOURNAL_VERSION = 3;
+/**
+ * The version of the journal: its format, and how the results in it were
+ * measured. A journal of another version is refused, so a resumed run never
+ * pools results taken by another method.
+ */
+export const JOURNAL_VERSION = 4;
 
 /**
  * What a journal says about the run it belongs to. A run resumes a journal only

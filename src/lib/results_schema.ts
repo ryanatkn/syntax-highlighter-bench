@@ -303,6 +303,10 @@ export const BenchRun = z.strictObject({
 		description:
 			"Which languages each cell's process set up in every library: `cell` is exactly the cell's language."
 	}),
+	collection: z.literal('minor').meta({
+		description:
+			'What each process collected before each timed batch, after its rewarm: `minor` is the young generation only. No full collection was forced between batches.'
+	}),
 	startup_samples: z.number().int().positive().nullable().meta({
 		description:
 			'How many samples each cold-start scenario kept, each a fresh process. Null, like the two fields after it, exactly when the run measured no cold start: a calibration, or a run whose metrics filter leaves it out.'

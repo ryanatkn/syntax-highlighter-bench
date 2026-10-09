@@ -85,7 +85,7 @@ describe('parse_run_args', () => {
 	});
 
 	test('a full run rewarms for longer than it warms up', () => {
-		// a library that recovers slowly from a forced collection must have recovered when timed
+		// a library that recovers slowly from a collection must have recovered when timed
 		assert.ok(FULL_PARAMS.rewarm_ms > FULL_PARAMS.warmup_ms);
 		assert.strictEqual(parse('--calibrate').rewarm_ms, FULL_PARAMS.rewarm_ms);
 		assert.ok(SMOKE_PARAMS.rewarm_ms < FULL_PARAMS.target_ms);

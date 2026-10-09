@@ -10,12 +10,16 @@
  *   magnitude, so a batch makes the number of calls that fills the target
  *   duration, at least a few while they fit a cap, and one when a call is too
  *   long for that.
- * - **A full collection, an untimed rewarm, and a minor collection, before
- *   every timed batch.** The full collection means a batch inherits no garbage
- *   from the one before it. A forced collection also leaves code cold, so the
- *   library then runs untimed, and a minor collection empties the young
- *   generation the rewarm filled, so the scavenge it would cause doesn't land
- *   inside the batch. A minor collection leaves optimised code alone.
+ * - **An untimed rewarm and a minor collection before every timed batch.** The
+ *   rewarm runs the library back to speed after whatever the last batch left (a
+ *   collection, natural or not, can leave code cold), and the minor collection
+ *   empties the young generation the rewarm filled, so the scavenge it would
+ *   cause doesn't land inside the batch. No full collection is forced: one
+ *   between rounds puts some libraries through a race every round. A forced
+ *   full collection discards optimised code whose hidden classes only per-call
+ *   objects hold, so the library re-optimises inside the clock, and it re-rolls
+ *   how memory the library allocates outside the heap is reused, so a process
+ *   settles at one of two speeds per round. A minor collection does neither.
  * - **Results are kept.** A batch keeps its last result, and that result is
  *   counted after the clock stops, so the engine can't drop the work and a
  *   library that silently stops early fails the cell instead of looking fast.
@@ -57,8 +61,8 @@ const MAX_WARMUP_CALLS = 5_000_000;
 export interface MeasureDeps {
 	/** A monotonic clock, in nanoseconds. */
 	now: () => bigint;
-	/** Forces a collection: `full`, or `minor` for the young generation only. */
-	collect: (kind: 'full' | 'minor') => void;
+	/** Forces a minor collection: the young generation only. */
+	collect_minor: () => void;
 }
 
 /**
@@ -73,11 +77,8 @@ export const create_measure_deps = (): MeasureDeps => {
 	}
 	return {
 		now: () => process.hrtime.bigint(),
-		collect: (kind) => {
-			// without the option this would be a full collection, and undo the rewarm
-			if (kind === 'minor') gc({ type: 'minor' });
-			else gc();
-		}
+		// without the option this would be a full collection
+		collect_minor: () => gc({ type: 'minor' })
 	};
 };
 
@@ -192,7 +193,7 @@ export const measure_call = (
 	deps: MeasureDeps
 ): Measurement => {
 	const { rounds, target_ms, warmup_ms, rewarm_ms } = options;
-	const { now, collect } = deps;
+	const { now, collect_minor } = deps;
 
 	// a library that isn't warm measures the optimiser
 	const warm_ns = run_for(call.run, warmup_ms, now);
@@ -203,10 +204,9 @@ export const measure_call = (
 
 	const ns_per_op: Array<number> = [];
 	for (let round = 0; round < rounds; round++) {
-		collect('full');
-		// at least one call, however slow: the first call after a collection is not a typical one
+		// at least one call, however slow
 		if (rewarm_ms > 0) run_for(call.run, rewarm_ms, now);
-		collect('minor');
+		collect_minor();
 		const { ns, last } = time_batch(call.run, iterations, now);
 		ns_per_op.push(ns / iterations);
 		const counted = call.count(last);

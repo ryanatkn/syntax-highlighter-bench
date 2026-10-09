@@ -24,6 +24,7 @@
 			"rewarm_ms": 300,
 			"retries": 2,
 			"loaded_langs": "cell",
+			"collection": "minor",
 			"startup_samples": 20,
 			"startup_discard": 3,
 			"startup_compile_cache": "disabled",
