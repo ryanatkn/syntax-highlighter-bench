@@ -799,10 +799,12 @@ and optimised. In
    enough. `to_iterations` gives the calls that fill `target_ms`, at least
    `MIN_ITERATIONS` while they fit in `MAX_MEASUREMENT_MS`, and one when two
    calls no longer fit in it.
-3. For each round: a rewarm of `rewarm_ms` (at least one call), a minor
-   collection, then the timed batch. The batch keeps its last result; after the
-   clock stops the result is counted, and a count unlike the checked one throws
-   (Shiki stops silently at its per-line time limit).
+3. For each round: a rewarm of `rewarm_ms` (none when one call already takes
+   that long: the batch before keeps the library warm, and a rewarm would only
+   repeat that call), a minor collection, then the timed batch. The batch keeps
+   its last result; after the clock stops the result is counted, and a count
+   unlike the checked one throws (Shiki stops silently at its per-line time
+   limit).
 
 **No full collection is forced between rounds.** One forced before every round
 puts some libraries through a race each round:
@@ -834,6 +836,8 @@ slowly than the others, and a library still recovering when its batch is timed
 reads slow. It is sized for recovery from a full collection forced just before
 it, which covers the engine's own, and is long enough that every library in the
 roster has recovered: don't shorten it without checking the slowest recoverer.
+At 100ms and 150ms, twinkleplop read up to a quarter slower on large inputs
+(`Overview.src.html`, `table.rs`, `bulma.css`), so 300ms stays.
 `MeasureDeps` (clock, minor collector) is injected so the engine is tested with
 a fake clock; `create_measure_deps` throws without `--expose-gc`. Don't give it
 a full collector without measuring the roster under both methods.

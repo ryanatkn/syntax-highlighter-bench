@@ -14,7 +14,9 @@
  *   rewarm runs the library back to speed after whatever the last batch left (a
  *   collection, natural or not, can leave code cold), and the minor collection
  *   empties the young generation the rewarm filled, so the scavenge it would
- *   cause doesn't land inside the batch. No full collection is forced: one
+ *   cause doesn't land inside the batch. A library whose one call already
+ *   outlasts the rewarm gets none: the batch before keeps it warm, and a rewarm
+ *   would only repeat that call. No full collection is forced: one
  *   between rounds puts some libraries through a race every round. A forced
  *   full collection discards optimised code whose hidden classes only per-call
  *   objects hold, so the library re-optimises inside the clock, and it re-rolls
@@ -100,7 +102,10 @@ export interface MeasureOptions {
 	target_ms: number;
 	/** How long the library runs untimed before calibration, in milliseconds. */
 	warmup_ms: number;
-	/** How long the library runs untimed before each timed batch, in milliseconds. */
+	/**
+	 * How long the library runs untimed before each timed batch, in milliseconds;
+	 * skipped when one call takes at least this long.
+	 */
 	rewarm_ms: number;
 }
 
@@ -202,10 +207,12 @@ export const measure_call = (
 		warm_ns >= target_ms * NS_PER_MS ? warm_ns : probe_per_op_ns(call.run, target_ms, now);
 	const iterations = to_iterations(per_op_ns, target_ms);
 
+	// a call that outlasts the rewarm is kept warm by the batch before it, so a rewarm would only
+	// repeat it
+	const rewarm = rewarm_ms > 0 && per_op_ns < rewarm_ms * NS_PER_MS;
 	const ns_per_op: Array<number> = [];
 	for (let round = 0; round < rounds; round++) {
-		// at least one call, however slow
-		if (rewarm_ms > 0) run_for(call.run, rewarm_ms, now);
+		if (rewarm) run_for(call.run, rewarm_ms, now);
 		collect_minor();
 		const { ns, last } = time_batch(call.run, iterations, now);
 		ns_per_op.push(ns / iterations);

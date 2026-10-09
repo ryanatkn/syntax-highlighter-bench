@@ -134,7 +134,8 @@ of minutes it doesn't show.
 
 `node bench/run.ts --help` lists every flag. A full run measures each library
 in 3 processes per cell, each timing 4 rounds of 20ms batches, after a 100ms
-warmup, with a 300ms rewarm before each batch, and keeps 20 samples of each
+warmup, with a 300ms rewarm before each batch (none when one call takes longer:
+the batch before keeps it warm), and keeps 20 samples of each
 scenario, after 3 discarded rounds (`--help` prints the defaults). Filters
 (`--libraries`, `--langs`, `--sizes`, `--modes`, `--sources`, `--metrics`)
 narrow a run, and a filtered or smoke run is written to `results/scratch/`,
@@ -176,10 +177,11 @@ another's number: libraries that share code (Shiki's two engines) change how V8
 optimises it for each other, and V8 sizes its young generation from recent
 allocation, so a time depended on what ran beside it. The process sets up
 exactly the cell's language, checks the output, calibrates its iterations, and
-times its rounds, each after a rewarm and a minor collection (no full
-collection is forced between rounds). The last result of each batch is counted
-after the clock stops, and in `html` mode one character of the string is read
-inside it, so a string the engine hasn't flattened is paid for.
+times its rounds, each after a rewarm (unless one call outlasts it) and a minor
+collection (no full collection is forced between rounds). The last result of
+each batch is counted after the clock stops, and in `html` mode one character
+of the string is read inside it, so a string the engine hasn't flattened is paid
+for.
 
 **Passes and rotation.** Each library is measured on a cell in several
 processes, and its number pools the rounds of all of them, since the same code

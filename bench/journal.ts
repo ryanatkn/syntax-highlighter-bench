@@ -39,7 +39,7 @@ import { StartupResult } from './coldstart.ts';
  * measured. A journal of another version is refused, so a resumed run never
  * pools results taken by another method.
  */
-export const JOURNAL_VERSION = 4;
+export const JOURNAL_VERSION = 5;
 
 /**
  * What a journal says about the run it belongs to. A run resumes a journal only

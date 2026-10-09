@@ -136,7 +136,9 @@ node bench/run.ts --help`;
 		</p>
 		<p>
 			A full run measures each library in 3 processes per cell, each timing 4 rounds of 20ms
-			batches, after a 100ms warmup, with a 300ms rewarm before each batch.
+			batches, after a 100ms warmup, with a 300ms rewarm before each batch. A library whose one call
+			takes longer than the rewarm gets none: the batch before keeps it warm, and a rewarm would
+			only repeat that call.
 		</p>
 		<p>
 			The rewarm is longer than the warmup on purpose. The engine still runs full collections of its
@@ -798,12 +800,12 @@ node bench/run.ts --help`;
 				about a page.
 			</li>
 			<li>
-				<strong>Collections.</strong> Every batch follows a rewarm and a forced minor collection,
-				and full collections happen only when the engine schedules them, so garbage from earlier
-				batches carries into later ones and a full collection can still land inside a batch. A
-				library pays for what it allocates (in the JavaScript heap or outside it) as the engine
-				collects it during the run, which is close to, but not the same as, how a page collects
-				between highlights.
+				<strong>Collections.</strong> Every batch follows a rewarm (unless one call outlasts it) and
+				a forced minor collection, and full collections happen only when the engine schedules them,
+				so garbage from earlier batches carries into later ones and a full collection can still land
+				inside a batch. A library pays for what it allocates (in the JavaScript heap or outside it)
+				as the engine collects it during the run, which is close to, but not the same as, how a page
+				collects between highlights.
 			</li>
 			<li>
 				<strong>Measured alone.</strong> A page that loads several highlighters, or a busy

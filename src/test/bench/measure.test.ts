@@ -115,11 +115,17 @@ describe('measure_call', () => {
 		const fake = create_fake(1200 * NS_PER_MS);
 		const measured = measure_call(fake.call, { ...OPTIONS, rounds: 2 }, fake.deps);
 		assert.strictEqual(measured.iterations, 1);
-		// the warmup showed one call exceeds the target, so there is no probe: one
-		// warmup call, then a rewarm and a batch of one call each, for each round
-		assert.strictEqual(fake.calls(), 1 + 2 * 2);
-		// the warmup call and the first rewarm, then each batch joined with the next rewarm
-		assert.deepStrictEqual(fake.log, [2, 'minor', 2, 'minor', 1]);
+		// the warmup showed one call exceeds the target, so there is no probe, and one call
+		// outlasts the rewarm, so there is none: one warmup call, then a batch of one call a round
+		assert.strictEqual(fake.calls(), 1 + 2);
+		assert.deepStrictEqual(fake.log, [1, 'minor', 1, 'minor', 1]);
+	});
+
+	test('a call just shorter than the rewarm still gets one', () => {
+		const fake = create_fake(OPTIONS.rewarm_ms * NS_PER_MS - 1);
+		measure_call(fake.call, { ...OPTIONS, rounds: 2 }, fake.deps);
+		// two warmup calls and a rewarm of two, then each batch of one joined with the next rewarm
+		assert.deepStrictEqual(fake.log, [4, 'minor', 3, 'minor', 1]);
 	});
 
 	test('no rewarm when its duration is zero', () => {
