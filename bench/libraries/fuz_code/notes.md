@@ -15,6 +15,13 @@ one `Int32Array`. It is the narrowest public tokens-out call: `stylize` is
 `lex` followed by the renderer, so the two stages nest the same way as in the
 other libraries.
 
+For performance, `lex` writes into one buffer that every call reuses, so its
+result is valid only until the next call, where most other libraries return a
+result the caller keeps. A consumer that keeps a result copies it with
+`copy_lexed_syntax`, which the timed call doesn't do. The harness reads a
+result before the next call: the output check counts its tokens at once, and a
+timed batch counts its last result after the clock stops.
+
 `stylize` returns nested `<span class="token_…">` elements with no `<pre>` or
 `<code>` wrapper and no per-line element. Consumers supply the wrapper.
 

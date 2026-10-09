@@ -129,6 +129,12 @@
 			adapters raise that limit out of reach rather than turning it off, so every call does the same
 			work, and still reads the clock as Shiki's default does.
 		</p>
+		<p>
+			fuz_code's <code>tokenize</code> result is valid only until its next call: for performance, it
+			lexes into one buffer that every call reuses, where most other libraries return a result the
+			caller keeps. A consumer that keeps one copies it, and the timed call doesn't. Its
+			<code>notes.md</code> says how the harness reads the result in time.
+		</p>
 		<p>What the HTML looks like differs, and the results say so:</p>
 		<ul>
 			<li>
