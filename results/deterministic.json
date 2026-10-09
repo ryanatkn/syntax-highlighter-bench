@@ -12,7 +12,7 @@
 				"id": "fuz_code",
 				"label": "fuz_code",
 				"package": "@fuzdev/fuz_code",
-				"version": "0.51.0",
+				"version": "0.52.1",
 				"output": "classes",
 				"engine": "scanner",
 				"by_maintainer": true,
@@ -7278,7 +7278,7 @@
 			"synthetic": false,
 			"values": {},
 			"tokens": {
-				"fuz_code": 10999,
+				"fuz_code": 13817,
 				"twinkleplop": 12751,
 				"prism": 13579,
 				"shiki_js": 27267,
@@ -7303,8 +7303,8 @@
 			"tokens": {},
 			"output": {
 				"fuz_code": {
-					"html_bytes": 583907,
-					"spans": 10999
+					"html_bytes": 686173,
+					"spans": 13817
 				},
 				"twinkleplop": {
 					"html_bytes": 869195,
@@ -7325,8 +7325,8 @@
 			},
 			"compressed": {
 				"fuz_code": {
-					"gzip": 52381,
-					"brotli": 40804
+					"gzip": 53064,
+					"brotli": 39949
 				},
 				"twinkleplop": {
 					"gzip": 55398,
@@ -11287,9 +11287,9 @@
 	"bundle": {
 		"fuz_code": {
 			"core": {
-				"raw": 2920,
-				"gzip": 1271,
-				"brotli": 1171,
+				"raw": 3060,
+				"gzip": 1323,
+				"brotli": 1222,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11298,9 +11298,9 @@
 				}
 			},
 			"single:ts": {
-				"raw": 15421,
-				"gzip": 5694,
-				"brotli": 5006,
+				"raw": 16528,
+				"gzip": 6112,
+				"brotli": 5407,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11309,9 +11309,9 @@
 				}
 			},
 			"single:js": {
-				"raw": 15421,
-				"gzip": 5694,
-				"brotli": 5006,
+				"raw": 16528,
+				"gzip": 6112,
+				"brotli": 5407,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11320,9 +11320,9 @@
 				}
 			},
 			"single:css": {
-				"raw": 6115,
-				"gzip": 2413,
-				"brotli": 2149,
+				"raw": 6368,
+				"gzip": 2512,
+				"brotli": 2255,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11331,9 +11331,9 @@
 				}
 			},
 			"single:html": {
-				"raw": 24041,
-				"gzip": 8640,
-				"brotli": 7615,
+				"raw": 25217,
+				"gzip": 9092,
+				"brotli": 8019,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11342,9 +11342,9 @@
 				}
 			},
 			"single:xml": {
-				"raw": 8921,
-				"gzip": 3617,
-				"brotli": 3286,
+				"raw": 9066,
+				"gzip": 3671,
+				"brotli": 3349,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11353,9 +11353,9 @@
 				}
 			},
 			"single:json": {
-				"raw": 4676,
-				"gzip": 1953,
-				"brotli": 1787,
+				"raw": 4864,
+				"gzip": 2021,
+				"brotli": 1839,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11364,9 +11364,9 @@
 				}
 			},
 			"single:svelte": {
-				"raw": 26231,
-				"gzip": 9302,
-				"brotli": 8165,
+				"raw": 27407,
+				"gzip": 9763,
+				"brotli": 8644,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11375,9 +11375,9 @@
 				}
 			},
 			"single:md": {
-				"raw": 11995,
-				"gzip": 4639,
-				"brotli": 4212,
+				"raw": 12249,
+				"gzip": 4728,
+				"brotli": 4304,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11386,9 +11386,9 @@
 				}
 			},
 			"single:bash": {
-				"raw": 11188,
-				"gzip": 4284,
-				"brotli": 3854,
+				"raw": 12148,
+				"gzip": 4677,
+				"brotli": 4213,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11397,9 +11397,9 @@
 				}
 			},
 			"single:rust": {
-				"raw": 9564,
-				"gzip": 3589,
-				"brotli": 3213,
+				"raw": 10462,
+				"gzip": 3913,
+				"brotli": 3525,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11408,9 +11408,9 @@
 				}
 			},
 			"docs": {
-				"raw": 37605,
-				"gzip": 12852,
-				"brotli": 11300,
+				"raw": 39101,
+				"gzip": 13400,
+				"brotli": 11852,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11419,9 +11419,9 @@
 				}
 			},
 			"web_rust": {
-				"raw": 46375,
-				"gzip": 15408,
-				"brotli": 13510,
+				"raw": 47975,
+				"gzip": 15971,
+				"brotli": 13973,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11430,9 +11430,9 @@
 				}
 			},
 			"all": {
-				"raw": 46375,
-				"gzip": 15408,
-				"brotli": 13510,
+				"raw": 47975,
+				"gzip": 15971,
+				"brotli": 13973,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -11996,8 +11996,8 @@
 		"fuz_code": {
 			"packages": 6,
 			"files": 387,
-			"bytes": 2113976,
-			"closure": "9cf28d7673f3c3683b6afc06ca692d303031e1b342c2c0527702d65de789fec6"
+			"bytes": 2128858,
+			"closure": "50c089582f8413c14be71d6bf0dff99f5285f4df6835516f08bdb11c7c99d16c"
 		},
 		"twinkleplop": {
 			"packages": 11,
@@ -12027,12 +12027,12 @@
 	"heap": {
 		"fuz_code": {
 			"ts": {
-				"retained_kb": 124,
+				"retained_kb": 144,
 				"code_kb": 61,
 				"external_kb": 0
 			},
 			"js": {
-				"retained_kb": 118,
+				"retained_kb": 137,
 				"code_kb": 57,
 				"external_kb": 0
 			},
@@ -12042,7 +12042,7 @@
 				"external_kb": 0
 			},
 			"html": {
-				"retained_kb": 172,
+				"retained_kb": 196,
 				"code_kb": 79,
 				"external_kb": 0
 			},
@@ -12052,7 +12052,7 @@
 				"external_kb": 0
 			},
 			"svelte": {
-				"retained_kb": 196,
+				"retained_kb": 216,
 				"code_kb": 93,
 				"external_kb": 0
 			},
@@ -12062,7 +12062,7 @@
 				"external_kb": 0
 			},
 			"bash": {
-				"retained_kb": 85,
+				"retained_kb": 103,
 				"code_kb": 39,
 				"external_kb": 0
 			},
