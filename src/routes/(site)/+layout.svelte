@@ -64,11 +64,6 @@
 			--font_size: var(--font_size_md);
 		}
 	}
-	/* one line of its text tall, as it is with a path after the mark: the mark alone is 1em, and
-	 * the header would be shorter at the root than on every other page */
-	.site-header :global(.breadcrumb) {
-		min-height: 1lh;
-	}
 	/* wide enough for a column per library, and no wider than reads well */
 	.site-main {
 		max-width: var(--distance_lg);

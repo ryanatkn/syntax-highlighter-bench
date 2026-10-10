@@ -158,10 +158,10 @@
 </section>
 
 <section class="cards">
-	<Card href={resolve('/results')} icon="">every result, with filters</Card>
-	<Card href={resolve('/docs/method')} icon="">how it is measured</Card>
-	<Card href={resolve('/docs/corpus')} icon="">the inputs</Card>
-	<Card href={resolve('/docs/adapters')} icon="">the adapters, and how to add a library</Card>
+	<Card href={resolve('/results')}>every result, with filters</Card>
+	<Card href={resolve('/docs/method')}>how it is measured</Card>
+	<Card href={resolve('/docs/corpus')}>the inputs</Card>
+	<Card href={resolve('/docs/adapters')}>the adapters, and how to add a library</Card>
 </section>
 
 <style>
@@ -170,10 +170,6 @@
 		flex-wrap: wrap;
 		justify-content: center;
 		gap: var(--space_lg);
-	}
-	/* the cards carry no icon */
-	.cards :global(.icon:empty) {
-		display: none;
 	}
 	/* two charts side by side where they fit, one per line where they don't */
 	.charts {
