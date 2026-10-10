@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "neutral benchmark suite and results site for JS syntax highlighters",
   "license": "MIT",
+  "homepage": "https://syntax-highlighter-bench.ryanatkn.com/",
   "private": true,
   "repository": "https://github.com/ryanatkn/syntax-highlighter-bench",
   "scripts": {
