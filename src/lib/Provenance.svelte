@@ -79,10 +79,8 @@
 	</p>
 	{#if moved.length > 0}
 		<p>
-			<small>
-				These numbers are the run's own, a snapshot of what it measured. Since then:
-				{moved.join('; ')}.
-			</small>
+			These numbers are the run's own, a snapshot of what it measured. Since then:
+			{moved.join('; ')}.
 		</p>
 	{/if}
 {:else}
