@@ -19,7 +19,7 @@
 </script>
 
 <header class="site-header">
-	<Breadcrumb root_path={at_root ? '/docs' : undefined} />
+	<Breadcrumb root_path={at_root ? '/results' : undefined} />
 	<nav aria-label="Site" class="row gap_md">
 		<a href={resolve('/results')} class={{ selected: page.url.pathname === resolve('/results') }}>
 			results
