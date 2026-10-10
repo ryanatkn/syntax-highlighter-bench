@@ -1,7 +1,7 @@
 {
   "name": "@ryanatkn/syntax-highlighter-bench",
   "version": "0.0.1",
-  "description": "neutral benchmark suite and results site for JavaScript syntax highlighters",
+  "description": "neutral benchmark suite and results site for JS syntax highlighters",
   "license": "MIT",
   "private": true,
   "repository": "https://github.com/ryanatkn/syntax-highlighter-bench",

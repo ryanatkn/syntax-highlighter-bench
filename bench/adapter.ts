@@ -81,7 +81,7 @@ export interface HighlighterAdapter<TTokens = unknown> {
 	theme_schemes: ReadonlyArray<BenchColorScheme>;
 	/**
 	 * The WebAssembly binaries the library loads, for a library that has any. Each
-	 * is reported as wasm bytes, apart from the JavaScript.
+	 * is reported as wasm bytes, apart from the JS.
 	 */
 	wasm?: ReadonlyArray<AdapterWasm>;
 	/**
@@ -134,7 +134,7 @@ export interface HighlighterAdapter<TTokens = unknown> {
 	 */
 	bundle_html(exports: Record<string, any>, src: string, lang: Lang): string;
 	/**
-	 * The call `bundle_html` makes, as the source of one JavaScript expression
+	 * The call `bundle_html` makes, as the source of one JS expression
 	 * over the names `exports` and `src`. A cold-start process highlights with it:
 	 * that process must load nothing but the entry it measures, and this module
 	 * imports the library. The check of every built bundle evaluates it and
@@ -152,7 +152,7 @@ export interface AdapterWasm {
 	/**
 	 * The specifier `bundle_entry` imports the binary through, when that module
 	 * carries it inlined as text. The size build leaves this import out of the
-	 * bundle, so the binary isn't counted as JavaScript.
+	 * bundle, so the binary isn't counted as JS.
 	 */
 	import: string;
 	/** The specifier of the binary itself, whose bytes are counted. */

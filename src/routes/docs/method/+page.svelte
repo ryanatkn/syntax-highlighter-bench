@@ -64,9 +64,9 @@ node bench/run.ts --help`;
 		<p>Two effects made that necessary, and both showed up as a library disagreeing with itself:</p>
 		<ul>
 			<li>
-				Libraries that share code change how the JavaScript engine optimises that code for each
-				other. Shiki's two engines share its tokenizer, and in one process the JavaScript engine
-				measured far slower than it does alone.
+				Libraries that share code change how the JS engine optimises that code for each other.
+				Shiki's two engines share its tokenizer, and in one process the JS engine measured far
+				slower than it does alone.
 			</li>
 			<li>
 				The engine sizes its young generation from what has been allocating. In a shared process a
@@ -111,8 +111,8 @@ node bench/run.ts --help`;
 				between batches. One forced before every batch puts some libraries through a race each
 				round: it can discard optimised code whose hidden classes only short-lived objects hold, so
 				the library re-optimises inside the clock, and it re-rolls how memory a library allocates
-				outside the JavaScript heap is reused, so a process settles at one of two speeds. A minor
-				collection does neither.
+				outside the JS heap is reused, so a process settles at one of two speeds. A minor collection
+				does neither.
 			</li>
 			<li>
 				<strong>Results are kept and counted.</strong> A batch keeps its last result, and after the
@@ -815,8 +815,8 @@ node bench/run.ts --help`;
 				<strong>Collections.</strong> Every batch follows a rewarm (unless one call outlasts it) and
 				a forced minor collection, and full collections happen only when the engine schedules them,
 				so garbage from earlier batches carries into later ones and a full collection can still land
-				inside a batch. A library pays for what it allocates (in the JavaScript heap or outside it)
-				as the engine collects it during the run, which is close to, but not the same as, how a page
+				inside a batch. A library pays for what it allocates (in the JS heap or outside it) as the
+				engine collects it during the run, which is close to, but not the same as, how a page
 				collects between highlights.
 			</li>
 			<li>

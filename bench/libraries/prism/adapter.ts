@@ -81,7 +81,7 @@ const LANGS = {
 
 /**
  * The components a language needs: the ones Prism's dependency data requires,
- * plus the ones the language embeds structurally. CSS and JavaScript add
+ * plus the ones the language embeds structurally. CSS and JS add
  * `<style>` and `<script>` highlighting to markup only when they are loaded.
  */
 const REQUIRED: Record<keyof typeof LANGS, ReadonlyArray<ComponentName>> = {

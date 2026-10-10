@@ -1,7 +1,7 @@
 # Shiki adapters
 
 Shiki is measured as two libraries, as twinkleplop's comparison harness does: `shiki_js` uses
-the JavaScript regex engine and `shiki_wasm` the Oniguruma engine compiled to
+the JS regex engine and `shiki_wasm` the Oniguruma engine compiled to
 WebAssembly. They share grammars, theme, and every call below, in
 `bench/libraries/shiki.ts`. Only the engine differs.
 
@@ -51,7 +51,7 @@ installed dependency. The bundles `shiki`, `shiki/bundle/web`, and
 `shiki/bundle/full` load languages lazily from a full catalog and are not used.
 
 A language module's default export lists the grammar and the grammars it
-embeds, so loading Svelte loads JavaScript, TypeScript, CSS, and PostCSS.
+embeds, so loading Svelte loads JS, TypeScript, CSS, and PostCSS.
 
 ## Token count
 
@@ -97,7 +97,7 @@ in size, and a smaller one would lower the bundle figure, and change how many
 distinct colors the HTML carries.
 
 Shiki has no stylesheet, so its theme CSS figure is null: its theme lives in the
-JavaScript figure, and its colors in the HTML, on every token. The theme covers
+JS figure, and its colors in the HTML, on every token. The theme covers
 one scheme, light.
 
 ## Caveats
@@ -121,7 +121,7 @@ one scheme, light.
   and `plain`, and for a missing `lang` option**, returning one token per line.
   The adapter maps only its declared ids and refuses any language `setup` was
   not given. Shiki itself throws for an unknown name.
-- The JavaScript engine is created with its defaults, which reject a pattern it
+- The JS engine is created with its defaults, which reject a pattern it
   cannot translate rather than skipping it.
 - The two engines don't always agree on scopes. On `neutral/bash/nvm.sh` they
   return the same tokens and HTML of the same size, but one token's color
@@ -129,6 +129,6 @@ one scheme, light.
   and the deterministic file compare counts and sizes, not content, so a
   difference like this is not flagged. Timing compares the same work, not
   identical output.
-- Shiki also offers precompiled grammars with a smaller raw JavaScript engine
+- Shiki also offers precompiled grammars with a smaller raw JS engine
   for this engine. They come from a package that is not installed here, so the
   adapter uses the standard grammars.

@@ -72,7 +72,7 @@
 				"output": "inline_styles",
 				"engine": "textmate",
 				"by_maintainer": false,
-				"note": "The JavaScript RegExp engine. The HTML carries inline styles rather than classes.",
+				"note": "The JS RegExp engine. The HTML carries inline styles rather than classes.",
 				"theme_schemes": [
 					"light"
 				]
@@ -12926,7 +12926,7 @@
 		"fuz_code": {
 			"ts": true,
 			"js": {
-				"via": "the TypeScript lexer, which fuz_code registers for JavaScript"
+				"via": "the TypeScript lexer, which fuz_code registers for JS"
 			},
 			"css": true,
 			"html": true,

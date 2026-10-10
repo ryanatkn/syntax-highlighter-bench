@@ -79,11 +79,11 @@ that fails the output check or crawls on one is a finding, recorded as an
 exclusion or a slow number, not a reason to soften the input.
 
 - **Derived** — a neutral input transformed the way real code ships: the
-  JavaScript and the CSS minified by esbuild through Vite's
+  JS and the CSS minified by esbuild through Vite's
   `transformWithEsbuild` (the call the bundle sizes use), and the JSON parsed and
   serialized again with no whitespace. Each comes out as one long line. The
   sources are picked so the result stays under the large neutral inputs: the
-  large JavaScript input (the medium one minifies to a few KB), the medium
+  large JS input (the medium one minifies to a few KB), the medium
   stylesheet (the large one stays several hundred KB), and the large JSON input.
   A derived input keeps its source's pins as provenance, is marked synthetic, and
   names its transformation in `derivation`, with the esbuild version where
@@ -92,7 +92,7 @@ exclusion or a slow number, not a reason to soften the input.
 - **Written** — a pathological file generated here, small to medium, for each
   timed language: statements, values, and types nested far deeper than code is
   written; one line of ordinary TypeScript tens of KB long; an unterminated
-  string and block comment near the top of a JavaScript file; template literals
+  string and block comment near the top of a JS file; template literals
   nested inside substitutions; Markdown lists nested deep with emphasis, link,
   and code delimiters that never close, where a backtracking pattern retries at
   every opener; HTML with unclosed tags and unquoted attributes; a selector list

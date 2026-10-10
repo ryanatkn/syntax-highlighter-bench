@@ -69,7 +69,7 @@ The whole API is synchronous. `setup` only builds the styler.
 | `bash` | `bash` | `lexer_bash` |
 | `rust` | `rust` | `lexer_rust` |
 
-- **`js` runs the TypeScript lexer.** fuz_code has no separate JavaScript lexer
+- **`js` runs the TypeScript lexer.** fuz_code has no separate JS lexer
   and registers `js` as an alias of `ts`. The coverage matrix footnotes it.
 - **`html` and `svelte` register the lexers they embed.** A lexer looks up an
   embedded language in the styler's registry and leaves the region as plain

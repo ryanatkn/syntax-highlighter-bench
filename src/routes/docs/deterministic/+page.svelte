@@ -39,7 +39,7 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			module, minifies it, and reports its bytes in <DeclarationLink name="BenchBundleSizes" />:
 		</p>
 		<ul>
-			<li><code>raw</code> — the minified JavaScript</li>
+			<li><code>raw</code> — the minified JS</li>
 			<li><code>gzip</code> — those bytes gzipped at level 9, the highest</li>
 			<li><code>brotli</code> — those bytes brotli-compressed at quality 11, the highest</li>
 		</ul>
@@ -106,24 +106,23 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 	<TomeSection>
 		<TomeSectionHeader text="Wasm and theme CSS" />
 		<p>
-			Two things stay out of the JavaScript figures and have a section each, because folding them in
-			would hide a real difference between libraries. Both are reported as the JavaScript is, as
-			<code>raw</code>, <code>gzip</code>, and <code>brotli</code>, in
-			<DeclarationLink name="BenchByteSizes" />:
+			Two things stay out of the JS figures and have a section each, because folding them in would
+			hide a real difference between libraries. Both are reported as the JS is, as <code>raw</code>,
+			<code>gzip</code>, and <code>brotli</code>, in <DeclarationLink name="BenchByteSizes" />:
 		</p>
 		<ul>
 			<li>
 				<code>wasm</code> — the WebAssembly binary a library loads, and null for a library with
 				none. Shiki's Oniguruma engine loads one. The documented import carries the binary inlined
-				in a JavaScript module as text, which a bundler would count as JavaScript. The build leaves
-				that one import out of the bundle, and the binary file itself is measured.
+				in a JS module as text, which a bundler would count as JS. The build leaves that one import
+				out of the bundle, and the binary file itself is measured.
 			</li>
 			<li>
 				<code>css</code> — each library's documented default stylesheet, minified by the same
 				esbuild. Output that carries classes needs a stylesheet to show any color. Output that
-				carries inline styles needs none, so for Shiki the section is null: its theme is in the
-				JavaScript figure, and its colors are in every page of HTML. A theme of several stylesheets
-				is measured file by file, each compressed on its own, and summed.
+				carries inline styles needs none, so for Shiki the section is null: its theme is in the JS
+				figure, and its colors are in every page of HTML. A theme of several stylesheets is measured
+				file by file, each compressed on its own, and summed.
 			</li>
 		</ul>
 		<p>

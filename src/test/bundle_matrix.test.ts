@@ -295,7 +295,7 @@ describe('to_bundle_total_groups', () => {
 describe('to_bundle_loaded_entry', () => {
 	const docs = results.sets.find((set) => set.id === 'docs')!;
 
-	test('adds the wasm binary and the stylesheet to the JavaScript, in one compression', () => {
+	test('adds the wasm binary and the stylesheet to the JS, in one compression', () => {
 		for (const compression of ['raw', 'gzip', 'brotli'] as const) {
 			for (const library of libraries) {
 				const entry = sizes(library, 'docs');
@@ -352,7 +352,7 @@ describe('to_bundle_beside_group', () => {
 		assert.strictEqual(group.note, 'each on its own');
 	});
 
-	test('the wasm binary and the stylesheet are their own rows, outside the JavaScript', () => {
+	test('the wasm binary and the stylesheet are their own rows, outside the JS', () => {
 		assert.strictEqual(
 			matrix_row_value(wasm!, 'shiki_wasm'),
 			sizes('shiki_wasm', 'docs').wasm!.gzip

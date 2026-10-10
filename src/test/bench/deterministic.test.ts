@@ -135,7 +135,7 @@ describe('the committed deterministic file', () => {
 					continue;
 				}
 				assert.ok('raw' in entry, `${adapter.id} ${set.id}`);
-				// the two columns kept out of the JavaScript
+				// the two columns kept out of the JS
 				assert.deepStrictEqual(entry.css, css);
 				assert.deepStrictEqual(entry.wasm, wasm);
 			}

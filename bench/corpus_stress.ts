@@ -6,7 +6,7 @@
  * Two kinds:
  *
  * - **derived** — a neutral input transformed, as real code is shipped: the
- *   JavaScript and CSS minified by esbuild through Vite's `transformWithEsbuild`
+ *   JS and CSS minified by esbuild through Vite's `transformWithEsbuild`
  *   (as the bundle sizes are), and the JSON serialized again with no
  *   whitespace. Each keeps its source's pins as provenance and names the
  *   transformation in `derivation`. esbuild's version is part of it, since
@@ -90,7 +90,7 @@ const MINIFY_JSON: StressDerivation = {
 /**
  * The derived inputs: one neutral input of each language that ships minified,
  * picked so the result stays under the large neutral inputs in size while being
- * one long line. The JavaScript is the large neutral input (the medium one
+ * one long line. The JS is the large neutral input (the medium one
  * minifies to a few KB), the CSS the medium one (the large stylesheet stays
  * several hundred KB), and the JSON the large one.
  */

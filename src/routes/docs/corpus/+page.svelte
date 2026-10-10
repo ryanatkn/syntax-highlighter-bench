@@ -98,10 +98,10 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 		</p>
 		<ul>
 			<li>
-				<strong>derived</strong> — a neutral input as real code ships: the JavaScript and the CSS
-				minified by esbuild, and the JSON serialized with no whitespace, each one long line. It
-				keeps its source's pins, is marked synthetic, and names how it was made, with the esbuild
-				version, since another version may minify to other bytes
+				<strong>derived</strong> — a neutral input as real code ships: the JS and the CSS minified
+				by esbuild, and the JSON serialized with no whitespace, each one long line. It keeps its
+				source's pins, is marked synthetic, and names how it was made, with the esbuild version,
+				since another version may minify to other bytes
 			</li>
 			<li>
 				<strong>written</strong> — a pathological file for each timed language: nesting far deeper

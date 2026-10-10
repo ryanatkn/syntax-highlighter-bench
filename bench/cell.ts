@@ -11,7 +11,7 @@
  *
  * The process loads one library and nothing else that is measured, so no other
  * library can change its number. Two effects made that necessary. Libraries
- * that share code, like Shiki's two engines, change how the JavaScript engine
+ * that share code, like Shiki's two engines, change how the JS engine
  * optimises that code for each other. And the engine sizes its young generation
  * from what has been allocating, so one library's time depended on which
  * libraries ran beside it.

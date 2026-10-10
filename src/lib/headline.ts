@@ -71,7 +71,7 @@ export interface HeadlineChart {
  * The headline figures, each drawn as bars: geometric-mean throughput over the
  * neutral inputs for each mode, the time to a first highlight from a cold
  * start, the retained memory over the languages, everything a page loads over
- * the documentation set with what it is made of, and that set's JavaScript
+ * the documentation set with what it is made of, and that set's JS
  * alone. Only the throughput rows carry the run's noise floor, which was
  * calibrated on the timed cells. A figure the file holds no number for is left
  * out, so a file with no timed run draws only its deterministic figures.
@@ -176,7 +176,7 @@ export const to_headline_charts = (results: MatrixResults): Array<HeadlineChart>
 };
 
 /**
- * What each language's grammar adds to a library's JavaScript: the floor, the
+ * What each language's grammar adds to a library's JS: the floor, the
  * library with no language, then each language alone less that floor, every
  * one minified and compressed with `HEADLINE_COMPRESSION`.
  *

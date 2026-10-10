@@ -21,7 +21,7 @@
 	engine: 'scanner' | 'grammar_vm' | 'regex' | 'textmate';
 	theme_css: ReadonlyArray<string> | null; // the default theme's stylesheets; null when styles are inline
 	theme_schemes: ReadonlyArray<'light' | 'dark'>; // the color schemes that theme covers
-	wasm?: ReadonlyArray<{import: string; binary: string}>; // the wasm binaries it loads, counted apart from the JavaScript
+	wasm?: ReadonlyArray<{import: string; binary: string}>; // the wasm binaries it loads, counted apart from the JS
 	setup(langs: ReadonlyArray<Lang>): Promise<void>; // once per process, before any timing
 	tokenize(src: string, lang: Lang): TTokens; // timed: the library's own result
 	count_tokens(tokens: TTokens): number; // never timed
@@ -158,7 +158,7 @@
 			which has no XML language. Where support is indirect, the coverage matrix carries a footnote:
 		</p>
 		<ul>
-			<li>fuz_code runs its TypeScript lexer for JavaScript</li>
+			<li>fuz_code runs its TypeScript lexer for JS</li>
 			<li>
 				Prism's Svelte grammar is the third-party <code>prism-svelte</code>, and its XML is its
 				markup grammar under another name

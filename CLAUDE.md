@@ -1,9 +1,9 @@
 # syntax-highlighter-bench
 
-> neutral benchmark suite and results site for JavaScript syntax highlighters
+> neutral benchmark suite and results site for JS syntax highlighters
 
 syntax-highlighter-bench (`@ryanatkn/syntax-highlighter-bench`) compares
-fuz_code, twinkleplop, Prism, and Shiki on the same inputs. Shiki's JavaScript
+fuz_code, twinkleplop, Prism, and Shiki on the same inputs. Shiki's JS
 engine and its Oniguruma wasm engine count as two libraries. A run produces one
 results file holding many metrics; the site is a view over that file where a
 reader picks the subset to compare.
@@ -539,13 +539,13 @@ each set of `FEATURE_SETS`:
   the machine reaches the output.
 - `measure_compressed` reports raw, gzip (`GZIP_LEVEL`), and brotli
   (`BROTLI_QUALITY`) bytes with Node's zlib.
-- `measure_wasm` measures each `adapter.wasm[].binary` as the JavaScript is
+- `measure_wasm` measures each `adapter.wasm[].binary` as the JS is
   measured (`BenchByteSizes`: raw, gzip, brotli), null for a library with none.
   The matching `import` is made external to the build, and `build_bundle`
   throws if the bundle never imports it, or leaves out anything else.
 - `measure_theme_css` minifies each `theme_css` stylesheet with the same esbuild
   and measures it the same way. Null when `theme_css` is null: the theme is
-  then in the JavaScript. Files served apart are compressed apart and summed
+  then in the JS. Files served apart are compressed apart and summed
   (`sum_byte_sizes`).
 - `adapter.theme_schemes` lands on the roster entry: the color schemes the
   default theme covers. A stylesheet with a light and a dark palette is larger
@@ -739,7 +739,7 @@ that necessary, both found by measuring a library alone against the same
 library beside others:
 
 - libraries that share code change how V8 optimises it for each other (Shiki's
-  two engines share its tokenizer core, and the JavaScript engine read far
+  two engines share its tokenizer core, and the JS engine read far
   slower beside the wasm one)
 - V8 sizes its young generation from recent allocation, so a library's time on
   a large input depended on which libraries ran beside it
@@ -821,7 +821,7 @@ puts some libraries through a race each round:
   calls, and V8 discards every optimised function embedding it ("embedded weak
   objects cleared" under `--trace-deopt`), so the next batch re-optimises
   inside the clock.
-- A library that allocates outside the JavaScript heap per call (a typed
+- A library that allocates outside the JS heap per call (a typed
   array's backing store) gets that memory back only at a collection, so a
   forced one re-rolls how the next batch reuses it, and a process settles at
   one of two speeds per round.
@@ -1250,10 +1250,10 @@ the ratio scale, as tsv.fuz.dev's charts do.
   both derived and never stored. The
   sum over a set is not a bundle, so its row is `compared: false`: no ratio,
   no tint.
-- **"Everything loaded"** (`to_bundle_loaded_entry`) is the JavaScript plus the
+- **"Everything loaded"** (`to_bundle_loaded_entry`) is the JS plus the
   wasm binary plus the theme stylesheet in one compression, each compressed on
   its own. It is ranked, so a library whose engine ships as wasm is not
-  compared on its JavaScript alone.
+  compared on its JS alone.
 - **The retained heap is tinted and ranked**: unlike a token count, a smaller
   heap is less memory for the same highlight of the same snippet through the
   same bundle, as a smaller bundle is fewer bytes. The sum of heap, machine

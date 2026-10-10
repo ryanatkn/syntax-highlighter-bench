@@ -2,7 +2,7 @@
 
 [<img src="static/logo.svg" alt="four lines of highlighted code, drawn as the bars of a chart" align="right" width="192" height="192">](https://syntax-highlighter-bench.ryanatkn.com/)
 
-> neutral benchmark suite and results site for JavaScript syntax highlighters
+> neutral benchmark suite and results site for JS syntax highlighters
 
 This project aims to comprehensively benchmark
 [twinkleplop](https://twinkleplop.pngwn.at/),
@@ -91,7 +91,7 @@ what each is in full.
 [`/docs/deterministic`](https://syntax-highlighter-bench.ryanatkn.com/docs/deterministic):
 
 - **Bundle size** for each feature set, minified, gzip and brotli, with the
-  wasm binary and the theme CSS reported apart from the JavaScript
+  wasm binary and the theme CSS reported apart from the JS
 - **Token counts**, each library's own
 - **Output sizes**, the HTML raw and compressed
 - **Retained heap** after loading one language and highlighting once: V8's

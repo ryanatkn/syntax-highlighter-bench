@@ -80,7 +80,7 @@
 			<li>
 				<DeclarationLink name="BenchBundleEntry" /> — for each library over each feature set, its
 				bundle sizes in <DeclarationLink name="BenchBundleSizes" />, or the languages of the set it
-				lacks. The sizes are the JavaScript's, with the wasm and the theme CSS each measured apart
+				lacks. The sizes are the JS's, with the wasm and the theme CSS each measured apart
 			</li>
 			<li>
 				<DeclarationLink name="BenchInstall" /> — for each library, what <code>npm install</code> of

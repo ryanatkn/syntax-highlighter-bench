@@ -99,7 +99,7 @@ export const fuz_code_adapter: HighlighterAdapter<LexedSyntax> = {
 	by_maintainer: true,
 	note: 'Single-pass lexers. `tokenize` is the lexer alone and `html` adds the renderer.',
 	langs: LANGS,
-	via: { js: 'the TypeScript lexer, which fuz_code registers for JavaScript' },
+	via: { js: 'the TypeScript lexer, which fuz_code registers for JS' },
 	output: 'classes',
 	engine: 'scanner',
 	theme_css: ['@fuzdev/fuz_code/theme.css', '@fuzdev/fuz_code/theme_variables.css'],

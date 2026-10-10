@@ -29,7 +29,7 @@ export default Prism;
 ```
 
 This is the narrowest shape. The package's main file, `prism.js`, always
-includes markup, CSS, C-like, and JavaScript, and Prism's Node helper
+includes markup, CSS, C-like, and JS, and Prism's Node helper
 `loadLanguages` reads files at run time, so neither is used.
 
 A component registers itself on the global `Prism` object when it is imported
@@ -71,11 +71,11 @@ components with dynamic imports, which is the only async step.
 - **`svelte` is a third-party grammar**,
   [`prism-svelte`](https://github.com/pngwn/prism-svelte). Prism has none of its
   own. Its version is recorded beside Prism's. The coverage matrix footnotes it. The grammar highlights script content as
-  JavaScript, including in a `lang="ts"` script.
+  JS, including in a `lang="ts"` script.
 - **`xml` is the markup grammar.** The markup component registers a copy of
   itself under the name `xml`, and Prism's language list presents XML that way.
   The coverage matrix footnotes it.
-- **`html` loads CSS and JavaScript.** Those components add `<style>` and
+- **`html` loads CSS and JS.** Those components add `<style>` and
   `<script>` highlighting to markup only when they are loaded, and markup with
   the two is what Prism's own default bundle ships.
 - **`md` highlights a fenced block only when its language is loaded**, and only

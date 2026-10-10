@@ -150,7 +150,7 @@ const find_bundle_entry = (
 	return Object.hasOwn(by_set, set.id) ? by_set[set.id]! : null;
 };
 
-/** The JavaScript size of one library over one set. */
+/** The JS size of one library over one set. */
 export const to_bundle_size_entry = (
 	results: Pick<MatrixResults, 'bundle'>,
 	library: string,
@@ -164,7 +164,7 @@ export const to_bundle_size_entry = (
 };
 
 /**
- * Everything a page loads for one library over one set: the JavaScript, the
+ * Everything a page loads for one library over one set: the JS, the
  * wasm binary, and the theme stylesheet, each compressed on its own and added
  * up. A library with no binary or no stylesheet adds nothing for it, so a
  * library whose engine ships as wasm is compared on all it ships.
@@ -283,7 +283,7 @@ const to_bundle_row = (
 };
 
 /**
- * What a page loads beside the JavaScript, kept out of the figures above it:
+ * What a page loads beside the JS, kept out of the figures above it:
  * the wasm binary, the theme stylesheet, and which color schemes that theme
  * covers, since a theme with two is larger than a theme with one.
  */

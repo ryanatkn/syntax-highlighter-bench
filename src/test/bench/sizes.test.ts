@@ -103,7 +103,7 @@ describe('to_bundle_file_name', () => {
 });
 
 describe('the wasm column', () => {
-	test('is null for a library without wasm, and the binary measured like the JavaScript for one with it', () => {
+	test('is null for a library without wasm, and the binary measured like the JS for one with it', () => {
 		for (const adapter of ADAPTERS) {
 			const sizes = measure_wasm(adapter);
 			if (adapter.wasm) {

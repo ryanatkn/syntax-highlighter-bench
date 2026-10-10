@@ -801,7 +801,7 @@ export type BenchByteSizes = z.infer<typeof BenchByteSizes>;
 
 /**
  * The bundled size of one library over one feature set: `raw`, `gzip`, and
- * `brotli` are the minified JavaScript, and what else a page loads for the
+ * `brotli` are the minified JS, and what else a page loads for the
  * library has a section of its own. Deterministic.
  */
 export const BenchBundleSizes = z

@@ -17,17 +17,17 @@
  * `node_modules`. The entry is a virtual module, so no path of this machine
  * reaches the output.
  *
- * **Two things stay out of the JavaScript figure**, each with a column of its
+ * **Two things stay out of the JS figure**, each with a column of its
  * own, because folding them in would hide a real difference:
  *
  * - **wasm**: a library that runs on a WebAssembly binary may ship it inlined
- *   in a JavaScript module as text. The adapter names that import (`wasm`), the
+ *   in a JS module as text. The adapter names that import (`wasm`), the
  *   build leaves it out, and the binary's own bytes are measured.
  * - **theme CSS**: class-based output needs a stylesheet to show color, and
- *   inline-styled output needs none, its theme being in the JavaScript. The
+ *   inline-styled output needs none, its theme being in the JS. The
  *   default theme's stylesheets are minified by the same esbuild and measured.
  *
- * Both are reported raw, gzipped, and brotli-compressed, as the JavaScript is.
+ * Both are reported raw, gzipped, and brotli-compressed, as the JS is.
  *
  * **Determinism.** The numbers depend on the libraries' versions, on Vite and
  * the Rollup and esbuild inside it (`BenchBundler` records them), and, for the
@@ -243,7 +243,7 @@ export const build_bundle = (
 
 /**
  * Measures a library's default theme: each stylesheet minified, then measured
- * raw and compressed as the JavaScript is, and the sizes summed.
+ * raw and compressed as the JS is, and the sizes summed.
  *
  * @returns the sizes, or null for a library that writes its styles inline
  * @throws if a stylesheet doesn't resolve
@@ -269,7 +269,7 @@ export const measure_theme_css = async (
 /**
  * Measures the WebAssembly binaries a library loads.
  *
- * @returns their sizes, raw and compressed as the JavaScript is, or null for a library with none
+ * @returns their sizes, raw and compressed as the JS is, or null for a library with none
  * @throws if a binary doesn't resolve
  */
 export const measure_wasm = (adapter: Pick<HighlighterAdapter, 'wasm'>): BenchByteSizes | null =>

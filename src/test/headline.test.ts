@@ -50,7 +50,7 @@ describe('to_headline_charts', () => {
 		);
 		const expected = Math.exp(held.reduce((sum, v) => sum + Math.log(v), 0) / held.length);
 		assert.approximately(matrix_row_value(charts[0]!.row, 'prism')!, expected, 1e-6 * expected);
-		// everything loaded: the JavaScript, the wasm binary, and the stylesheet
+		// everything loaded: the JS, the wasm binary, and the stylesheet
 		const [, loaded, javascript] = charts;
 		const sizes = results.bundle.prism!.docs!;
 		assert.ok(!('unsupported' in sizes));

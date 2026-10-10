@@ -16,7 +16,7 @@
 <section>
 	<h1>syntax-highlighter-bench</h1>
 	<p>
-		A benchmark of JavaScript syntax highlighters: <a href="https://code.fuz.dev/">fuz_code</a>,
+		A benchmark of JS syntax highlighters: <a href="https://code.fuz.dev/">fuz_code</a>,
 		<a href="https://twinkleplop.pngwn.at/">twinkleplop</a>,
 		<a href="https://prismjs.com/">Prism</a>, and <a href="https://shiki.style/">Shiki</a> with each
 		of its two engines, run on the same inputs through one adapter each. It measures throughput,
