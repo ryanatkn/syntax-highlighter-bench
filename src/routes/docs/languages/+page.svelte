@@ -73,7 +73,7 @@
 		</p>
 		<p>
 			A language that is an id but is not timed is one the roster doesn't share: XML is the case
-			today, since twinkleplop has no XML language. It appears in the coverage matrix and in feature
+			today, since Twinkleplop has no XML language. It appears in the coverage matrix and in feature
 			sets. A cold-start scenario that loads one language loads a timed one, so it never names an
 			untimed id.
 		</p>
@@ -156,7 +156,7 @@
 				adds, which the results page shows for every language.
 			</li>
 			<li>
-				<code>docs</code> — what a documentation site imports, matching twinkleplop's docs bundle.
+				<code>docs</code> — what a documentation site imports, matching Twinkleplop's docs bundle.
 				It is also the set a cold-start process loads in the <code>set</code> scenario.
 			</li>
 			<li>

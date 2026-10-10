@@ -2,7 +2,7 @@
  * The timing engine: one library measured on one input, in a process that holds
  * nothing else.
  *
- * The method is adapted from the comparison harness of twinkleplop
+ * The method is adapted from the comparison harness of Twinkleplop
  * (https://github.com/pngwn/twinkleplop, MIT), and each part answers a way a
  * naive loop goes wrong:
  *

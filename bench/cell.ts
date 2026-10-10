@@ -28,7 +28,7 @@
  * The token count and the HTML size come from that check, so they are taken
  * under the same setup as the timing and outside it.
  *
- * The process-per-cell idea is from the comparison harness of twinkleplop
+ * The process-per-cell idea is from the comparison harness of Twinkleplop
  * (https://github.com/pngwn/twinkleplop, MIT).
  *
  * Node-only.

@@ -1,5 +1,5 @@
 /**
- * The twinkleplop adapter. See `notes.md` beside it for the entry points and why.
+ * The Twinkleplop adapter. See `notes.md` beside it for the entry points and why.
  *
  * @module
  */
@@ -62,7 +62,7 @@ let renderers = create_lang_map<HtmlFn>();
 
 export const twinkleplop_adapter: HighlighterAdapter<TokenizeResult> = {
 	id: ID,
-	label: 'twinkleplop',
+	label: 'Twinkleplop',
 	package: '@twinkleplop/core',
 	by_maintainer: false,
 	note: "The full pipeline: the grammar plus the language's reclassifier stack, as shipped.",

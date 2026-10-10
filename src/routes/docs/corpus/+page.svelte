@@ -59,7 +59,7 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 					<td><code>home</code></td>
 					<td>
 						a measured library's own samples, labelled with the library: fuz_code's test fixtures,
-						and the corpus twinkleplop benchmarks itself on
+						and the corpus Twinkleplop benchmarks itself on
 					</td>
 				</tr>
 				<tr>
@@ -159,7 +159,7 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 		<p>
 			An input is marked synthetic when it is not one real file as published but was built by
 			joining or repeating files to reach its size, or derived from one, as the minified stress
-			inputs are. Real files are preferred. Most of twinkleplop's own corpus is built this way and
+			inputs are. Real files are preferred. Most of Twinkleplop's own corpus is built this way and
 			is marked.
 		</p>
 		<p>

@@ -19,7 +19,7 @@
 	<section>
 		<p>
 			syntax-highlighter-bench is a benchmark suite and results site for JS syntax highlighters. It
-			compares fuz_code, twinkleplop, Prism, and Shiki, with Shiki's JS engine and its Oniguruma
+			compares fuz_code, Twinkleplop, Prism, and Shiki, with Shiki's JS engine and its Oniguruma
 			wasm engine counted as two libraries.
 		</p>
 		<p>

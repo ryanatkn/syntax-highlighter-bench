@@ -42,7 +42,7 @@ export const FEATURE_SETS: ReadonlyArray<FeatureSet> = [
 	create_feature_set(CORE_SET_ID, 'core', []),
 	// one per language, so `single - core` is what that language adds
 	...LANGS.map((lang) => create_feature_set(to_single_set_id(lang), LANG_LABELS[lang], [lang])),
-	// the shape a documentation site imports, matching twinkleplop's docs bundle
+	// the shape a documentation site imports, matching Twinkleplop's docs bundle
 	create_feature_set('docs', 'docs', ['js', 'ts', 'css', 'html', 'md', 'bash', 'json']),
 	create_feature_set(
 		'web_rust',

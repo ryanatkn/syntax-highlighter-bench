@@ -98,7 +98,7 @@
 					<td>a typed leaf or container</td>
 				</tr>
 				<tr>
-					<td>twinkleplop</td>
+					<td>Twinkleplop</td>
 					<td>the language package's <code>tokenize()</code></td>
 					<td>the language package's <code>language()</code></td>
 					<td>a typed token after reclassification</td>
@@ -142,7 +142,7 @@
 				consumer supplies the wrapper
 			</li>
 			<li>
-				twinkleplop returns a <code>&lt;pre&gt;</code> with a span for each line and classes on each
+				Twinkleplop returns a <code>&lt;pre&gt;</code> with a span for each line and classes on each
 				token
 			</li>
 			<li>
@@ -154,7 +154,7 @@
 	<TomeSection>
 		<TomeSectionHeader text="Coverage" />
 		<p>
-			Every adapter claims the timed languages. <code>xml</code> is claimed by all but twinkleplop,
+			Every adapter claims the timed languages. <code>xml</code> is claimed by all but Twinkleplop,
 			which has no XML language. Where support is indirect, the coverage matrix carries a footnote:
 		</p>
 		<ul>
@@ -173,7 +173,7 @@
 		<p>
 			That decides how Markdown is measured: without highlighting inside fenced code blocks.
 			fuz_code, Prism, and Shiki highlight a fenced block only when its language is loaded, and
-			twinkleplop never does, so loading one language puts them on the same footing. Two exceptions
+			Twinkleplop never does, so loading one language puts them on the same footing. Two exceptions
 			come from what loads with Markdown itself: Prism's Markdown depends on its markup grammar, so
 			Prism still highlights a fence tagged <code>html</code>, <code>xml</code>, <code>svg</code>,
 			or <code>markup</code>, and fuz_code and Prism highlight a fence tagged as Markdown.

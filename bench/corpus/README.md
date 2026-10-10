@@ -23,10 +23,10 @@ reader can see whether a result holds on inputs a library chose for itself, or
 on hostile ones. No summary pools two sources.
 
 - **`home/fuz_code/`** is fuz_code's `sample_complex` test fixtures.
-- **`home/twinkleplop/`** is the `sized` family of twinkleplop's benchmark
-  corpus, which its published comparison measures, and its `real` family. twinkleplop
+- **`home/twinkleplop/`** is the `sized` family of Twinkleplop's benchmark
+  corpus, which its published comparison measures, and its `real` family. Twinkleplop
   builds most of these by joining or repeating smaller files, and those are
-  marked synthetic. The note on each entry is twinkleplop's own description.
+  marked synthetic. The note on each entry is Twinkleplop's own description.
 - **`harness/`** snippets were written by this benchmark's maintainer, who also
   maintains fuz_code. They are the docs-site case, a few lines of ordinary code,
   and are labelled apart from the neutral set for that reason.

@@ -41,7 +41,7 @@
  * would not compile what it loads, and would not be cold.
  *
  * The scenario set and the method generalise the cold-start harness of
- * twinkleplop (https://github.com/pngwn/twinkleplop, MIT) across libraries: a
+ * Twinkleplop (https://github.com/pngwn/twinkleplop, MIT) across libraries: a
  * process per sample, scenarios interleaved, first rounds discarded, bundled
  * against unbundled, a bare baseline, time to first highlight.
  *

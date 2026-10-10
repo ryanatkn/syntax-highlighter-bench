@@ -78,10 +78,11 @@
 		{@render children?.()}
 	</p>
 	{#if moved.length > 0}
-		<p>
+		<!-- TODO re-enable later -->
+		<!-- <p>
 			These numbers are the run's own, a snapshot of what it measured. Since then:
 			{moved.join('; ')}.
-		</p>
+		</p> -->
 	{/if}
 {:else}
 	<p>

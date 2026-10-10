@@ -1,6 +1,6 @@
 /**
  * The headline figures of the landing page, each drawn as bars, and the table
- * of what each language adds to a bundle: read from a results file by the same
+ * of what each language costs in a bundle: read from a results file by the same
  * functions the results page uses.
  *
  * @module

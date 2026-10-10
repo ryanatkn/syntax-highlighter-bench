@@ -82,7 +82,7 @@ describe('to_headline_charts', () => {
 });
 
 describe('to_language_weight_groups', () => {
-	test('the floor, then what each language adds to it', () => {
+	test('the floor, then what each language costs over it', () => {
 		const results = load_deterministic();
 		const [core, langs] = to_language_weight_groups(results);
 		assert.strictEqual(core!.key, 'core');

@@ -76,7 +76,7 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 					<td>the styler alone</td>
 				</tr>
 				<tr>
-					<td>twinkleplop</td>
+					<td>Twinkleplop</td>
 					<td>the two factories of each language's package</td>
 					<td>
 						the runtime and the grammar compiler of the core package, which every language package
@@ -128,7 +128,7 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 		<p>
 			Default themes don't cover the same ground. Each library's roster entry says which color
 			schemes its theme holds, in <code>theme_schemes</code>: the stylesheets of fuz_code and
-			twinkleplop hold a light and a dark palette, and Prism's holds one. Read the stylesheet sizes
+			Twinkleplop hold a light and a dark palette, and Prism's holds one. Read the stylesheet sizes
 			beside that.
 		</p>
 		<p>
@@ -237,7 +237,7 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 				recorded too.
 			</li>
 			<li>
-				<strong>Wrappers differ.</strong> twinkleplop and Shiki wrap the output in
+				<strong>Wrappers differ.</strong> Twinkleplop and Shiki wrap the output in
 				<code>&lt;pre&gt;</code> and a span for each line, and fuz_code and Prism return bare token
 				spans. <code>spans</code> counts every element.
 			</li>

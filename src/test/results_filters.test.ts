@@ -48,7 +48,7 @@ describe('the options and the defaults', () => {
 		assert.deepStrictEqual(options.outputs, ['classes', 'inline_styles']);
 	});
 
-	test('the default view is the neutral inputs, bundled, what each language adds, in gzip', () => {
+	test('the default view is the neutral inputs, bundled, what each language costs, in gzip', () => {
 		assert.deepStrictEqual(defaults.sources, ['neutral']);
 		assert.deepStrictEqual(defaults.forms, ['bundled']);
 		assert.strictEqual(defaults.bundle, 'incremental');

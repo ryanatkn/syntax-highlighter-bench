@@ -17,7 +17,7 @@
 	<h1>syntax-highlighter-bench</h1>
 	<p>
 		A benchmark of JS syntax highlighters: <a href="https://code.fuz.dev/">fuz_code</a>,
-		<a href="https://twinkleplop.pngwn.at/">twinkleplop</a>,
+		<a href="https://twinkleplop.pngwn.at/">Twinkleplop</a>,
 		<a href="https://prismjs.com/">Prism</a>, and <a href="https://shiki.style/">Shiki</a> with each
 		of its two engines, run on the same inputs through one adapter each. It measures throughput,
 		cold start, and memory on one named machine, and bundle size, token counts, and output size,
@@ -29,10 +29,11 @@
 		<a href={resolve('/docs/method')}>method</a> is published for anyone to reproduce.
 	</p>
 	<p>
-		The libraries don't offer the same features. Shiki highlights with the TextMate grammars and
-		themes VS Code uses, and twinkleplop and Shiki each do more than fuz_code, which is the smallest
-		of them: a single-pass lexer per language, with CSS classes for its theme. These numbers compare
-		the work all of them share, not what one offers that another doesn't.
+		The libraries have different featuresets. Shiki highlights with the TextMate grammars and themes
+		VS Code uses; Twinkleplop aims for a similar feature set, with its own themes, annotations, and
+		Twoslash support; and both do more than fuz_code, which is the smallest of them: a single-pass
+		lexer per language, with CSS classes for its theme. These numbers compare the work all of them
+		share, not what one offers that another doesn't.
 	</p>
 	<p>
 		<a href={resolve('/results')}>Every result, with filters</a> ·
@@ -114,22 +115,23 @@
 </section>
 {#if data.language_weights.length > 0}
 	<section>
-		<h2>What each language adds</h2>
+		<h2>What each language costs</h2>
 		<MatrixTable
 			libraries={data.meta.libraries}
 			groups={data.language_weights}
 			heading="language"
-			label="What each language adds to the JS, by library"
+			label="What each language costs in JS, by library"
 			bars
 		>
 			What each language's grammar costs, in two ways. <strong>The first language</strong> is the JS
 			a page loads for that language alone, minified and compressed with gzip, less the library with
 			no language: it includes any runtime the language needs that the floor leaves out, which a
-			library pays once. <strong>One more language</strong> is what the language adds to a bundle
-			that already holds every other timed language, in minified bytes: the price of adding it to a
-			site that has the rest. A language the others already hold, like JS inside TypeScript, adds
-			nothing there. The bars of each group are on one scale, and beside a number is its ratio to
-			the smallest in the row.
+			library pays once, and any language it loads with it, as when a library's TypeScript loads its
+			JS. <strong>One more language</strong> is what the language adds to a bundle that already
+			holds every other timed language, in minified bytes: the price of adding it to a site that has
+			the rest. A language the others already hold, like JS inside TypeScript, adds nothing there.
+			The bars of each group are on one scale, and beside a number is its ratio to the smallest in
+			the row.
 		</MatrixTable>
 	</section>
 {/if}

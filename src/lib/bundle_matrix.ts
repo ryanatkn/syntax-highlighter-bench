@@ -28,12 +28,12 @@ export type BundleCompression = 'raw' | 'gzip' | 'brotli';
 /** Every compression, in display order. */
 export const BUNDLE_COMPRESSIONS: ReadonlyArray<BundleCompression> = ['gzip', 'brotli', 'raw'];
 
-/** Which bundle table to show: what each language adds, or each set's total. */
+/** Which bundle table to show: what each language costs, or each set's total. */
 export type BundleView = 'incremental' | 'totals';
 
 /** Both views, with their labels, in display order. */
 export const BUNDLE_VIEWS: ReadonlyArray<{ id: BundleView; label: string }> = [
-	{ id: 'incremental', label: 'what each language adds' },
+	{ id: 'incremental', label: 'what each language costs' },
 	{ id: 'totals', label: 'set totals' }
 ];
 

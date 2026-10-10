@@ -346,11 +346,11 @@
 						adds the wasm binary and the theme stylesheet to the JS, each compressed on its own, so
 						a library whose engine ships as wasm is not compared on its JS alone.
 					{:else}
-						What each language adds to a library's minified JS: the bundle with that language alone,
-						less the bundle with none. The sum of the rows of a set is not a bundle, so it has no
-						ratio: it exceeds the set's measured size when a library shares code between languages,
-						or when one language brings another with it, as HTML brings the script and style
-						languages.
+						What each language costs in a library's minified JS: the bundle with that language
+						alone, less the bundle with none. The sum of the rows of a set is not a bundle, so it
+						has no ratio: it exceeds the set's measured size when a library shares code between
+						languages, or when one language brings another with it, as HTML brings the script and
+						style languages.
 					{/if}
 					The wasm binary and the theme stylesheet are loaded beside the JS, and each has a row of
 					its own.

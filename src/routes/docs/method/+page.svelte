@@ -38,9 +38,9 @@ node bench/run.ts --help`;
 		</p>
 		<p>
 			The method builds on the comparison harness of
-			<a href="https://github.com/pngwn/twinkleplop">twinkleplop</a> (MIT), and the anchor workload
-			is ported from it. It differs in giving each library a process of its own, where twinkleplop
-			measures a cell's libraries together in one. The cold-start scenarios generalise twinkleplop's
+			<a href="https://github.com/pngwn/twinkleplop">Twinkleplop</a> (MIT), and the anchor workload
+			is ported from it. It differs in giving each library a process of its own, where Twinkleplop
+			measures a cell's libraries together in one. The cold-start scenarios generalise Twinkleplop's
 			cold-start harness across libraries.
 		</p>
 	</section>
@@ -738,11 +738,12 @@ node bench/run.ts --help`;
 		<TomeSectionHeader text="Caveats" />
 		<ul>
 			<li>
-				<strong>Features vary.</strong> The libraries don't offer the same features. Shiki
-				highlights with the TextMate grammars and themes VS Code uses, and twinkleplop and Shiki
-				each do more than fuz_code, which is the smallest of them: a single-pass lexer per language,
-				with CSS classes for its theme. These numbers compare the work all of them share, not what
-				one offers that another doesn't.
+				<strong>Features vary.</strong> The libraries have different featuresets. Shiki highlights
+				with the TextMate grammars and themes VS Code uses; Twinkleplop aims for a similar feature
+				set, with its own themes, annotations, and Twoslash support; and both do more than fuz_code,
+				which is the smallest of them: a single-pass lexer per language, with CSS classes for its
+				theme. These numbers compare the work all of them share, not what one offers that another
+				doesn't.
 			</li>
 			<li>
 				<strong>The languages are fuz_code's.</strong> The languages measured are fuz_code's

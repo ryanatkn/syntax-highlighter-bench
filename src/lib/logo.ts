@@ -1,19 +1,22 @@
 import type { SvgData } from '@fuzdev/fuz_ui/svg.ts';
 
 /**
- * The site's mark: four lines of highlighted code that are also the bars of a
- * chart. `static/logo.svg` and `static/favicon.png` are the same drawing.
+ * The site's mark: a bench built from highlighted code, its backrest and seat
+ * lines of colored tokens on two posts. `static/logo.svg` and
+ * `static/favicon.png` are the same drawing.
  */
 export const logo_syntax_highlighter_bench: SvgData = {
-	label: 'four lines of highlighted code, drawn as the bars of a chart',
+	label:
+		'a bench built from highlighted code: lines of colored tokens for its backrest and seat, on two posts',
 	paths: [
-		{ fill: '#6199d1', d: 'M6.25 15.625h31.25v12.5h-31.25z' },
-		{ fill: '#f4672f', d: 'M43.75 15.625h50v12.5h-50z' },
-		{ fill: '#3db33d', d: 'M18.75 34.375h37.5v12.5h-37.5z' },
-		{ fill: '#8866cc', d: 'M62.5 34.375h18.75v12.5h-18.75z' },
-		{ fill: '#f4672f', d: 'M18.75 53.125h12.5v12.5h-12.5z' },
-		{ fill: '#6199d1', d: 'M37.5 53.125h37.5v12.5h-37.5z' },
-		{ fill: '#8866cc', d: 'M6.25 71.875h18.75v12.5h-18.75z' },
-		{ fill: '#3db33d', d: 'M31.25 71.875h25v12.5h-25z' }
+		{ fill: '#98775c', d: 'M7.8125 12.5h9.375v75h-9.375z' },
+		{ fill: '#98775c', d: 'M82.8125 12.5h9.375v75h-9.375z' },
+		{ fill: '#cb7e99', d: 'M0 12.5h43.75v9.375h-43.75z' },
+		{ fill: '#42ad9b', d: 'M50 12.5h50v9.375h-50z' },
+		{ fill: '#9e8cd1', d: 'M0 29.6875h21.875v7.8125h-21.875z' },
+		{ fill: '#679dd5', d: 'M28.125 29.6875h37.5v7.8125h-37.5z' },
+		{ fill: '#cb7e99', d: 'M71.875 29.6875h28.125v7.8125h-28.125z' },
+		{ fill: '#42ad9b', d: 'M0 50h56.25v8.59375h-56.25z' },
+		{ fill: '#9e8cd1', d: 'M62.5 50h37.5v8.59375h-37.5z' }
 	]
 };

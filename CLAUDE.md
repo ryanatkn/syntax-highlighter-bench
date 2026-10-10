@@ -3,7 +3,7 @@
 > neutral benchmark suite and results site for JS syntax highlighters
 
 syntax-highlighter-bench (`@ryanatkn/syntax-highlighter-bench`) compares
-fuz_code, twinkleplop, Prism, and Shiki on the same inputs. Shiki's JS
+fuz_code, Twinkleplop, Prism, and Shiki on the same inputs. Shiki's JS
 engine and its Oniguruma wasm engine count as two libraries. A run produces one
 results file holding many metrics; the site is a view over that file where a
 reader picks the subset to compare.
@@ -147,7 +147,7 @@ Adding a language is one line there.
 - **Timed** ids are the ones every library in the starting roster supports, so
   a timed cell is never missing a library by design.
 - **Untimed** ids (`xml`) are named by the coverage matrix and feature sets
-  only. twinkleplop has no XML language; the other adapters claim it. A
+  only. Twinkleplop has no XML language; the other adapters claim it. A
   cold-start `lang` or `first_highlight` entry names a timed language (the
   schema rejects an untimed one); a `set` entry names a feature set, which may
   hold an untimed language.
@@ -190,7 +190,7 @@ tuned to flatter a result. Adding a set is one line.
 - `core` — no languages: the runtime floor
 - `single:<lang>` — generated for each language id; `single − core` is that
   language's incremental cost
-- `docs` — what a documentation site imports, matching twinkleplop's docs
+- `docs` — what a documentation site imports, matching Twinkleplop's docs
   bundle
 - `web_rust` — labelled "web + rust", footnoted as fuz_code's full set (home
   turf); named by content because the site is neutral
@@ -409,7 +409,7 @@ The rules, stated in the module's doc comment and enforced by
 `adapter.setup([cell.lang])` exactly once, for every library.** `setup` decides
 more than what is callable: a language that embeds others by name highlights
 them only when they are loaded (Markdown fenced blocks in fuz_code, Prism, and
-Shiki; never in twinkleplop). Under the rule no library loads another language
+Shiki; never in Twinkleplop). Under the rule no library loads another language
 for Markdown fences, which matches the `single:<lang>` sets. Structural embeds (`<script>`
 and `<style>` in HTML and Svelte) are always loaded with their language. The
 exceptions come from what loads with Markdown itself: Prism's Markdown depends
@@ -417,7 +417,7 @@ on its markup grammar, so Prism still highlights a fence tagged `html`, `xml`,
 `svg`, or `markup`, and fuz_code and Prism highlight a fence tagged as Markdown.
 
 `extra_packages` on an adapter names packages versioned apart from `package`
-(twinkleplop's language packages and its theme package, `prism-svelte`); their
+(Twinkleplop's language packages and its theme package, `prism-svelte`); their
 versions land in the roster entry's `extra_packages`. A test fails when a
 stylesheet or wasm binary comes from a package that isn't recorded.
 
@@ -642,7 +642,7 @@ wasm engines.
 
 - **Not in `bench/bundle_check.ts`**: a TypeScript module that statically
   imports zod, the corpus, and the adapter (every language, for fuz_code and
-  twinkleplop) before any line runs, plus Node's type stripper. The generated
+  Twinkleplop) before any line runs, plus Node's type stripper. The generated
   module holds nothing of the harness, like a cold-start child.
 - **Flags, for this reading only** (`HEAP_NODE_FLAGS`): `--expose-gc`;
   `--max-semi-space-size=16`, since V8 sizes the young generation from the
@@ -721,7 +721,7 @@ sources.
 
 `node bench/run.ts` is a run; `node --expose-gc bench/cell.ts '<spec>'` is one
 library on one cell, which only the parent spawns. The anchor and the lock
-follow twinkleplop's comparison harness (MIT), and the timing engine is adapted
+follow Twinkleplop's comparison harness (MIT), and the timing engine is adapted
 from it; a process per library, rather than per cell, is a change made here.
 The credit is in the README and in the doc comments of `bench/run.ts`,
 `bench/cell.ts`, `bench/measure.ts`, and `bench/anchor.ts`, the last of which is
@@ -787,7 +787,7 @@ planning (`RunRecord.libraries`), never one read later.
 
 **The timed call** (`create_timed_call`) is the same for every library. In
 `html` mode it reads one character of the returned string. fuz_code,
-twinkleplop, and Prism return a rope (an unflattened concatenation), which is
+Twinkleplop, and Prism return a rope (an unflattened concatenation), which is
 cheap to build and which a consumer pays to flatten on first use; Shiki's is
 already flat. Reading a character flattens it inside the clock (a cost
 set by the size of the output, not by the library, so it weighs most on the
@@ -843,7 +843,7 @@ slowly than the others, and a library still recovering when its batch is timed
 reads slow. It is sized for recovery from a full collection forced just before
 it, which covers the engine's own, and is long enough that every library in the
 roster has recovered: don't shorten it without checking the slowest recoverer.
-At 100ms and 150ms, twinkleplop read up to a quarter slower on large inputs
+At 100ms and 150ms, Twinkleplop read up to a quarter slower on large inputs
 (`Overview.src.html`, `table.rs`, `bulma.css`), so 300ms stays.
 `MeasureDeps` (clock, minor collector) is injected so the engine is tested with
 a fake clock; `create_measure_deps` throws without `--expose-gc`. Don't give it
@@ -966,7 +966,7 @@ library. Retries are journaled like any result, with their attempt number.
 Smoke runs don't retry.
 
 **Cold start** (`bench/coldstart.ts`, with the processes run by `bench/run.ts`).
-The scenario set and method generalise twinkleplop's cold-start harness (MIT,
+The scenario set and method generalise Twinkleplop's cold-start harness (MIT,
 credited in the README and the module's doc comment).
 
 - **A sample is one fresh Node process**, and a scenario is what it does:
@@ -976,7 +976,7 @@ credited in the README and the module's doc comment).
   the language's harness snippet once). `plan_startup_scenarios` lists them
   with what each library doesn't support.
 - **Through `bundle_entry`, never the adapter modules**: the fuz_code and
-  twinkleplop adapters import every language statically, which would charge a
+  Twinkleplop adapters import every language statically, which would charge a
   library for languages the scenario doesn't load. So a first highlight can't
   call `adapter.bundle_html`; it runs `adapter.bundle_html_source(lang)`, which
   the bundle check ties to `bundle_html`.
@@ -1175,7 +1175,7 @@ and `logo.ts`:
 | `output_matrix.ts` | token counts and output sizes as rows, the HTML's raw or compressed, by a selector of its own that starts raw |
 | `heap_matrix.ts` | the retained heap as rows by language: everything summed, the V8 heap, the machine code, and the external memory, as four groups, with the tolerance as a floor |
 | `results_filters.ts` | the selection on `/results` and its URL query form |
-| `headline.ts` | the landing page's headline figures, each drawn as bars, the HTML rate worked out for familiar sizes, and the table of what each language adds to a bundle |
+| `headline.ts` | the landing page's headline figures, each drawn as bars, the HTML rate worked out for familiar sizes, and the table of what each language costs in a bundle |
 | `bar_chart.ts` | a row as bars: lengths, and the table's own ratios against the best or a hovered library |
 | `library_labels.ts` | the names of engine kinds and output shapes, and one bar color per library by roster position |
 | `coverage_matrix.ts` | the coverage matrix with numbered footnotes |
@@ -1200,7 +1200,7 @@ throughput in each mode, the first highlight, retained memory, everything a
 page loads with what it is made of, and the docs set's JS alone. A figure the
 file holds no number for is left out. Then the HTML rate worked out for sizes a
 reader knows (`to_practice_group`: one 10 kB block, blocks in a 16 ms frame,
-1 MB of source), and what each language adds (`to_language_weight_groups`: the
+1 MB of source), and what each language costs (`to_language_weight_groups`: the
 floor, the first language, one more language). Each chart's bars take the
 library's color (`to_library_color`), the same in every chart, and its ratios
 the ratio scale, as tsv.fuz.dev's charts do.

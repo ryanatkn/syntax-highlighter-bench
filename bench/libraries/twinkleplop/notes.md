@@ -1,4 +1,4 @@
-# twinkleplop adapter
+# Twinkleplop adapter
 
 ## Entry points
 
@@ -11,7 +11,7 @@ Each language package exports two factories. `tokenize()` returns a function
 that runs the grammar and then the language's reclassifier stack, at full
 fidelity. `language()` returns a function that does the same and renders HTML.
 
-This is the path a consumer gets, and the one twinkleplop's own comparison
+This is the path a consumer gets, and the one Twinkleplop's own comparison
 harness measures. The bare grammar without reclassifiers, `tokenize` from
 `@twinkleplop/core`, skips the reclassifiers and is not what a language package
 ships, so it is not used.
@@ -45,7 +45,7 @@ brings `@twinkleplop/javascript`, which brings HTML and CSS.
 `TokenizeResult.tokens` is a `Uint32Array` holding a type, a start, and an end
 for each token, so the count is its length over three. Whitespace between tokens
 is not a token. A token is one of those entries of three, which is what
-twinkleplop's own `TokenView.count` reports, so the count is a third of the
+Twinkleplop's own `TokenView.count` reports, so the count is a third of the
 array's length and not the length itself.
 
 ## Synchronous
@@ -68,7 +68,7 @@ consumer binds once rather than per highlight.
 | `bash` | `@twinkleplop/bash` |
 | `rust` | `@twinkleplop/rust` |
 
-twinkleplop has no XML language, so `xml` is unsupported.
+Twinkleplop has no XML language, so `xml` is unsupported.
 
 Markdown does not highlight the contents of a fenced block: the block is one
 token. The other libraries would highlight it when the fence's language is
@@ -80,7 +80,7 @@ exceptions the Prism and fuz_code notes list.
 
 `@twinkleplop/theme-github`, whose default export is one stylesheet holding the
 light and dark palettes. The package also exports `./light` and `./dark`
-separately, each smaller (one palette each; the default is what twinkleplop's
+separately, each smaller (one palette each; the default is what Twinkleplop's
 docs import). The default export is what is measured, minified like every
 library's stylesheets, and the roster entry records that it covers both
 schemes.

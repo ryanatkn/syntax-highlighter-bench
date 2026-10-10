@@ -1,6 +1,6 @@
 # Shiki adapters
 
-Shiki is measured as two libraries, as twinkleplop's comparison harness does: `shiki_js` uses
+Shiki is measured as two libraries, as Twinkleplop's comparison harness does: `shiki_js` uses
 the JS regex engine and `shiki_wasm` the Oniguruma engine compiled to
 WebAssembly. They share grammars, theme, and every call below, in
 `bench/libraries/shiki.ts`. Only the engine differs.
@@ -90,7 +90,7 @@ language modules, and creates the engine.
 
 ## Theme
 
-`github-light`, the theme twinkleplop's comparison harness uses for Shiki. One
+`github-light`, the theme Twinkleplop's comparison harness uses for Shiki. One
 theme must be bundled for Shiki to produce output, so every bundle figure
 includes it, the `core` set too. It is the only theme measured: themes differ
 in size, and a smaller one would lower the bundle figure, and change how many

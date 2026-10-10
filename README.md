@@ -1,11 +1,11 @@
 # syntax-highlighter-bench
 
-[<img src="static/logo.svg" alt="four lines of highlighted code, drawn as the bars of a chart" align="right" width="192" height="192">](https://syntax-highlighter-bench.ryanatkn.com/)
+[<img src="static/logo.svg" alt="a bench built from highlighted code: lines of colored tokens for its backrest and seat, on two posts" align="right" width="192" height="192">](https://syntax-highlighter-bench.ryanatkn.com/)
 
 > neutral benchmark suite and results site for JS syntax highlighters
 
 This project aims to comprehensively benchmark
-[twinkleplop](https://twinkleplop.pngwn.at/),
+[Twinkleplop](https://twinkleplop.pngwn.at/),
 [Prism](https://prismjs.com/),
 [Shiki](https://shiki.style/),
 [fuz_code](https://github.com/fuzdev/fuz_code) (same author as this project),
@@ -374,7 +374,7 @@ build, `bench:deterministic -- --check`, and the smoke run on every push to
 - `src/lib/` — besides the schema, the modules and components that turn a
   results file into the tables of the site
 - `src/routes/` — the site, static SvelteKit: the landing page (the headline
-  figures as charts, what they mean in practice, and what each language adds),
+  figures as charts, what they mean in practice, and what each language costs),
   `/results`, and the docs under `/docs` (`src/routes/docs/`)
 
 ## Neutrality
@@ -393,28 +393,28 @@ structural. By design:
 ## Credit
 
 The measurement method builds on the comparison harness of
-[twinkleplop](https://github.com/pngwn/twinkleplop) (MIT). Kept from it: a
+[Twinkleplop](https://github.com/pngwn/twinkleplop) (MIT). Kept from it: a
 fresh process for each cell, iterations calibrated per library, an untimed
 rewarm and a minor collection before timing, token counts recorded, machine
-drift detected, and a machine lock. Changed here: twinkleplop measures a cell's
+drift detected, and a machine lock. Changed here: Twinkleplop measures a cell's
 libraries together in one process, alternating within each round, and this
 harness gives each library a process of its own, rotates the order of the
 processes, pools several passes, forces no full collection before a batch
-(twinkleplop's forces one every round), and reads the HTML inside the timed
+(Twinkleplop's forces one every round), and reads the HTML inside the timed
 call. The anchor workload is ported from it, and the adapter
 rules come from the same harness.
 
-Cold start generalises twinkleplop's cold-start harness across libraries. Kept
+Cold start generalises Twinkleplop's cold-start harness across libraries. Kept
 from it: a fresh process for each sample, scenarios interleaved round by round,
 the first rounds discarded, the compile cache off, the bundled chunk measured against the unbundled
 import, a bare Node baseline, time to a first highlight, medians rather than
 means, and the machine lock. Changed here: the scenarios run for every library
 through the adapters' bundle entries; a time is the process's own clock from
-its start, read once, where twinkleplop reports a parent-side wall time and
+its start, read once, where Twinkleplop reports a parent-side wall time and
 marks inside the process; the process is a generated module with no harness
 code; the library that goes first rotates; every sample is checked; and the
 samples are journaled as part of a run. Its scenarios that are about
-twinkleplop's own internals (a stubbed compiler, shipping a compiled grammar,
+Twinkleplop's own internals (a stubbed compiler, shipping a compiled grammar,
 the compile cache turned on) are not here.
 
 Statistics and formatting come from

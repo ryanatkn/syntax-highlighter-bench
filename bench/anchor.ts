@@ -8,7 +8,7 @@
  * array, steps a small state machine, and writes to a typed array: the shapes a
  * tokenizer leans on, so it tracks what the measured libraries are sensitive to.
  *
- * Ported from the benchmark harness of twinkleplop
+ * Ported from the benchmark harness of Twinkleplop
  * (https://github.com/pngwn/twinkleplop, MIT).
  *
  * Node-only: it reads the process's clock.

@@ -21,7 +21,7 @@
 	<title>syntax-highlighter-bench</title>
 	<meta
 		name="description"
-		content="A neutral benchmark of JS syntax highlighters: fuz_code, twinkleplop, Prism, and Shiki on the same inputs."
+		content="A neutral benchmark of JS syntax highlighters: fuz_code, Twinkleplop, Prism, and Shiki on the same inputs."
 	/>
 </svelte:head>
 

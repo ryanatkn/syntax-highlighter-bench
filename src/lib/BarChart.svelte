@@ -126,7 +126,7 @@
 		grid-template-columns: subgrid;
 		grid-column: 1 / -1;
 		align-items: center;
-		padding: var(--space_xs);
+		padding: var(--space_xs) var(--space_xs) var(--space_xs) var(--space_md);
 	}
 	.bar-row.missing {
 		opacity: 0.6;

@@ -61,7 +61,7 @@
 			},
 			{
 				"id": "twinkleplop",
-				"label": "twinkleplop",
+				"label": "Twinkleplop",
 				"package": "@twinkleplop/core",
 				"version": "0.2.2",
 				"output": "classes",
