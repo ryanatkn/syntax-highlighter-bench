@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Mdz from '@fuzdev/mdz/Mdz.svelte';
 
+	import { ENGINE_LABELS, OUTPUT_LABELS } from './library_labels.ts';
 	import type { BenchLibrary } from './results_schema.ts';
 
 	const {
@@ -8,18 +9,6 @@
 	}: {
 		libraries: ReadonlyArray<BenchLibrary>;
 	} = $props();
-
-	const OUTPUT_LABELS: Record<BenchLibrary['output'], string> = {
-		classes: 'classes',
-		inline_styles: 'inline styles'
-	};
-
-	const ENGINE_LABELS: Record<BenchLibrary['engine'], string> = {
-		scanner: 'hand-written scanner',
-		grammar_vm: 'grammar VM',
-		regex: 'regex grammars',
-		textmate: 'TextMate grammars'
-	};
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->

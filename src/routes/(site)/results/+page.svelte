@@ -17,6 +17,7 @@
 	import FilterSelect from '$lib/FilterSelect.svelte';
 	import { results_have_heap, to_heap_groups } from '$lib/heap_matrix.ts';
 	import MatrixTable from '$lib/MatrixTable.svelte';
+	import { format_library_tag } from '$lib/library_labels.ts';
 	import { OUTPUT_MEASURES, to_output_groups } from '$lib/output_matrix.ts';
 	import Provenance from '$lib/Provenance.svelte';
 	import {
@@ -85,7 +86,10 @@
 		options.sources.map((id) => ({ id, label: format_source_key(id) }))
 	);
 	const set_choices = $derived(
-		to_combined_sets(results.sets).map((set) => ({ id: set.ids[0]!, label: set.label }))
+		to_combined_sets(results.sets, results.langs).map((set) => ({
+			id: set.ids[0]!,
+			label: set.label
+		}))
 	);
 
 	const cell_selection = $derived({
@@ -131,7 +135,7 @@
 </svelte:head>
 
 <section>
-	<h1>Results</h1>
+	<h1>syntax-highlighter-bench results</h1>
 	<Provenance meta={results.meta} moved={data.moved}>
 		<a href={resolve('/docs/method')}>The method</a> says how each number is measured and what it
 		leaves out.
@@ -164,13 +168,13 @@
 		/>
 		<FilterGroup
 			legend="Engine kind"
-			options={to_choices(options.engines)}
+			options={options.engines.map((id) => ({ id, label: format_library_tag(id) }))}
 			selected={filters.engines}
 			onchange={(engines) => update({ engines })}
 		/>
 		<FilterGroup
 			legend="HTML output"
-			options={to_choices(options.outputs)}
+			options={options.outputs.map((id) => ({ id, label: format_library_tag(id) }))}
 			selected={filters.outputs}
 			onchange={(outputs) => update({ outputs })}
 		/>
@@ -336,21 +340,20 @@
 					{reference}
 				>
 					{#if filters.bundle === 'totals'}
-						The minified JavaScript of each library over each feature set, measured as one bundle.
-						Sets that hold the same languages are one bundle, so they share a row. A set holding a
-						language a library doesn't claim is unsupported for it, and names the language.
-						"Everything loaded" adds the wasm binary and the theme stylesheet to the JavaScript,
-						each compressed on its own, so a library whose engine ships as wasm is not compared on
-						its JavaScript alone.
+						The minified JS of each library over each feature set, measured as one bundle. Sets that
+						hold the same languages are one bundle, so they share a row. A set holding a language a
+						library doesn't claim is unsupported for it, and names the language. "Everything loaded"
+						adds the wasm binary and the theme stylesheet to the JS, each compressed on its own, so
+						a library whose engine ships as wasm is not compared on its JS alone.
 					{:else}
-						What each language adds to a library's minified JavaScript: the bundle with that
-						language alone, less the bundle with none. The sum of the rows of a set is not a bundle,
-						so it has no ratio: it exceeds the set's measured size when a library shares code
-						between languages, or when one language brings another with it, as HTML brings the
-						script and style languages.
+						What each language adds to a library's minified JS: the bundle with that language alone,
+						less the bundle with none. The sum of the rows of a set is not a bundle, so it has no
+						ratio: it exceeds the set's measured size when a library shares code between languages,
+						or when one language brings another with it, as HTML brings the script and style
+						languages.
 					{/if}
-					The wasm binary and the theme stylesheet are loaded beside the JavaScript, and each has a
-					row of its own.
+					The wasm binary and the theme stylesheet are loaded beside the JS, and each has a row of
+					its own.
 				</MatrixTable>
 			{/if}
 			{#if install_group !== null}

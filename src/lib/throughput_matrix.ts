@@ -13,6 +13,7 @@ import {
 	format_source_key,
 	format_source_note,
 	group_cells,
+	to_cell_label,
 	to_excluded_reasons,
 	to_missing_cell_entry,
 	to_source_key,
@@ -114,7 +115,7 @@ const to_throughput_row = (
 ): MatrixRow => {
 	const row = to_matrix_row({
 		key: cell.id,
-		label: cell.file,
+		label: to_cell_label(cell),
 		note: to_cell_note(cell),
 		floor: results.meta.noise_floor?.per_cell ?? null,
 		...UNIT_TO_MATRIX[unit]

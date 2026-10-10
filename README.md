@@ -1,5 +1,7 @@
 # syntax-highlighter-bench
 
+[<img src="static/logo.svg" alt="four lines of highlighted code, drawn as the bars of a chart" align="right" width="192" height="192">](https://syntax-highlighter-bench.ryanatkn.com/)
+
 > neutral benchmark suite and results site for JavaScript syntax highlighters
 
 This project aims to comprehensively benchmark
@@ -15,8 +17,9 @@ plain-text fallback, the harness that times the libraries, warm and from a cold
 start, and writes a results file, the deterministic measurements (bundle size,
 install footprint, retained heap, token counts, output sizes raw and compressed,
 coverage), and the site that renders a results file exist. The deterministic
-numbers are committed as `results/deterministic.json`, and the site shows them.
-No timed numbers are published, and the site says so wherever one would be.
+numbers are committed as `results/deterministic.json`. The first timed run is
+published as `results/latest.json`, measured on one named machine, and the site
+renders it.
 
 ## Quick start
 
@@ -362,15 +365,17 @@ build, `bench:deterministic -- --check`, and the smoke run on every push to
   - `bench/corpus_stress.ts` — generates the stress inputs
   - `bench/langs.ts` — the language ids every adapter maps onto
   - `bench/sets.ts` — the feature sets bundle size is measured over
-- `results/` — where the harness writes runs; `deterministic.json` is
-  committed, and no timed run is yet. [results/README.md](results/README.md)
+- `results/` — where the harness writes runs; `deterministic.json`, the
+  published run as `latest.json`, its dated file, and the machine's calibration
+  are committed. [results/README.md](results/README.md)
   says what each file is and how a run is published
 - `src/lib/results_schema.ts` — the schema of a results file, written by the
   harness and parsed by the site
 - `src/lib/` — besides the schema, the modules and components that turn a
   results file into the tables of the site
-- `src/routes/` — the site, static SvelteKit: the landing page, `/results`, and
-  the docs under `/docs` (`src/routes/docs/`)
+- `src/routes/` — the site, static SvelteKit: the landing page (the headline
+  figures as charts, what they mean in practice, and what each language adds),
+  `/results`, and the docs under `/docs` (`src/routes/docs/`)
 
 ## Neutrality
 

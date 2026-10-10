@@ -8,6 +8,8 @@
 	import {
 		matrix_row_entry,
 		matrix_row_is_bounded,
+		matrix_row_value,
+		matrix_rows_max,
 		to_matrix_ratios,
 		type MatrixGroup,
 		type MatrixRow
@@ -20,6 +22,8 @@
 		label,
 		reference = null,
 		colored = true,
+		summaries = true,
+		bars = false,
 		children
 	}: {
 		/** The libraries shown, in column order. */
@@ -33,17 +37,41 @@
 		reference?: string | null;
 		/** Whether ratios tint their cells. */
 		colored?: boolean;
+		/**
+		 * Whether a summary row is set apart from the cells it summarizes. Off where
+		 * every row is a figure of its own.
+		 */
+		summaries?: boolean;
+		/**
+		 * Whether each number draws a bar beneath it, on one scale across its group,
+		 * so a group's rows compare with each other as well as across.
+		 */
+		bars?: boolean;
 		/** The caption. */
 		children: Snippet;
 	} = $props();
 
 	const library_ids = $derived(libraries.map((library) => library.id));
 
+	// the largest number in each group, which a full bar in it stands for
+	const bar_maxes: Record<string, number> = $derived(
+		bars
+			? Object.fromEntries(
+					groups.map((group) => [group.key, matrix_rows_max(group.rows, library_ids)])
+				)
+			: {}
+	);
+
 	// the rows whose details are shown in their cells
 	const expanded: SvelteSet<string> = new SvelteSet();
 
 	const toggle = (key: string): void => {
 		if (!expanded.delete(key)) expanded.add(key);
+	};
+
+	const to_bar = (group: string, row: MatrixRow, library: string): number | null => {
+		const max = Object.hasOwn(bar_maxes, group) ? bar_maxes[group]! : 0;
+		return max > 0 ? (matrix_row_value(row, library) ?? 0) / max : null;
 	};
 
 	const has_details = (row: MatrixRow): boolean =>
@@ -79,7 +107,7 @@
 				{#each group.rows as row (row.key)}
 					{@const ratios = to_matrix_ratios(row, library_ids, reference)}
 					{@const open = expanded.has(row.key)}
-					<tr class={{ summary: row.kind === 'summary' }}>
+					<tr class={{ summary: summaries && row.kind === 'summary' }}>
 						<th scope="row">
 							{row.label}
 							{#if row.note}<small>{row.note}</small>{/if}
@@ -109,6 +137,7 @@
 									bound={matrix_row_is_bounded(row, library_ids, reference)}
 									{colored}
 									{open}
+									bar={to_bar(group.key, row, library.id)}
 								/>
 							{/each}
 						{/if}
@@ -121,6 +150,7 @@
 
 <style>
 	.group th {
+		font-size: var(--font_size_lg);
 		font-weight: 700;
 		background-color: var(--fg_05);
 	}

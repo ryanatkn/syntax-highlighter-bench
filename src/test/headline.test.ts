@@ -1,64 +1,125 @@
 import { assert, describe, test } from 'vitest';
 
-import { NO_TIMED_RESULTS, to_headline_groups } from '$lib/headline.ts';
+import {
+	HEADLINE_COMPRESSION,
+	PRACTICE_BLOCK_BYTES,
+	PRACTICE_FRAME_MS,
+	to_headline_charts,
+	to_language_weight_groups,
+	to_practice_group
+} from '$lib/headline.ts';
 import { matrix_row_entry, matrix_row_value } from '$lib/matrix.ts';
 import { load_deterministic, load_fixture, to_library_ids } from './site_test_helpers.ts';
 
-describe('to_headline_groups', () => {
-	test('with no timed run, the timed rows say so and hold no number', () => {
-		const results = load_deterministic();
-		const [throughput, startup, bundle, beside] = to_headline_groups(results);
-		assert.strictEqual(throughput!.rows.length, 2);
-		for (const row of [...throughput!.rows, ...startup!.rows]) {
-			assert.strictEqual(row.empty, NO_TIMED_RESULTS);
-			assert.deepStrictEqual(row.entries, {});
-		}
-		// and the deterministic rows hold the committed numbers
-		const sizes = results.bundle.prism!.docs!;
-		assert.ok(!('unsupported' in sizes));
-		assert.strictEqual(bundle!.rows[0]!.empty, null);
-		assert.strictEqual(matrix_row_value(bundle!.rows[0]!, 'prism'), sizes.gzip);
-		assert.strictEqual(matrix_row_value(beside!.rows[1]!, 'prism'), sizes.css!.gzip);
-		// everything loaded: the JavaScript, the wasm binary, and the stylesheet
-		const wasm = results.bundle.shiki_wasm!.docs!;
-		assert.ok(!('unsupported' in wasm));
-		assert.strictEqual(bundle!.rows[1]!.label, 'everything loaded');
-		assert.strictEqual(
-			matrix_row_value(bundle!.rows[1]!, 'shiki_wasm'),
-			wasm.gzip + wasm.wasm!.gzip
-		);
-		assert.strictEqual(matrix_row_value(bundle!.rows[1]!, 'prism'), sizes.gzip + sizes.css!.gzip);
-	});
+const to_titles = (charts: ReturnType<typeof to_headline_charts>): Array<string> =>
+	charts.map((chart) => chart.title);
 
-	test('with a timed run, each timed row is a geometric mean over the neutral inputs', () => {
+describe('to_headline_charts', () => {
+	test('with a timed run, every figure, each a number for every library', () => {
 		const results = load_fixture();
 		const libraries = to_library_ids(results);
-		const [throughput, startup] = to_headline_groups(results);
-		assert.deepStrictEqual(
-			throughput!.rows.map((row) => row.label),
-			['geomean · neutral · tokenize', 'geomean · neutral · html']
-		);
-		for (const row of [...throughput!.rows, ...startup!.rows]) {
-			assert.strictEqual(row.empty, null);
-			assert.strictEqual(row.kind, 'summary');
+		const charts = to_headline_charts(results);
+		assert.deepStrictEqual(to_titles(charts), [
+			'Tokenizing',
+			'Highlighting to HTML',
+			'Cold start to a first highlight',
+			'Retained memory',
+			'Everything a page loads',
+			'The JS alone'
+		]);
+		for (const { row } of charts) {
+			assert.strictEqual(row.empty, null, row.key);
 			for (const id of libraries) assert.strictEqual(matrix_row_entry(row, id).kind, 'value');
 		}
-		assert.strictEqual(startup!.rows[0]!.label, 'first highlight');
-		assert.include(throughput!.note, 'neutral');
+		// the timed figures are geometric means over the neutral inputs
+		assert.include(charts[0]!.row.key, 'neutral');
+		assert.strictEqual(charts[0]!.row.kind, 'summary');
 	});
 
-	test('only the timed throughput rows are read against the noise floor', () => {
+	test('with no timed run, only the deterministic figures', () => {
+		const results = load_deterministic();
+		const charts = to_headline_charts(results);
+		assert.deepStrictEqual(to_titles(charts), [
+			'Retained memory',
+			'Everything a page loads',
+			'The JS alone'
+		]);
+		// memory is a geometric mean over the languages of what each library holds
+		const held = Object.values(results.heap.prism!).map(
+			(e) => 1024 * (e.retained_kb + e.code_kb + e.external_kb)
+		);
+		const expected = Math.exp(held.reduce((sum, v) => sum + Math.log(v), 0) / held.length);
+		assert.approximately(matrix_row_value(charts[0]!.row, 'prism')!, expected, 1e-6 * expected);
+		// everything loaded: the JavaScript, the wasm binary, and the stylesheet
+		const [, loaded, javascript] = charts;
+		const sizes = results.bundle.prism!.docs!;
+		assert.ok(!('unsupported' in sizes));
+		assert.strictEqual(matrix_row_value(javascript!.row, 'prism'), sizes.gzip);
+		assert.strictEqual(matrix_row_value(loaded!.row, 'prism'), sizes.gzip + sizes.css!.gzip);
+		const wasm = results.bundle.shiki_wasm!.docs!;
+		assert.ok(!('unsupported' in wasm));
+		assert.strictEqual(matrix_row_value(loaded!.row, 'shiki_wasm'), wasm.gzip + wasm.wasm!.gzip);
+		// and it shows what it is made of, with the schemes the theme covers
+		assert.ok(loaded!.details);
+		const prism = matrix_row_entry(loaded!.row, 'prism');
+		assert.ok(prism.kind === 'value');
+		assert.include(prism.details.at(-1), 'theme: light');
+	});
+
+	test('only the throughput figures carry the noise floor, and memory the heap tolerance', () => {
 		const results = load_fixture();
-		const [throughput, ...rest] = to_headline_groups(results);
-		for (const row of throughput!.rows) {
-			assert.strictEqual(row.floor, results.meta.noise_floor!.geomean);
+		for (const { row } of to_headline_charts(results)) {
+			if (row.key.startsWith('summary:')) {
+				assert.strictEqual(row.floor, results.meta.noise_floor!.geomean, row.key);
+			} else if (row.key === 'memory') {
+				assert.isAbove(row.floor!, 0);
+			} else {
+				// cold start has no calibrated floor, and a byte count has no noise
+				assert.strictEqual(row.floor, null, row.key);
+			}
 		}
-		// cold start has no calibrated floor, and a byte count has no noise
-		for (const group of rest) {
-			for (const row of group.rows) assert.strictEqual(row.floor, null, row.key);
+	});
+});
+
+describe('to_language_weight_groups', () => {
+	test('the floor, then what each language adds to it', () => {
+		const results = load_deterministic();
+		const [core, langs] = to_language_weight_groups(results);
+		assert.strictEqual(core!.key, 'core');
+		assert.strictEqual(langs!.key, 'langs');
+		assert.strictEqual(langs!.rows.length, results.langs.length);
+		const fuz_code = results.bundle.fuz_code!;
+		const floor = fuz_code.core!;
+		const ts = fuz_code['single:ts']!;
+		assert.ok(!('unsupported' in floor) && !('unsupported' in ts));
+		assert.strictEqual(matrix_row_value(core!.rows[0]!, 'fuz_code'), floor[HEADLINE_COMPRESSION]);
+		const ts_row = langs!.rows.find((row) => row.key === 'lang:ts')!;
+		assert.strictEqual(
+			matrix_row_value(ts_row, 'fuz_code'),
+			ts[HEADLINE_COMPRESSION] - floor[HEADLINE_COMPRESSION]
+		);
+		// a language a library doesn't claim is unsupported, never a zero
+		const xml = langs!.rows.find((row) => row.key === 'lang:xml')!;
+		assert.strictEqual(matrix_row_entry(xml, 'twinkleplop').kind, 'unsupported');
+	});
+});
+
+describe('to_practice_group', () => {
+	test('the HTML rate worked out for one block, a frame, and a build', () => {
+		const results = load_fixture();
+		const group = to_practice_group(results)!;
+		const rate = to_headline_charts(results).find((chart) => chart.row.key.endsWith(':html'))!.row;
+		const [block, frame, build] = group.rows;
+		for (const id of to_library_ids(results)) {
+			const mb_per_sec = matrix_row_value(rate, id)!;
+			const block_ms = (PRACTICE_BLOCK_BYTES / 1e6 / mb_per_sec) * 1000;
+			assert.approximately(matrix_row_value(block!, id)!, block_ms, 1e-9);
+			assert.strictEqual(matrix_row_value(frame!, id), Math.floor(PRACTICE_FRAME_MS / block_ms));
+			assert.approximately(matrix_row_value(build!, id)!, 1000 / mb_per_sec, 1e-9);
 		}
-		for (const group of to_headline_groups(load_deterministic())) {
-			for (const row of group.rows) assert.strictEqual(row.floor, null, row.key);
-		}
+	});
+
+	test('is null with no timed run', () => {
+		assert.strictEqual(to_practice_group(load_deterministic()), null);
 	});
 });

@@ -10,7 +10,7 @@ full on the method page of the site's docs, [`/docs/method`](https://syntax-high
 | file | what it is | committed |
 | --- | --- | --- |
 | `deterministic.json` | the numbers that are the same on any machine: bundle sizes, install footprints, retained heaps (for the Node version the check workflow pins), token counts, output sizes raw and compressed, coverage. `npm run bench:deterministic` regenerates it anywhere, and the check workflow fails when the committed file differs from what regenerates | yes |
-| `latest.json` | the published timed run, which the site renders. Until a first run is published it is absent, and the site renders `deterministic.json` and shows no timed number | yes, once a run is published |
+| `latest.json` | the published timed run, which the site renders. Without it the site renders `deterministic.json` and shows no timed number | yes |
 | `<UTC date>_<machine>.json` | a full run, as the harness writes it: named by the UTC date it started and the name given to `--machine`. `latest.json` is a copy of one of these, made by `npm run results:publish` | yes, for a run that is published |
 | `calibration_<machine>.json` | a machine's noise floor, from a calibration run. A full run on the same machine copies the floor into its own file | yes, beside the run that carries it |
 | `scratch/` | smoke runs and filtered runs, which are never publishable | no: git ignores it |
@@ -25,24 +25,23 @@ steps below say. Every results file here goes through one schema,
 ## The publishing machine
 
 Timed numbers are published from one named machine, and every published run
-says which. No run is published yet, so no machine is recorded here. When one
-is, this section states the following for it, and a run from another machine
-replaces them.
+says which. The published run is from **laptop1**; a run from another machine
+replaces what follows.
 
-| what | where it comes from | in the results file |
-| --- | --- | --- |
-| name | the name given to `--machine` | `meta.machine.name` |
-| CPU model | `lscpu`, or the file | `meta.machine.cpu` |
-| cores | `lscpu` | no |
-| threads | the logical CPUs Node counts | `meta.machine.threads` |
-| frequency driver | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver` | `meta.machine.cpufreq_driver` |
-| frequency governor | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor` | `meta.machine.governor` |
-| energy-performance preference | `energy_performance_preference`, in the same directory | `meta.machine.epp` |
-| boost | `/sys/devices/system/cpu/cpufreq/boost`, the first CPU's `boost`, or `intel_pstate/no_turbo` inverted | `meta.machine.boost` |
-| memory | the file, in gigabytes | `meta.machine.memory_gb` |
-| kernel release | `uname -r` | `meta.machine.os_release` |
-| OS | `/etc/os-release` | no |
-| Node version | `node --version` | `meta.node` |
+| what | laptop1 | where it comes from | in the results file |
+| --- | --- | --- | --- |
+| name | laptop1 | the name given to `--machine` | `meta.machine.name` |
+| CPU model | AMD Ryzen 5 PRO 7530U | `lscpu`, or the file | `meta.machine.cpu` |
+| cores | 6 | `lscpu` | no |
+| threads | 12 | the logical CPUs Node counts | `meta.machine.threads` |
+| frequency driver | `amd-pstate-epp` | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver` | `meta.machine.cpufreq_driver` |
+| frequency governor | `performance` | `/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor` | `meta.machine.governor` |
+| energy-performance preference | `performance` | `energy_performance_preference`, in the same directory | `meta.machine.epp` |
+| boost | on | `/sys/devices/system/cpu/cpufreq/boost`, the first CPU's `boost`, or `intel_pstate/no_turbo` inverted | `meta.machine.boost` |
+| memory | 14.4 GB | the file, in gigabytes | `meta.machine.memory_gb` |
+| kernel release | 6.12.90+deb13.1-amd64 | `uname -r` | `meta.machine.os_release` |
+| OS | Debian 13 (trixie) | `/etc/os-release` | no |
+| Node version | v24.14.1 | `node --version` | `meta.node` |
 
 The harness reads the first CPU's frequency settings, and is null for any the
 OS doesn't expose. It logs when the CPUs run different governors.

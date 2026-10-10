@@ -12,8 +12,9 @@ const page = readFileSync(
 
 test('the languages tome says what every feature set is for', () => {
 	assert.ok(page.includes('<code>single:&lt;lang&gt;</code>'));
+	assert.ok(page.includes('<code>without:&lt;lang&gt;</code>'));
 	for (const set of FEATURE_SETS) {
-		if (set.id.startsWith('single:')) continue;
+		if (set.id.startsWith('single:') || set.id.startsWith('without:')) continue;
 		assert.ok(page.includes(`<code>${set.id}</code>`), `missing set "${set.id}"`);
 	}
 });

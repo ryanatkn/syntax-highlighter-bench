@@ -11,7 +11,7 @@
  * @module
  */
 
-import type { BenchBundleEntry, BenchInstall, BenchSet } from './results_schema.ts';
+import type { BenchBundleEntry, BenchInstall, BenchLang, BenchSet } from './results_schema.ts';
 import { format_bytes } from './bench_format.ts';
 import {
 	to_matrix_row,
@@ -53,6 +53,35 @@ export const find_core_set = (sets: ReadonlyArray<BenchSet>): BenchSet | null =>
 export const find_single_set = (sets: ReadonlyArray<BenchSet>, lang: string): BenchSet | null =>
 	sets.find((set) => set.langs.length === 1 && set.langs[0] === lang) ?? null;
 
+/** Whether a set holds exactly these languages, in any order. */
+const set_holds = (set: BenchSet, langs: ReadonlyArray<string>): boolean =>
+	set.langs.length === langs.length && langs.every((lang) => set.langs.includes(lang));
+
+/** The ids of the timed languages of a file, in its order. */
+const to_timed_lang_ids = (langs: ReadonlyArray<BenchLang>): Array<string> =>
+	langs.filter((lang) => lang.timed).map((lang) => lang.id);
+
+/** The set of every timed language, which every library claims. */
+export const find_timed_set = (
+	sets: ReadonlyArray<BenchSet>,
+	langs: ReadonlyArray<BenchLang>
+): BenchSet | null => {
+	const timed = to_timed_lang_ids(langs);
+	return timed.length > 0 ? (sets.find((set) => set_holds(set, timed)) ?? null) : null;
+};
+
+/** The set of every timed language but one. */
+export const find_without_set = (
+	sets: ReadonlyArray<BenchSet>,
+	langs: ReadonlyArray<BenchLang>,
+	lang: string
+): BenchSet | null => {
+	const timed = to_timed_lang_ids(langs);
+	if (!timed.includes(lang)) return null;
+	const others = timed.filter((other) => other !== lang);
+	return others.length > 0 ? (sets.find((set) => set_holds(set, others)) ?? null) : null;
+};
+
 /** Sets of several languages that hold the same ones, shown as one row. */
 export interface CombinedSet {
 	/** The ids of the sets that hold these languages, the first being the one measured. */
@@ -65,12 +94,23 @@ export interface CombinedSet {
 /**
  * The sets of several languages, with sets that hold the same languages merged
  * into one entry that names them all. Two such sets measure the same bundle, so
- * showing both would be a duplicate row that says nothing.
+ * showing both would be a duplicate row that says nothing. The sets of every
+ * timed language but one are left out: they are there for what each language
+ * adds (`to_bundle_marginal_entry`), not to be shown.
  */
-export const to_combined_sets = (sets: ReadonlyArray<BenchSet>): Array<CombinedSet> => {
+export const to_combined_sets = (
+	sets: ReadonlyArray<BenchSet>,
+	langs: ReadonlyArray<BenchLang>
+): Array<CombinedSet> => {
 	const combined: Map<string, CombinedSet> = new Map();
+	// a set of every timed language but one is there for what that language adds, not to be shown
+	const leave_one_out: Set<BenchSet> = new Set();
+	for (const lang of langs) {
+		const without = find_without_set(sets, langs, lang.id);
+		if (without) leave_one_out.add(without);
+	}
 	for (const set of sets) {
-		if (set.langs.length < 2) continue;
+		if (set.langs.length < 2 || leave_one_out.has(set)) continue;
 		const key = [...set.langs].sort().join(',');
 		const existing = combined.get(key);
 		if (existing) {
@@ -142,11 +182,9 @@ export const to_bundle_loaded_entry = (
 	const css = entry.css?.[compression] ?? 0;
 	return to_value_entry(entry[compression] + wasm + css, {
 		details: [
-			`JavaScript ${format_bytes(entry[compression])}`,
+			`JS ${format_bytes(entry[compression])}`,
 			entry.wasm ? `wasm binary ${format_bytes(wasm)}` : 'no wasm binary',
-			entry.css
-				? `theme stylesheet ${format_bytes(css)}`
-				: 'no stylesheet: the theme is in the JavaScript'
+			entry.css ? `theme stylesheet ${format_bytes(css)}` : 'no stylesheet: the theme is in the JS'
 		]
 	});
 };
@@ -173,6 +211,37 @@ export const to_bundle_increment_entry = (
 	return to_value_entry(single.value - core.value, {
 		details: [
 			`${format_bytes(single.value)} with the language alone, less ${format_bytes(core.value)} with none`
+		]
+	});
+};
+
+/**
+ * What one timed language adds to a bundle of all the others: the set of every
+ * timed language less the set without it, in minified bytes. Unlike
+ * `to_bundle_increment_entry`, this never carries runtime that any language
+ * needs, which the first language loaded pays for. It is never compressed:
+ * compression works across a whole bundle, so the difference of two compressed
+ * bundles doesn't isolate one language's share, and can come out negative. A
+ * language the others already hold adds nothing. Unmeasured when the file
+ * holds neither set.
+ */
+export const to_bundle_marginal_entry = (
+	results: Pick<MatrixResults, 'bundle' | 'sets' | 'langs'>,
+	library: string,
+	lang: string
+): MatrixEntry => {
+	const timed = find_timed_set(results.sets, results.langs);
+	const without = find_without_set(results.sets, results.langs, lang);
+	if (!timed || !without) return { kind: 'unmeasured' };
+	const all = to_bundle_size_entry(results, library, timed, 'raw');
+	const less = to_bundle_size_entry(results, library, without, 'raw');
+	if (all.kind !== 'value') return all;
+	if (less.kind !== 'value') return less;
+	const added = all.value - less.value;
+	return to_value_entry(added, {
+		details: [
+			`${format_bytes(all.value)} with every timed language, less ${format_bytes(less.value)} without this one, minified`,
+			...(added <= 0 ? ['the other languages already hold it'] : [])
 		]
 	});
 };
@@ -233,7 +302,7 @@ export const to_bundle_beside_group = (
 	};
 	return {
 		key: 'beside',
-		label: 'Loaded beside the JavaScript',
+		label: 'Loaded beside the JS',
 		note: 'each on its own',
 		rows: [
 			to_bundle_row(results, { key: 'beside:wasm', label: 'wasm binary' }, (library) => {
@@ -248,7 +317,7 @@ export const to_bundle_beside_group = (
 				if (!sizes) return { kind: 'unmeasured' };
 				return sizes.css
 					? to_value_entry(sizes.css[selection.compression])
-					: { kind: 'none', text: 'inline styles: the theme is in the JavaScript' };
+					: { kind: 'none', text: 'inline styles: the theme is in the JS' };
 			}),
 			to_bundle_row(
 				results,
@@ -289,8 +358,8 @@ export const to_bundle_cost_groups = (
 		},
 		{
 			key: 'langs',
-			label: 'Added by each language',
-			note: 'the language alone, less the floor',
+			label: 'The first language',
+			note: 'the language alone, less the floor: with any runtime the floor leaves out',
 			rows: results.langs
 				.filter((lang) => selection.langs.includes(lang.id))
 				.map((lang) =>
@@ -306,7 +375,28 @@ export const to_bundle_cost_groups = (
 				)
 		}
 	];
-	const set = to_combined_sets(results.sets).find((s) => s.ids.includes(selection.set));
+	const timed = find_timed_set(results.sets, results.langs);
+	const marginal_langs = results.langs.filter(
+		(lang) =>
+			lang.timed &&
+			selection.langs.includes(lang.id) &&
+			find_without_set(results.sets, results.langs, lang.id) !== null
+	);
+	if (timed && marginal_langs.length > 0) {
+		groups.push({
+			key: 'marginal',
+			label: 'One more language',
+			note: 'every timed language, less all of them but this one: minified, never compressed, since compressing a whole bundle does not separate one part of it',
+			rows: marginal_langs.map((lang) =>
+				to_bundle_row(results, { key: `marginal:${lang.id}`, label: lang.label }, (library) =>
+					to_bundle_marginal_entry(results, library, lang.id)
+				)
+			)
+		});
+	}
+	const set = to_combined_sets(results.sets, results.langs).find((s) =>
+		s.ids.includes(selection.set)
+	);
 	if (set) {
 		const measured = results.sets.find((s) => s.id === set.ids[0])!;
 		groups.push({
@@ -357,7 +447,7 @@ export const to_bundle_total_groups = (
 	if (Object.keys(results.bundle).length === 0) return [];
 	const sets: Array<{ key: string; label: string; note: string; set: BenchSet }> = [];
 	if (core) sets.push({ key: 'core', label: core.label, note: 'no language', set: core });
-	for (const set of to_combined_sets(results.sets)) {
+	for (const set of to_combined_sets(results.sets, results.langs)) {
 		sets.push({
 			key: `set:${set.ids[0]}`,
 			label: set.label,
@@ -370,7 +460,7 @@ export const to_bundle_total_groups = (
 		{
 			key: 'sets',
 			label: 'Feature sets',
-			note: 'the JavaScript of each, measured as one bundle',
+			note: 'the JS of each, measured as one bundle',
 			rows: sets.map(({ key, label, note, set }) =>
 				to_bundle_row(results, { key, label, note }, (library) =>
 					to_bundle_size_entry(results, library, set, compression)
@@ -380,7 +470,7 @@ export const to_bundle_total_groups = (
 		{
 			key: 'loaded',
 			label: 'Everything loaded',
-			note: 'JavaScript + wasm binary + theme stylesheet, each compressed on its own',
+			note: 'JS + wasm binary + theme stylesheet, each compressed on its own',
 			rows: sets.map(({ key, label, set }) =>
 				to_bundle_row(results, { key: `loaded:${key}`, label }, (library) =>
 					to_bundle_loaded_entry(results, library, set, compression)

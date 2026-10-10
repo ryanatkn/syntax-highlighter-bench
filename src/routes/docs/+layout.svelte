@@ -26,6 +26,8 @@
 
 <style>
 	/* a line above each docs page, inside the docs layout's own content column */
+	/* TODO once fuz_ui publishes the `primary_nav` snippet of `Docs`, render this link there and
+	 * drop this nav; and pass a `footer` without fuz.dev's link */
 	.docs-site-nav {
 		margin: 0;
 		padding: var(--space_md) var(--space_lg) 0;

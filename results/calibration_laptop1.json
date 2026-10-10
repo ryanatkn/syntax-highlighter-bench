@@ -53,7 +53,7 @@
 				"output": "classes",
 				"engine": "scanner",
 				"by_maintainer": true,
-				"note": "Hand-written lexers. `tokenize` is the lexer alone and `html` adds the renderer.",
+				"note": "Single-pass lexers. `tokenize` is the lexer alone and `html` adds the renderer.",
 				"theme_schemes": [
 					"light",
 					"dark"
@@ -157,7 +157,7 @@
 		},
 		{
 			"id": "js",
-			"label": "JavaScript",
+			"label": "JS",
 			"timed": true
 		},
 		{
@@ -218,7 +218,7 @@
 		},
 		{
 			"id": "single:js",
-			"label": "JavaScript",
+			"label": "JS",
 			"langs": [
 				"js"
 			],

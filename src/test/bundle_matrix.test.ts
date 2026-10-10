@@ -3,6 +3,8 @@ import { assert, describe, test } from 'vitest';
 import {
 	find_core_set,
 	find_single_set,
+	find_timed_set,
+	find_without_set,
 	INSTALL_MEASURES,
 	to_bundle_beside_group,
 	to_bundle_cost_groups,
@@ -51,18 +53,22 @@ describe('finding the sets', () => {
 	});
 
 	test('sets holding the same languages are one combined set that names them all', () => {
-		const combined = to_combined_sets(results.sets);
+		const combined = to_combined_sets(results.sets, results.langs);
 		const ids = combined.map((set) => set.ids);
-		assert.deepStrictEqual(ids, [['docs'], ['web_rust', 'all']]);
+		// the sets that leave one timed language out are not shown
+		assert.deepStrictEqual(ids, [['docs'], ['web_rust', 'all'], ['timed']]);
 		const merged = combined[1]!;
 		assert.strictEqual(merged.label, 'web + rust = all');
 		assert.strictEqual(merged.footnote, results.sets.find((s) => s.id === 'web_rust')!.footnote);
 		// the order of the languages doesn't make two sets different
-		const reordered = to_combined_sets([
-			{ id: 'x', label: 'x', langs: ['a', 'b'], footnote: null },
-			{ id: 'y', label: 'y', langs: ['b', 'a'], footnote: 'note' },
-			{ id: 'z', label: 'z', langs: ['a', 'c'], footnote: null }
-		]);
+		const reordered = to_combined_sets(
+			[
+				{ id: 'x', label: 'x', langs: ['a', 'b'], footnote: null },
+				{ id: 'y', label: 'y', langs: ['b', 'a'], footnote: 'note' },
+				{ id: 'z', label: 'z', langs: ['a', 'c'], footnote: null }
+			],
+			[]
+		);
 		assert.deepStrictEqual(
 			reordered.map((set) => [set.ids, set.footnote]),
 			[
@@ -144,10 +150,10 @@ describe('the sum of a set beside its measured size', () => {
 describe('to_bundle_cost_groups', () => {
 	const groups = to_bundle_cost_groups(results, { langs, set: 'docs', compression: 'gzip' });
 
-	test('has the floor, the languages, the selected set, and what loads beside', () => {
+	test('has the floor, the first and one more language, the selected set, and what loads beside', () => {
 		assert.deepStrictEqual(
 			groups.map((group) => group.key),
-			['core', 'langs', 'set', 'beside']
+			['core', 'langs', 'marginal', 'set', 'beside']
 		);
 		assert.strictEqual(matrix_row_value(groups[0]!.rows[0]!, FULL), sizes(FULL, 'core').gzip);
 	});
@@ -166,12 +172,17 @@ describe('to_bundle_cost_groups', () => {
 			narrowed[1]!.rows.map((row) => row.key),
 			['lang:ts', 'lang:rust']
 		);
+		// one more language has a row for each selected timed language
+		assert.deepStrictEqual(
+			narrowed[2]!.rows.map((row) => row.key),
+			['marginal:ts', 'marginal:rust']
+		);
 		// the sum is over the set's languages, whatever rows are shown
-		assert.deepStrictEqual(narrowed[2], groups[2]);
+		assert.deepStrictEqual(narrowed[3], groups[3]);
 	});
 
 	test('the set group is a sum row and a measured row, and says which set', () => {
-		const [sum, measured] = groups[2]!.rows;
+		const [sum, measured] = groups[3]!.rows;
 		assert.strictEqual(sum!.kind, 'summary');
 		assert.strictEqual(measured!.kind, 'summary');
 		// the sum is not a bundle, so no library is ranked by it, and the measured size is
@@ -181,7 +192,7 @@ describe('to_bundle_cost_groups', () => {
 		assert.deepStrictEqual(to_matrix_ratios(sum!, libraries, FULL), {});
 		assert.strictEqual(to_matrix_ratios(measured!, libraries, FULL)[FULL], 1);
 		assert.strictEqual(matrix_row_value(measured!, FULL), sizes(FULL, 'docs').gzip);
-		assert.include(groups[2]!.label, 'docs');
+		assert.include(groups[3]!.label, 'docs');
 	});
 
 	test('a set that holds the languages of another is shown once, with its home-turf note', () => {
@@ -189,7 +200,7 @@ describe('to_bundle_cost_groups', () => {
 			langs,
 			set: 'web_rust',
 			compression: 'gzip'
-		})[2]!;
+		})[3]!;
 		assert.include(group.label, 'web + rust = all');
 		assert.include(group.note, 'home turf');
 		assert.deepStrictEqual(matrix_row_entry(group.rows[1]!, PARTIAL), {
@@ -202,8 +213,47 @@ describe('to_bundle_cost_groups', () => {
 		const without = to_bundle_cost_groups(results, { langs, set: 'nope', compression: 'gzip' });
 		assert.deepStrictEqual(
 			without.map((group) => group.key),
-			['core', 'langs', 'beside']
+			['core', 'langs', 'marginal', 'beside']
 		);
+	});
+
+	test('one more language is every timed language less the set without it, minified', () => {
+		const marginal = groups[2]!;
+		const timed_langs = results.langs.filter((lang) => lang.timed).map((lang) => lang.id);
+		assert.deepStrictEqual(
+			marginal.rows.map((row) => row.key),
+			timed_langs.map((lang) => `marginal:${lang}`)
+		);
+		const rust = marginal.rows.find((row) => row.key === 'marginal:rust')!;
+		for (const library of libraries) {
+			assert.strictEqual(
+				matrix_row_value(rust, library),
+				sizes(library, 'timed').raw - sizes(library, 'without:rust').raw,
+				library
+			);
+		}
+		// every library claims every timed language, so none is unsupported here
+		for (const row of marginal.rows) {
+			for (const library of libraries) assert.ok(matrix_row_value(row, library) !== null);
+		}
+	});
+});
+
+describe('finding the leave-one-out sets', () => {
+	test('by what they hold, not by their ids', () => {
+		const timed = find_timed_set(results.sets, results.langs)!;
+		assert.deepStrictEqual(
+			[...timed.langs].sort(),
+			results.langs
+				.filter((lang) => lang.timed)
+				.map((lang) => lang.id)
+				.sort()
+		);
+		const without = find_without_set(results.sets, results.langs, 'ts')!;
+		assert.ok(!without.langs.includes('ts'));
+		assert.strictEqual(without.langs.length, timed.langs.length - 1);
+		// an untimed language has no such set
+		assert.strictEqual(find_without_set(results.sets, results.langs, 'xml'), null);
 	});
 });
 
@@ -218,7 +268,7 @@ describe('to_bundle_total_groups', () => {
 		const [sets] = groups;
 		assert.deepStrictEqual(
 			sets!.rows.map((row) => row.key),
-			['core', 'set:docs', 'set:web_rust']
+			['core', 'set:docs', 'set:web_rust', 'set:timed']
 		);
 		const merged = sets!.rows[2]!;
 		assert.strictEqual(merged.label, 'web + rust = all');
@@ -232,7 +282,7 @@ describe('to_bundle_total_groups', () => {
 		const loaded = groups[1]!;
 		assert.deepStrictEqual(
 			loaded.rows.map((row) => row.key),
-			['loaded:core', 'loaded:set:docs', 'loaded:set:web_rust']
+			['loaded:core', 'loaded:set:docs', 'loaded:set:web_rust', 'loaded:set:timed']
 		);
 		const docs = loaded.rows[1]!;
 		assert.ok(docs.compared);

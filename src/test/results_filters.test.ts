@@ -43,7 +43,7 @@ describe('the options and the defaults', () => {
 			'harness',
 			'stress'
 		]);
-		assert.deepStrictEqual(options.set, ['docs', 'web_rust']);
+		assert.deepStrictEqual(options.set, ['docs', 'web_rust', 'timed']);
 		assert.deepStrictEqual(options.engines, ['scanner', 'grammar_vm', 'regex', 'textmate']);
 		assert.deepStrictEqual(options.outputs, ['classes', 'inline_styles']);
 	});

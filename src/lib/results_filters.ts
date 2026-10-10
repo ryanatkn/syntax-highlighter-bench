@@ -88,7 +88,7 @@ const unique = (ids: ReadonlyArray<string>): Array<string> => [...new Set(ids)];
 
 /** The ids each filter can hold, read from a results file. */
 export const to_results_filter_options = (results: MatrixResults): ResultsFilterOptions => {
-	const combined = to_combined_sets(results.sets);
+	const combined = to_combined_sets(results.sets, results.langs);
 	return {
 		metrics: RESULTS_METRICS.map((metric) => metric.id),
 		libraries: results.meta.libraries.map((library) => library.id),

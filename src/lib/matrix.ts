@@ -132,6 +132,24 @@ export const matrix_row_value = (row: MatrixRow, library: string): number | null
 	return entry.kind === 'value' ? entry.value : null;
 };
 
+/**
+ * The largest finite number of these libraries over these rows, which a full
+ * bar stands for: 0 when there is none.
+ */
+export const matrix_rows_max = (
+	rows: ReadonlyArray<MatrixRow>,
+	libraries: ReadonlyArray<string>
+): number => {
+	let max = 0;
+	for (const row of rows) {
+		for (const library of libraries) {
+			const value = matrix_row_value(row, library);
+			if (value !== null && Number.isFinite(value)) max = Math.max(max, value);
+		}
+	}
+	return max;
+};
+
 /** Whether a number can enter a ratio: positive, finite, and not marked as unranked. */
 const is_ranked = (entry: MatrixEntry): entry is MatrixValue =>
 	entry.kind === 'value' &&

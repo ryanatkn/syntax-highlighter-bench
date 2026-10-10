@@ -10,14 +10,15 @@
 	margin-bottom: 0;
 }
 /* a caption is laid out at the table's width: held to the viewport's and stuck to
-   the left edge, it stays readable while a wide table scrolls under it */
+   the left edge, it stays readable while a wide table scrolls under it; held to the
+   main column's width too, or a long caption would widen the table past it */
 .table-scroll caption {
 	caption-side: top;
 	text-align: left;
 	padding-bottom: var(--space_xs);
 	position: sticky;
 	left: 0;
-	max-width: calc(100vw - 2 * var(--space_lg));
+	max-width: calc(min(100vw, var(--distance_lg)) - 2 * var(--space_lg));
 }
 
 /* a row or group header in a table body reads as the text it sits in: it is a
@@ -27,10 +28,10 @@
 	text-align: left;
 }
 
-/* a long input path breaks anywhere, so the first column doesn't take a small screen */
+/* a long label breaks anywhere, so the first column doesn't take a small screen */
 .table-scroll tbody th[scope='row'] {
 	overflow-wrap: anywhere;
-	min-width: 10rem;
+	min-width: 16rem;
 }
 
 /* a right-aligned numeric table cell */

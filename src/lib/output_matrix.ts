@@ -15,6 +15,7 @@ import {
 	format_cell_group_label,
 	format_source_note,
 	group_cells,
+	to_cell_label,
 	to_excluded_reasons,
 	to_missing_cell_entry,
 	type CellSelection
@@ -87,7 +88,7 @@ export const to_output_groups = (
 				.map((measure) => {
 					const row = to_matrix_row({
 						key: `${cell.id}:${measure.id}`,
-						label: cell.file,
+						label: to_cell_label(cell),
 						note: `${cell.size} · ${measure.label}${measure.id === 'html_bytes' && selection.compression !== 'raw' ? `, ${selection.compression}` : ''} · ${format_bytes(cell.bytes)} of source${cell.synthetic ? ' · synthetic' : ''}`,
 						unit: measure.unit,
 						direction: 'lower'

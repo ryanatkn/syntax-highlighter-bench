@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 
+	import Card from '@fuzdev/fuz_ui/Card.svelte';
+
+	import BarChart from '$lib/BarChart.svelte';
 	import CoverageTable from '$lib/CoverageTable.svelte';
 	import LibrariesTable from '$lib/LibrariesTable.svelte';
 	import MatrixTable from '$lib/MatrixTable.svelte';
@@ -13,7 +16,9 @@
 <section>
 	<h1>syntax-highlighter-bench</h1>
 	<p>
-		A benchmark of JavaScript syntax highlighters: fuz_code, twinkleplop, Prism, and Shiki with each
+		A benchmark of JavaScript syntax highlighters: <a href="https://code.fuz.dev/">fuz_code</a>,
+		<a href="https://twinkleplop.pngwn.at/">twinkleplop</a>,
+		<a href="https://prismjs.com/">Prism</a>, and <a href="https://shiki.style/">Shiki</a> with each
 		of its two engines, run on the same inputs through one adapter each. It measures throughput,
 		cold start, and memory on one named machine, and bundle size, token counts, and output size,
 		which are the same anywhere.
@@ -24,6 +29,12 @@
 		<a href={resolve('/docs/method')}>method</a> is published for anyone to reproduce.
 	</p>
 	<p>
+		The libraries don't offer the same features. Shiki highlights with the TextMate grammars and
+		themes VS Code uses, and twinkleplop and Shiki each do more than fuz_code, which is the smallest
+		of them: a single-pass lexer per language, with CSS classes for its theme. These numbers compare
+		the work all of them share, not what one offers that another doesn't.
+	</p>
+	<p>
 		<a href={resolve('/results')}>Every result, with filters</a> ·
 		<a href={resolve('/docs/method')}>how it is measured</a> ·
 		<a href={resolve('/docs/corpus')}>the inputs</a> ·
@@ -32,31 +43,104 @@
 </section>
 <section>
 	<h2>Headline figures</h2>
+	<p>
+		Each bar's ratio is to the best library in the chart, where <code>1.00×</code> is the best and a
+		ratio marked <code>≈</code> is inside the machine's noise floor. Hover a bar to compare the
+		others against it instead.
+	</p>
+	<div class="charts">
+		{#each data.charts as chart (chart.row.key)}
+			<BarChart
+				libraries={data.meta.libraries}
+				row={chart.row}
+				title={chart.title}
+				note={chart.note}
+				details={chart.details}
+			/>
+		{/each}
+	</div>
 	<Provenance meta={data.meta} moved={data.moved}>
 		See <a href={resolve('/docs/method')}>the method</a> for what each number means.
 	</Provenance>
-	<MatrixTable
-		libraries={data.meta.libraries}
-		groups={data.headline}
-		heading="figure"
-		label="Headline figures by library"
-	>
-		Each library's headline figures. Beside a number is its ratio to the best in the row, where
-		<code>1.00×</code> is the best. A throughput figure is a geometric mean over the inputs every
-		library was measured on, and a ratio marked <code>≈</code> is inside the machine's noise floor.
-		"Everything loaded" adds the wasm binary and the theme stylesheet to the JavaScript.
-	</MatrixTable>
 	<p>
 		These are summaries. <a href={resolve('/results')}>The results page</a> has every cell behind
-		them, on inputs from other sources too, and what each language adds to a bundle.
+		them, on inputs from other sources too.
 		<a href={resolve('/docs/method#Caveats')}>The caveats</a> say what the numbers don't: the
 		libraries don't do identical work, and Shiki's HTML carries inline styles where the others emit
 		classes.
 	</p>
 </section>
 <section>
+	<h2>What the numbers mean in practice</h2>
+	<p>
+		The ratios are large, but whether they matter depends on where the highlighting runs and how
+		often. Which figure to read first:
+	</p>
+	<ul>
+		<li>
+			<strong>At build time</strong>, as a static site or documentation build highlights its pages
+			once: throughput sets the build's time and nothing else. Readers get plain HTML, so the bundle
+			size and cold start never reach them.
+		</li>
+		<li>
+			<strong>In the browser</strong>: everything a page loads and the cold start to a first
+			highlight come first, then throughput on long pages.
+		</li>
+		<li>
+			<strong>In an editor that highlights as you type</strong>: throughput at the size being
+			edited, against the time of one frame.
+		</li>
+		<li>
+			<strong>On a server that renders each request</strong>: throughput and retained memory, paid
+			on every request and held by every process.
+		</li>
+		<li>
+			<strong>In serverless and edge functions</strong>: the cold start, paid by every fresh
+			instance, and the bundle where the platform limits its size.
+		</li>
+	</ul>
+	{#if data.practice}
+		<MatrixTable
+			libraries={data.meta.libraries}
+			groups={[data.practice]}
+			heading="worked out for"
+			label="The HTML throughput worked out for familiar sizes, by library"
+		>
+			The HTML throughput applied to sizes a reader knows. Each figure is the geometric-mean rate
+			over the neutral inputs applied to that size, so it is an estimate: a library's rate differs
+			from input to input, as <a href={resolve('/results')}>the results page</a> shows.
+		</MatrixTable>
+	{/if}
+</section>
+{#if data.language_weights.length > 0}
+	<section>
+		<h2>What each language adds</h2>
+		<MatrixTable
+			libraries={data.meta.libraries}
+			groups={data.language_weights}
+			heading="language"
+			label="What each language adds to the JS, by library"
+			bars
+		>
+			What each language's grammar costs, in two ways. <strong>The first language</strong> is the JS
+			a page loads for that language alone, minified and compressed with gzip, less the library with
+			no language: it includes any runtime the language needs that the floor leaves out, which a
+			library pays once. <strong>One more language</strong> is what the language adds to a bundle
+			that already holds every other timed language, in minified bytes: the price of adding it to a
+			site that has the rest. A language the others already hold, like JS inside TypeScript, adds
+			nothing there. The bars of each group are on one scale, and beside a number is its ratio to
+			the smallest in the row.
+		</MatrixTable>
+	</section>
+{/if}
+<section>
 	<h2>Coverage</h2>
 	<CoverageTable results={data} />
+	<p>
+		The languages measured here are fuz_code's built-in set, so the list favours it: a language
+		fuz_code doesn't have is never measured. Prism and Shiki each support hundreds of languages, and
+		none of that shows here.
+	</p>
 	<p>
 		Unsupported means the library's adapter doesn't claim the language. That is different from
 		excluded, where a library claims a language and its output failed the check that runs before
@@ -72,3 +156,29 @@
 		maintainers can review or replace it. See <a href={resolve('/docs/adapters')}>the adapters</a>.
 	</p>
 </section>
+
+<section class="cards">
+	<Card href={resolve('/results')} icon="">every result, with filters</Card>
+	<Card href={resolve('/docs/method')} icon="">how it is measured</Card>
+	<Card href={resolve('/docs/corpus')} icon="">the inputs</Card>
+	<Card href={resolve('/docs/adapters')} icon="">the adapters, and how to add a library</Card>
+</section>
+
+<style>
+	.cards {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: var(--space_lg);
+	}
+	/* the cards carry no icon */
+	.cards :global(.icon:empty) {
+		display: none;
+	}
+	/* two charts side by side where they fit, one per line where they don't */
+	.charts {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 48rem), 1fr));
+		column-gap: var(--space_xl5);
+	}
+</style>

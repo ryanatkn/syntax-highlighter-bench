@@ -38,8 +38,8 @@ describe('to_throughput_groups', () => {
 		const group = groups.find((g) => g.key === 'ts/neutral')!;
 		const cell = fixture.cells.find((c) => c.id === 'neutral/ts/checker_excerpt.ts:tokenize')!;
 		const row = group.rows.find((r) => r.key === cell.id)!;
-		// the whole path, so two inputs with one file name are told apart without hovering
-		assert.strictEqual(row.label, cell.file);
+		// the file name: the group names the source and the language
+		assert.strictEqual(row.label, 'checker_excerpt.ts');
 		assert.strictEqual(row.direction, 'higher');
 		for (const id of libraries) {
 			assert.strictEqual(matrix_row_value(row, id), cell.values[id]!.mb_per_sec);

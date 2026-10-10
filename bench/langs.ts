@@ -18,7 +18,7 @@ import type { BenchLang } from '../src/lib/results_schema.ts';
  */
 export const LANG_ROSTER = [
 	{ id: 'ts', label: 'TypeScript', timed: true },
-	{ id: 'js', label: 'JavaScript', timed: true },
+	{ id: 'js', label: 'JS', timed: true },
 	{ id: 'css', label: 'CSS', timed: true },
 	{ id: 'html', label: 'HTML', timed: true },
 	{ id: 'xml', label: 'XML', timed: false },

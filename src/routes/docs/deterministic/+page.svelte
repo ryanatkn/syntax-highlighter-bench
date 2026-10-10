@@ -177,6 +177,16 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			script and style languages. The results page shows the sum beside the measured size for that
 			reason.
 		</p>
+		<p>
+			That difference is the price of the <strong>first</strong> language: it includes any runtime
+			the language needs that the floor leaves out, which a library pays once. So two more sets
+			measure the price of <strong>one more</strong> language: <code>timed</code>, every timed
+			language, and <code>without:&lt;lang&gt;</code>, the same less one. Their difference is what a
+			language adds to a bundle that already holds the others. It is read in minified bytes and
+			never compressed: compression works across a whole bundle, so the difference of two compressed
+			bundles doesn't isolate one language's share, and can come out negative. A language the others
+			already hold, like JS inside TypeScript, adds nothing there.
+		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Token counts and output sizes" />

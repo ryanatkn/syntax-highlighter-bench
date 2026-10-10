@@ -173,7 +173,7 @@
 		},
 		{
 			"id": "js",
-			"label": "JavaScript",
+			"label": "JS",
 			"timed": true
 		},
 		{
@@ -234,7 +234,7 @@
 		},
 		{
 			"id": "single:js",
-			"label": "JavaScript",
+			"label": "JS",
 			"langs": [
 				"js"
 			],

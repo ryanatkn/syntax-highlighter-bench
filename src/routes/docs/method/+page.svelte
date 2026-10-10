@@ -738,6 +738,18 @@ node bench/run.ts --help`;
 		<TomeSectionHeader text="Caveats" />
 		<ul>
 			<li>
+				<strong>Features vary.</strong> The libraries don't offer the same features. Shiki
+				highlights with the TextMate grammars and themes VS Code uses, and twinkleplop and Shiki
+				each do more than fuz_code, which is the smallest of them: a single-pass lexer per language,
+				with CSS classes for its theme. These numbers compare the work all of them share, not what
+				one offers that another doesn't.
+			</li>
+			<li>
+				<strong>The languages are fuz_code's.</strong> The languages measured are fuz_code's
+				built-in set, so the list favours it: a language fuz_code doesn't have is never measured.
+				Prism and Shiki each support hundreds of languages, and none of that shows here.
+			</li>
+			<li>
 				<strong>Classes and inline styles.</strong> Shiki resolves colors while it tokenizes and
 				writes them inline, and the other libraries emit class names that a stylesheet colors. The
 				<code>html</code> mode measures what each library ships, which is not the same work.

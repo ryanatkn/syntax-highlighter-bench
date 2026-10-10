@@ -10,7 +10,7 @@ of this benchmark, and is flagged as such in every results file.
 | `tokenize` | `SyntaxStyler#lex(text, lang)` | `@fuzdev/fuz_code/syntax_styler.js` |
 | `html` | `SyntaxStyler#stylize(text, lang)` | `@fuzdev/fuz_code/syntax_styler.js` |
 
-`lex` runs the language's hand-written lexer and returns a flat event stream in
+`lex` runs the language's single-pass lexer and returns a flat event stream in
 one `Int32Array`. It is the narrowest public tokens-out call: `stylize` is
 `lex` followed by the renderer, so the two stages nest the same way as in the
 other libraries.

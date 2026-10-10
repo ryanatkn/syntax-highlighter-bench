@@ -29,20 +29,25 @@ export const to_ratio = (
 
 /**
  * The ratios under which each level of the scale ends. A ratio at or past the
- * last one is the last level.
+ * last one is the last level. The scale reaches 100, since the libraries
+ * measured here are up to hundreds of times apart: a scale that stopped at a
+ * few times would color most of a table alike.
  */
-export const RATIO_LEVEL_LIMITS: ReadonlyArray<number> = [0.9, 1.1, 1.5, 3];
+export const RATIO_LEVEL_LIMITS: ReadonlyArray<number> = [0.9, 1.1, 2, 5, 10, 100];
 
 /**
  * The color of each level, as fuz_css variables that adapt to the color scheme:
- * better than the reference, level with the baseline, then three steps worse.
+ * better than the reference, level with the baseline, then five steps worse,
+ * through yellow, orange, red, and brown to purple.
  */
 export const RATIO_LEVEL_COLORS: ReadonlyArray<string> = [
 	'var(--palette_j_50)',
 	'var(--palette_b_50)',
 	'var(--palette_e_50)',
 	'var(--palette_h_50)',
-	'var(--palette_c_50)'
+	'var(--palette_c_50)',
+	'var(--palette_f_50)',
+	'var(--palette_d_50)'
 ];
 
 /**
@@ -66,6 +71,13 @@ export const to_ratio_color = (ratio: number): string => RATIO_LEVEL_COLORS[to_r
  */
 export const to_bound_color = (ratio: number): string =>
 	to_ratio_color(Math.max(ratio, RATIO_LEVEL_LIMITS[1]!));
+
+/**
+ * The color of a ratio as shown: a lower bound's when `bound`, the scale's
+ * otherwise. Every table cell, table bar, and chart ratio is colored through it.
+ */
+export const to_ratio_display_color = (ratio: number, bound: boolean): string =>
+	bound ? to_bound_color(ratio) : to_ratio_color(ratio);
 
 /**
  * Whether a ratio is inside a noise floor: the two numbers differ by no more

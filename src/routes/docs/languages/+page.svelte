@@ -5,6 +5,7 @@
 	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 
+	import { find_without_set } from '$lib/bundle_matrix.ts';
 	import { docs_data_context } from '$lib/docs_data.ts';
 
 	const tome = tome_get_by_slug('languages');
@@ -12,9 +13,20 @@
 	const get_docs = docs_data_context.get();
 	const docs = $derived(get_docs());
 
-	// the sets of one language are one row: there is one for each language id
-	const sets = $derived(docs.sets.filter((set) => set.langs.length !== 1));
+	// the sets of every timed language but one, found by what they hold
+	const leave_one_out = $derived(
+		docs.langs
+			.map((lang) => find_without_set(docs.sets, docs.langs, lang.id))
+			.filter((set) => set !== null)
+	);
+
+	// the sets of one language are one row, as are the sets that leave one out: there is one of
+	// each for every language id, or every timed one
+	const sets = $derived(
+		docs.sets.filter((set) => set.langs.length !== 1 && !leave_one_out.includes(set))
+	);
 	const has_single_sets = $derived(docs.sets.some((set) => set.langs.length === 1));
+	const has_leave_one_out_sets = $derived(leave_one_out.length > 0);
 </script>
 
 <TomeContent {tome}>
@@ -24,6 +36,11 @@
 			maps these ids onto its library's own. <code>bench/langs.ts</code> is the source of truth, and
 			a results file carries the list, so the tables on this page are read from the results this
 			site renders.
+		</p>
+		<p>
+			The languages measured are fuz_code's built-in set, so the list favours it: a language
+			fuz_code doesn't have is never measured. Prism and Shiki each support hundreds of languages,
+			and none of that shows here.
 		</p>
 	</section>
 	<TomeSection>
@@ -120,6 +137,14 @@
 							<td></td>
 						</tr>
 					{/if}
+					{#if has_leave_one_out_sets}
+						<tr>
+							<th scope="row"><code>without:&lt;lang&gt;</code></th>
+							<td>timed less the language</td>
+							<td>every timed language but one, for each timed language</td>
+							<td></td>
+						</tr>
+					{/if}
 				</tbody>
 			</table>
 		</div>
@@ -141,6 +166,13 @@
 			<li>
 				<code>all</code> — every language id. While it holds the same languages as another set, the
 				two are one bundle, and the results page shows them as one row.
+			</li>
+			<li>
+				<code>timed</code> — every timed language, which every library claims, and
+				<code>without:&lt;lang&gt;</code> — the same less one of them. Subtracting the second from
+				the first gives what a language adds to a bundle that already holds all the others. Unlike
+				<code>single:&lt;lang&gt;</code> less <code>core</code>, that never includes runtime the
+				first language loaded pays for, and a language the others already hold adds nothing.
 			</li>
 		</ul>
 		<p>

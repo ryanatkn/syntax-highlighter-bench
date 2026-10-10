@@ -46,10 +46,10 @@ schema, the timed harness with its cold-start scenarios, the deterministic
 metrics (bundle size, install footprint, retained heap, token counts, output
 sizes raw and compressed, coverage) with their
 committed results file, the site that renders a results file (the landing page
-and `/results`), and the docs that describe them. No timed run is committed and
-no timed numbers are published, so the site renders the deterministic file and
-says so wherever a timed number would be. The committed
-`results/deterministic.json` is data: never put a measured number in the docs.
+and `/results`), and the docs that describe them. The first full run, from
+laptop1, is committed with its calibration and published as
+`results/latest.json`, so the site renders it. The committed results files
+are data: never put a measured number in the docs.
 A table that renders the file is data, and prose is not.
 
 ## Layout
@@ -99,7 +99,7 @@ src/test/                    vitest tests; `bench/` mirrors the harness
 static/                      the mark: `logo.svg`, `favicon.png`, and `src/lib/logo.ts` are one drawing
 ```
 
-Planned addition: committed timed runs in `results/`, the latest as
+Committed timed runs live in `results/`, the published one copied to
 `results/latest.json`. A timed run never writes that file: `npm run
 results:publish -- <file>` (`bench/publish.ts`) copies a run's dated file
 there, byte for byte, once it is a file in `results/` itself (followed through
@@ -195,6 +195,13 @@ tuned to flatter a result. Adding a set is one line.
 - `web_rust` — labelled "web + rust", footnoted as fuz_code's full set (home
   turf); named by content because the site is neutral
 - `all` — every language id
+- `timed` — every timed language, which every library claims, and
+  `without:<lang>` — the same less one, for each timed language; `timed −
+  without:<lang>` is what a language adds to a bundle that holds the others,
+  free of the runtime the first language carries. It is read in minified bytes
+  only: the difference of two compressed bundles doesn't isolate one part, and
+  comes out negative. The site finds these by content (`find_timed_set`,
+  `find_without_set`) and keeps the `without:` sets out of its set lists
 
 ## Results schema
 
@@ -1138,8 +1145,8 @@ from one named machine; deterministic numbers regenerate anywhere.
 
 **Loading** (`src/lib/server/site_results_load.ts`). Only the server loads read
 a results file, with `node:fs`, at build time: `+layout.server.ts` (the
-source, for the fixture banner), `(site)/+page.server.ts` (the rosters and the
-headline rows), `(site)/results/+page.server.ts` (the file without its
+source, for the fixture banner), `(site)/+page.server.ts` (the rosters, the
+headline charts, the worked-out HTML rate, and the language weights), `(site)/results/+page.server.ts` (the file without its
 inputs), and `docs/+layout.server.ts` (`to_docs_data`: rosters, inputs, noise
 floor). So no results file, no fixture, and no zod schema is in the client
 bundle: a page gets the validated data its load returns. Keep it that way:
@@ -1168,7 +1175,9 @@ and `logo.ts`:
 | `output_matrix.ts` | token counts and output sizes as rows, the HTML's raw or compressed, by a selector of its own that starts raw |
 | `heap_matrix.ts` | the retained heap as rows by language: everything summed, the V8 heap, the machine code, and the external memory, as four groups, with the tolerance as a floor |
 | `results_filters.ts` | the selection on `/results` and its URL query form |
-| `headline.ts` | the landing page's rows |
+| `headline.ts` | the landing page's headline figures, each drawn as bars, the HTML rate worked out for familiar sizes, and the table of what each language adds to a bundle |
+| `bar_chart.ts` | a row as bars: lengths, and the table's own ratios against the best or a hovered library |
+| `library_labels.ts` | the names of engine kinds and output shapes, and one bar color per library by roster position |
 | `coverage_matrix.ts` | the coverage matrix with numbered footnotes |
 | `corpus_inputs.ts` | the inputs grouped by source, and links to their pins |
 | `docs_data.ts` | what the tomes read from the results file, and its context |
@@ -1177,11 +1186,24 @@ and `logo.ts`:
 | `logo.ts` | the mark, as the icon the breadcrumb shows |
 
 Components: `MatrixTable.svelte` and `MatrixCell.svelte` render every results
-table, `FilterGroup.svelte` and `FilterSelect.svelte` are the controls,
+table (with `bars`, a bar under each number on one scale per group, which the
+landing page's language table uses), `BarChart.svelte` the landing page's
+charts (a headline row as bars, re-baselined on the bar the pointer is over),
+`FilterGroup.svelte` and `FilterSelect.svelte` are the controls,
 `Provenance.svelte` the provenance line with the anchor's drift, the noise
-floor, and what has moved since the run, and `CoverageTable.svelte`, `LibrariesTable.svelte`,
-`InputsTable.svelte`, `LibraryLabel.svelte` (the maintainer's-library mark),
-and `FixtureBanner.svelte` the rest.
+floor, and what has moved since the run, and `CoverageTable.svelte`,
+`LibrariesTable.svelte`, `InputsTable.svelte`, `LibraryLabel.svelte` (the
+maintainer's-library mark), and `FixtureBanner.svelte` the rest.
+
+**The landing page** draws the headline figures as charts (`to_headline_charts`):
+throughput in each mode, the first highlight, retained memory, everything a
+page loads with what it is made of, and the docs set's JS alone. A figure the
+file holds no number for is left out. Then the HTML rate worked out for sizes a
+reader knows (`to_practice_group`: one 10 kB block, blocks in a 16 ms frame,
+1 MB of source), and what each language adds (`to_language_weight_groups`: the
+floor, the first language, one more language). Each chart's bars take the
+library's color (`to_library_color`), the same in every chart, and its ratios
+the ratio scale, as tsv.fuz.dev's charts do.
 
 **Rules the tables hold to:**
 
@@ -1208,7 +1230,10 @@ and `FixtureBanner.svelte` the rest.
 - **One color scale** (`ratio.ts`). The color tints the cell, and the ratio is
   always printed beside the number, so color is never the only signal. A ratio
   that is only a lower bound never takes the color of a number level with the
-  baseline (`to_bound_color`). The token and output tables turn the tint off: a
+  baseline (`to_bound_color`; `to_ratio_display_color` picks between the two).
+  The scale reaches 100×, since the libraries are up to hundreds of times
+  apart. A chart's bars are colored by library instead, and only its ratios by
+  the scale. The token and output tables turn the tint off: a
   smaller count is not a better one, and smaller compressed HTML is not either
   (inline styles carry the theme a classed output leaves to a stylesheet). The
   install table turns it off too: a footprint is everything a package ships,
@@ -1219,8 +1244,10 @@ and `FixtureBanner.svelte` the rest.
   calibrated floor and a byte count has no noise, so a ratio there is never
   marked `≈`.
 - **The sets are found by what they hold**, not by their ids
-  (`find_core_set`, `find_single_set`): the incremental cost is the
-  single-language set less the set with none, derived and never stored. The
+  (`find_core_set`, `find_single_set`, `find_timed_set`, `find_without_set`):
+  the first language's cost is the single-language set less the set with
+  none, and one more language's is the timed set less the one without it,
+  both derived and never stored. The
   sum over a set is not a bundle, so its row is `compared: false`: no ratio,
   no tint.
 - **"Everything loaded"** (`to_bundle_loaded_entry`) is the JavaScript plus the

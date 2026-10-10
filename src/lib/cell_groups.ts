@@ -104,6 +104,14 @@ export const group_cells = (
 	return groups;
 };
 
+/**
+ * A cell's row label: its file name. A group holds one source and one
+ * language, which is all the rest of the path says, and one directory never
+ * holds two files of one name, so the name tells a group's rows apart.
+ */
+export const to_cell_label = (cell: Pick<BenchCell, 'file'>): string =>
+	cell.file.slice(cell.file.lastIndexOf('/') + 1);
+
 /** The label of a cell group: its language and its source. */
 export const format_cell_group_label = (group: CellGroup): string =>
 	`${group.lang.label} · ${format_source_key(group.source_key)}`;
