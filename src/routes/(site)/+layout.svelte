@@ -3,7 +3,6 @@
 	import { page } from '$app/state';
 	import Breadcrumb from '@fuzdev/fuz_ui/Breadcrumb.svelte';
 	import DocsFooter from '@fuzdev/fuz_ui/DocsFooter.svelte';
-	import Svg from '@fuzdev/fuz_ui/Svg.svelte';
 	import { site_context } from '@fuzdev/fuz_ui/site.svelte.ts';
 	import type { Snippet } from 'svelte';
 
@@ -16,19 +15,11 @@
 	const site = site_context.get();
 
 	// the root's breadcrumb would link to the page itself, so there the mark leads to the docs
-	// TODO once fuz_ui publishes `Breadcrumb`'s `root_path`, render `<Breadcrumb root_path="/docs" />`
-	// at the root and drop the `.root-mark` link and its copy of the breadcrumb's layout
 	const at_root = $derived(page.url.pathname === resolve('/'));
 </script>
 
 <header class="site-header">
-	{#if at_root}
-		<a href={resolve('/docs')} title="docs" class="root-mark">
-			{#if site.icon}<Svg data={site.icon} size="1em" />{/if}
-		</a>
-	{:else}
-		<Breadcrumb />
-	{/if}
+	<Breadcrumb root_path={at_root ? '/docs' : undefined} />
 	<nav aria-label="Site" class="row gap_md">
 		<a href={resolve('/results')} class={{ selected: page.url.pathname === resolve('/results') }}>
 			results
@@ -73,14 +64,10 @@
 			--font_size: var(--font_size_md);
 		}
 	}
-	/* laid out as `Breadcrumb` lays out its root link, so the header doesn't move between pages:
-	 * the same padding, and one line of its text tall */
-	.root-mark {
-		display: flex;
-		align-items: center;
-		font-size: var(--font_size);
+	/* one line of its text tall, as it is with a path after the mark: the mark alone is 1em, and
+	 * the header would be shorter at the root than on every other page */
+	.site-header :global(.breadcrumb) {
 		min-height: 1lh;
-		padding: 0 calc(var(--font_size) * 0.5);
 	}
 	/* wide enough for a column per library, and no wider than reads well */
 	.site-main {

@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import Breadcrumb from '@fuzdev/fuz_ui/Breadcrumb.svelte';
 	import Docs from '@fuzdev/fuz_ui/Docs.svelte';
+	import DocsFooter from '@fuzdev/fuz_ui/DocsFooter.svelte';
 	import { Library, library_context } from '@fuzdev/fuz_ui/library.svelte.ts';
+	import { site_context } from '@fuzdev/fuz_ui/site.svelte.ts';
 
 	import { docs_data_context } from '$lib/docs_data.ts';
 	import { tomes } from './tomes.ts';
@@ -9,6 +12,8 @@
 	import type { LayoutProps } from './$types.js';
 
 	const { children, data }: LayoutProps = $props();
+
+	const site = site_context.get();
 
 	const library = new Library(library_json);
 	library_context.set(() => library);
@@ -18,19 +23,16 @@
 </script>
 
 <Docs {tomes}>
-	<nav aria-label="Site" class="docs-site-nav">
+	{#snippet primary_nav()}
 		<a href={resolve('/results')}>results</a>
-	</nav>
+	{/snippet}
+	<!-- the default footer, less its link to fuz.dev: this site isn't part of the Fuz stack -->
+	{#snippet footer()}
+		<DocsFooter repo_url={site.repo_url}>
+			<div class="mb_xl5">
+				<Breadcrumb />
+			</div>
+		</DocsFooter>
+	{/snippet}
 	{@render children()}
 </Docs>
-
-<style>
-	/* a line above each docs page, inside the docs layout's own content column */
-	/* TODO once fuz_ui publishes the `primary_nav` snippet of `Docs`, render this link there and
-	 * drop this nav; and pass a `footer` without fuz.dev's link */
-	.docs-site-nav {
-		margin: 0;
-		padding: var(--space_md) var(--space_lg) 0;
-		text-align: right;
-	}
-</style>

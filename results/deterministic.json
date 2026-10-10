@@ -12656,9 +12656,9 @@
 	"install": {
 		"fuz_code": {
 			"packages": 6,
-			"files": 387,
-			"bytes": 2128858,
-			"closure": "50c089582f8413c14be71d6bf0dff99f5285f4df6835516f08bdb11c7c99d16c"
+			"files": 391,
+			"bytes": 2157919,
+			"closure": "86e75263fe8018b93e31439c5221f39110b0a6e01616e94ac70ca495052c5efa"
 		},
 		"twinkleplop": {
 			"packages": 11,
