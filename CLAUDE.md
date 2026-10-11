@@ -1,6 +1,6 @@
 # syntax-highlighter-bench
 
-> neutral benchmark suite and results site for JS syntax highlighters
+> benchmark suite and results site for JS syntax highlighters
 
 syntax-highlighter-bench (`@ryanatkn/syntax-highlighter-bench`) compares
 fuz_code, Twinkleplop, Prism, and Shiki on the same inputs. Shiki's JS

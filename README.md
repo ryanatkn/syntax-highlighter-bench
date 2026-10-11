@@ -2,7 +2,7 @@
 
 [<img src="static/logo.svg" alt="a bench built from highlighted code: lines of colored tokens for its backrest and seat, on two posts" align="right" width="192" height="192">](https://syntax-highlighter-bench.ryanatkn.com/)
 
-> neutral benchmark suite and results site for JS syntax highlighters
+> benchmark suite and results site for JS syntax highlighters
 
 This project aims to comprehensively benchmark
 [Twinkleplop](https://twinkleplop.pngwn.at/),
