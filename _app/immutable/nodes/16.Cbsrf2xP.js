@@ -1,0 +1,1 @@
+export{t as component}from"../chunks/Cu3Gflo4.js";

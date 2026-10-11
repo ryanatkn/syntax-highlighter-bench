@@ -1,1 +1,0 @@
-import{I as e,P as t,Z as n,dt as r,ft as i,it as a,j as o,nt as s,rt as c}from"../chunks/WoAB-rp8.js";import{n as l}from"../chunks/t7rnk2XB.js";import"../chunks/DwFR-mGC.js";var u=e(`<h1> </h1> <p> </p>`,1);function d(e,d){i(d,!0);var f=u(),p=s(f),m=c(p,!0),h=a(p,2),g=c(h,!0);n(()=>{o(m,l.status),o(g,l.error?.message)}),t(e,f),r()}export{d as component};
