@@ -290,8 +290,8 @@ export const to_bundle_sum_entry = (
 	return missing.length > 0 ? { kind: 'unsupported', langs: missing } : to_value_entry(sum);
 };
 
-/** A row with one entry for each library of the roster. */
-const to_bundle_row = (
+/** A row of byte sizes with one entry for each library of the roster. */
+export const to_bundle_row = (
 	results: MatrixResults,
 	row: Pick<MatrixRow, 'key' | 'label'> & Partial<MatrixRow>,
 	to_entry: (library: string) => MatrixEntry

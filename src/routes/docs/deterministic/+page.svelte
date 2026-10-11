@@ -9,6 +9,7 @@
 
 	import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '#lib/bench_constants.ts';
 	import { format_bytes } from '#lib/bench_format.ts';
+	import { MARGINAL_INCLUDED_BELOW } from '#lib/bundle_matrix.ts';
 
 	const tome = tome_get_by_slug('deterministic');
 
@@ -185,8 +186,9 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			language adds to a bundle that already holds the others. It is read in minified bytes and
 			never compressed: compression works across a whole bundle, so the difference of two compressed
 			bundles doesn't isolate one language's share, and can come out negative. A language the others
-			already hold, like JS inside TypeScript, adds nothing there: an addition under 16 bytes is
-			shown as already included, and a language every library already includes has no row.
+			already hold, like JS inside TypeScript, adds nothing there: an addition under
+			{MARGINAL_INCLUDED_BELOW} bytes is shown as already included, and a language every library
+			already includes has no row.
 		</p>
 	</TomeSection>
 	<TomeSection>

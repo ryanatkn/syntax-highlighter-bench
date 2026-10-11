@@ -150,6 +150,17 @@
 			compression: filters.output_compression as BundleCompression
 		})
 	);
+
+	// the color key goes above the first tinted table shown, whichever section that is
+	const legend_section: ResultsMetric | null = $derived.by(() => {
+		const tinted: Partial<Record<ResultsMetric, boolean>> = {
+			throughput: throughput_groups !== null && throughput_groups.length > 0,
+			startup: startup_groups !== null && startup_groups.length > 0,
+			bundle: bundle_groups.length > 0,
+			heap: results_have_heap(results) && heap_groups.length > 0
+		};
+		return shown_metrics.find((metric) => tinted[metric.id])?.id ?? null;
+	});
 </script>
 
 <svelte:head>
@@ -285,7 +296,7 @@
 				{#if throughput_groups.length === 0}
 					<p>No cell matches the selection.</p>
 				{:else}
-					<RatioLegend />
+					{#if legend_section === 'throughput'}<RatioLegend />{/if}
 					<MatrixTable
 						{libraries}
 						groups={throughput_groups}
@@ -332,6 +343,7 @@
 				{#if startup_groups.length === 0}
 					<p>No scenario matches the selection.</p>
 				{:else}
+					{#if legend_section === 'startup'}<RatioLegend />{/if}
 					<MatrixTable
 						{libraries}
 						groups={startup_groups}
@@ -390,6 +402,7 @@
 						onchange={(set) => update({ set })}
 					/>
 				</form>
+				{#if legend_section === 'bundle'}<RatioLegend />{/if}
 				<MatrixTable
 					{libraries}
 					groups={bundle_groups}
@@ -470,6 +483,7 @@
 				{#if heap_groups.length === 0}
 					<p>Nothing matches the selection.</p>
 				{:else}
+					{#if legend_section === 'heap'}<RatioLegend />{/if}
 					<MatrixTable
 						{libraries}
 						groups={heap_groups}

@@ -12,6 +12,7 @@ import {
 	find_single_set,
 	find_timed_set,
 	to_bundle_loaded_entry,
+	to_bundle_row,
 	to_bundle_size_entry
 } from './bundle_matrix.ts';
 import { DEFAULT_HEAP_MEASURE, to_heap_floor, to_heap_groups } from './heap_matrix.ts';
@@ -130,51 +131,20 @@ export const to_headline_charts = (results: MatrixResults): Array<HeadlineChart>
 	});
 
 	const set = results.sets.find((s) => s.id === DEFAULT_SET) ?? null;
-	const loaded = to_matrix_row({
-		key: 'loaded',
-		label: 'everything loaded',
-		unit: 'bytes',
-		direction: 'lower'
-	});
-	const javascript = to_matrix_row({
-		key: 'javascript',
-		label: 'JS',
-		unit: 'bytes',
-		direction: 'lower'
-	});
-	for (const library of results.meta.libraries) {
-		const entry = to_bundle_loaded_entry(results, library.id, set, HEADLINE_COMPRESSION);
-		// a stylesheet with two palettes is larger than one with one, so the schemes go beside it
-		loaded.entries[library.id] =
-			entry.kind === 'value'
-				? {
-						...entry,
-						details: [...entry.details, `theme: ${library.theme_schemes.join(' + ')}`]
-					}
-				: entry;
-		javascript.entries[library.id] = to_bundle_size_entry(
-			results,
-			library.id,
-			set,
-			HEADLINE_COMPRESSION
-		);
-	}
 	const set_label = `the ${set?.label ?? DEFAULT_SET} set (${set?.langs.join(', ') ?? ''})`;
-	const set_note = `${set_label}, minified and compressed with ${HEADLINE_COMPRESSION}`;
-	charts.push(
-		{
-			row: loaded,
-			title: 'Everything a page loads',
-			note: `the JS, wasm binary, and theme stylesheet of ${set_label}, each compressed on its own with ${HEADLINE_COMPRESSION}`,
-			details: true
-		},
-		{
-			row: javascript,
-			title: 'The JS alone',
-			note: set_note,
-			details: false
-		}
-	);
+	// the set's JS alone is a row of the language table, beside the runtime and the other sets
+	charts.push({
+		row: to_bundle_row(results, { key: 'loaded', label: 'everything loaded' }, (library) => {
+			const entry = to_bundle_loaded_entry(results, library, set, HEADLINE_COMPRESSION);
+			if (entry.kind !== 'value') return entry;
+			// a stylesheet with two palettes is larger than one with one, so the schemes go beside it
+			const { theme_schemes } = results.meta.libraries.find((l) => l.id === library)!;
+			return { ...entry, details: [...entry.details, `theme: ${theme_schemes.join(' + ')}`] };
+		}),
+		title: 'Everything a page loads',
+		note: `the JS, wasm binary, and theme stylesheet of ${set_label}, each compressed on its own with ${HEADLINE_COMPRESSION}`,
+		details: true
+	});
 
 	return charts.filter(
 		(chart) => chart.row.empty === null && Object.keys(chart.row.entries).length > 0
@@ -200,13 +170,10 @@ export const to_language_weight_groups = (results: MatrixResults): Array<MatrixG
 		label: string,
 		set: BenchSet | null,
 		note: string | null = null
-	): MatrixRow => {
-		const row = to_matrix_row({ key, label, note, unit: 'bytes', direction: 'lower' });
-		for (const { id } of results.meta.libraries) {
-			row.entries[id] = to_bundle_size_entry(results, id, set, HEADLINE_COMPRESSION);
-		}
-		return row;
-	};
+	): MatrixRow =>
+		to_bundle_row(results, { key, label, note }, (library) =>
+			to_bundle_size_entry(results, library, set, HEADLINE_COMPRESSION)
+		);
 	const several = [
 		results.sets.find((set) => set.id === DEFAULT_SET),
 		find_timed_set(results.sets, results.langs)

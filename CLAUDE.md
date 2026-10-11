@@ -1223,7 +1223,7 @@ maintainer's-library mark), and `FixtureBanner.svelte` the rest.
 
 **The landing page** draws the headline figures as charts (`to_headline_charts`):
 throughput in each mode, the first highlight, retained memory, everything a
-page loads with what it is made of, and the docs set's JS alone. A figure the
+page loads with what it is made of. A figure the
 file holds no number for is left out. Then the HTML rate worked out for sizes a
 reader knows (`to_practice_group`: one 10 kB block, blocks in a 16 ms frame,
 1 MB of source), and what each language costs (`to_language_weight_groups`: the

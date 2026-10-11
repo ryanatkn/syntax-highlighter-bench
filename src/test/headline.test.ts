@@ -24,8 +24,7 @@ describe('to_headline_charts', () => {
 			'Highlighting to HTML',
 			'Cold start to a first highlight',
 			'Retained memory',
-			'Everything a page loads',
-			'The JS alone'
+			'Everything a page loads'
 		]);
 		for (const { row } of charts) {
 			assert.strictEqual(row.empty, null, row.key);
@@ -39,11 +38,7 @@ describe('to_headline_charts', () => {
 	test('with no timed run, only the deterministic figures', () => {
 		const results = load_deterministic();
 		const charts = to_headline_charts(results);
-		assert.deepStrictEqual(to_titles(charts), [
-			'Retained memory',
-			'Everything a page loads',
-			'The JS alone'
-		]);
+		assert.deepStrictEqual(to_titles(charts), ['Retained memory', 'Everything a page loads']);
 		// memory is a geometric mean over the languages of what each library holds
 		const held = Object.values(results.heap.prism!).map(
 			(e) => 1024 * (e.retained_kb + e.code_kb + e.external_kb)
@@ -51,10 +46,9 @@ describe('to_headline_charts', () => {
 		const expected = Math.exp(held.reduce((sum, v) => sum + Math.log(v), 0) / held.length);
 		assert.approximately(matrix_row_value(charts[0]!.row, 'prism')!, expected, 1e-6 * expected);
 		// everything loaded: the JS, the wasm binary, and the stylesheet
-		const [, loaded, javascript] = charts;
+		const [, loaded] = charts;
 		const sizes = results.bundle.prism!.docs!;
 		assert.ok(!('unsupported' in sizes));
-		assert.strictEqual(matrix_row_value(javascript!.row, 'prism'), sizes.gzip);
 		assert.strictEqual(matrix_row_value(loaded!.row, 'prism'), sizes.gzip + sizes.css!.gzip);
 		const wasm = results.bundle.shiki_wasm!.docs!;
 		assert.ok(!('unsupported' in wasm));
