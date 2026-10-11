@@ -38,11 +38,11 @@
 		compare the work all of them share, not what one offers that another doesn't, and they time each
 		library's output without scoring its quality.
 	</p>
-	<p>
-		<a href={resolve('/(site)/results')}>Every result, with filters</a> ·
-		<a href={resolve('/docs/method')}>how it is measured</a> ·
-		<a href={resolve('/docs/corpus')}>the inputs</a> ·
-		<a href={resolve('/docs/adapters')}>the adapters, and how to add a library</a>
+	<p class="links">
+		<a class="chip" href={resolve('/(site)/results')}>every result, with filters</a>
+		<a class="chip" href={resolve('/docs/method')}>how it is measured</a>
+		<a class="chip" href={resolve('/docs/corpus')}>the inputs</a>
+		<a class="chip" href={resolve('/docs/adapters')}>the adapters, and how to add a library</a>
 	</p>
 	<p>AI disclosure: this is an LLM-generated repo guided by a person.</p>
 </section>
@@ -171,6 +171,11 @@
 </section>
 
 <style>
+	.links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space_xs);
+	}
 	.cards {
 		display: flex;
 		flex-wrap: wrap;
