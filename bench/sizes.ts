@@ -12,8 +12,8 @@
  * mode never minifies the whitespace of an ES build, which is right for a
  * library and wrong for what a page ships, so the build leaves minifying off and
  * the chunk is then minified once, whole, by esbuild called directly
- * (`minify_with_esbuild`; esbuild would keep license comments, and none
- * reaches it). Resolution is a production browser build's, from this repo's
+ * (`minify_with_esbuild`; esbuild keeps license comments, so Prism's bundles
+ * carry its core's). Resolution is a production browser build's, from this repo's
  * `node_modules`. The entry is a virtual module, so no path of this machine
  * reaches the output.
  *

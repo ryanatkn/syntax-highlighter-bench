@@ -231,7 +231,7 @@ describe('plan_startup_round', () => {
 		for (const slot of slots.slice(0, 3)) {
 			assert.deepStrictEqual(new Set(ids.map((_id, round) => first_of(round, slot))), new Set(ids));
 		}
-		// and neighbouring slots of one round start with different libraries
+		// and neighboring slots of one round start with different libraries
 		assert.notStrictEqual(first_of(0, slots[0]!), first_of(0, slots[1]!));
 		// within a slot the order is a rotation of the roster
 		const round = plan_startup_round(scenarios, 2).filter((p) => p.scenario.slot === slots[0]);

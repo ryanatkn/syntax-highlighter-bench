@@ -58,14 +58,15 @@
 				<TomeLink slug="method" />
 			</li>
 			<li>
-				cold start, where each sample is a fresh process that imports a library and stops its own
-				clock, in <code>bench/coldstart.ts</code>, as more processes of the same run — see
+				cold start, part of the same run, where each sample is a fresh process that imports a
+				library and stops its own clock, in <code>bench/coldstart.ts</code> — see
 				<TomeLink slug="method" />
 			</li>
 			<li>
-				the deterministic measurements, which are bundle size over each feature set, token counts,
-				output sizes, and coverage, in <code>bench/deterministic.ts</code>, with their numbers
-				committed as <code>results/deterministic.json</code> — see <TomeLink slug="deterministic" />
+				the deterministic measurements, which are bundle size over each feature set, install
+				footprint, retained heap, token counts, output sizes, and coverage, in
+				<code>bench/deterministic.ts</code>, with their numbers committed as
+				<code>results/deterministic.json</code> — see <TomeLink slug="deterministic" />
 			</li>
 			<li>
 				the schema of the results file, in <ModuleLink module_path="results_schema.ts" /> — see
@@ -93,7 +94,7 @@
 			</li>
 			<li>
 				<strong>Deterministic numbers</strong>, the same anywhere: bundle size over each feature
-				set, token counts, output sizes, and coverage.
+				set, install footprint, retained heap, token counts, output sizes, and coverage.
 			</li>
 		</ul>
 	</TomeSection>
@@ -126,8 +127,8 @@
 		<ul>
 			<li>the maintainer's library is flagged in the results file and on the site</li>
 			<li>
-				every input is labelled by its source, and real code that no measured library authored is
-				the primary set; a snippet or a stress input written for this benchmark is labelled as that,
+				every input is labeled by its source, and real code that no measured library authored is the
+				primary set; a snippet or a stress input written for this benchmark is labeled as that,
 				never as neutral, and no stress input is tuned to a library
 			</li>
 			<li>

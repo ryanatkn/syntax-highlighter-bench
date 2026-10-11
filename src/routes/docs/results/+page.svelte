@@ -114,8 +114,8 @@
 			<strong>Deterministic</strong> numbers come out the same anywhere: token counts and output
 			sizes in each cell's <code>tokens</code>, <code>output</code>, and <code>compressed</code>,
 			plus <code>bundle</code>, <code>install</code>, <code>heap</code>, and <code>coverage</code>.
-			The retained heaps are deterministic for a Node version and platform, within a reading's own
-			jitter of a few kibibytes at most.
+			The retained heaps are deterministic for a Node version and platform, within the tolerance
+			<TomeLink slug="deterministic" /> gives.
 		</p>
 		<p>
 			A file may hold only the deterministic ones. It then has no <code>meta.run</code> and no
@@ -214,12 +214,12 @@
 			compression levels, their deterministic numbers must be equal: the feature sets, the coverage,
 			the bundle sizes, the install footprints, and each cell's token counts and output sizes, raw
 			and compressed. A difference fails the build and names the first place they differ. The
-			retained heaps must agree within a reading's jitter. When a library's version, its
-			dependencies, the corpus, or what built and compressed the bundles (the versions of Vite, of
-			the bundler inside it, and of esbuild, and the compression levels) has moved since the run, or
-			the retained heaps differ by more, as they do when the Node version moves, the run is shown as
-			the snapshot it is, and the line that says where the numbers came from also says what has
-			moved since.
+			retained heaps are compared within the check's tolerance instead, and never fail the build.
+			When a library's version, its dependencies, the corpus, or what built and compressed the
+			bundles (the versions of Vite, of the bundler inside it, and of esbuild, and the compression
+			levels) has moved since the run, or the retained heaps differ by more, as they do when the
+			Node version moves, the run is shown as the snapshot it is, and the line that says where the
+			numbers came from also says what has moved since.
 		</p>
 		<p>
 			The fixture run the tests use holds invented numbers. A build renders it only when the
@@ -244,8 +244,9 @@
 				file and mode
 			</li>
 			<li>
-				an input written for the benchmark has no provenance, a copied one has the hash its
-				provenance pins, and one built from several files is marked synthetic
+				an input written for the benchmark has no provenance, a verbatim copy has the hash its one
+				pin records, and a derived stress input names its derivation, and one built from several
+				files is marked synthetic
 			</li>
 			<li>
 				a run with timed numbers records its anchor, when it started, and its machine, Node version,

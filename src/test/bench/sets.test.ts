@@ -55,7 +55,7 @@ describe('FEATURE_SETS', () => {
 		]);
 	});
 
-	test('web_rust is labelled by content and footnoted as home turf', () => {
+	test('web_rust is labeled by content and footnoted as home turf', () => {
 		const set = get_set('web_rust');
 		assert.strictEqual(set.label, 'web + rust');
 		assert.strictEqual(set.footnote, "fuz_code's full set (home turf)");

@@ -154,12 +154,13 @@ export const to_headline_charts = (results: MatrixResults): Array<HeadlineChart>
 			HEADLINE_COMPRESSION
 		);
 	}
-	const set_note = `the ${set?.label ?? DEFAULT_SET} set (${set?.langs.join(', ') ?? ''}), minified and compressed with ${HEADLINE_COMPRESSION}`;
+	const set_label = `the ${set?.label ?? DEFAULT_SET} set (${set?.langs.join(', ') ?? ''})`;
+	const set_note = `${set_label}, minified and compressed with ${HEADLINE_COMPRESSION}`;
 	charts.push(
 		{
 			row: loaded,
 			title: 'Everything a page loads',
-			note: `${set_note}. The JS, the wasm binary, and the theme stylesheet, each compressed on its own`,
+			note: `the JS, wasm binary, and theme stylesheet of ${set_label}, each compressed on its own with ${HEADLINE_COMPRESSION}`,
 			details: true
 		},
 		{

@@ -314,7 +314,7 @@ export const format_matrix_value = (value: number, unit: MatrixUnit): string => 
 		case 'mb_per_sec':
 			return `${format_significant(value)} MB/s`;
 		case 'ops_per_sec':
-			return `${format_significant(value)} ops/s`;
+			return `${format_significant(value)} calls/s`;
 		case 'ns':
 			return format_ns(value);
 		case 'ms':

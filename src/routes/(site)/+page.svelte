@@ -19,21 +19,22 @@
 		A benchmark of JS syntax highlighters: <a href="https://code.fuz.dev/">fuz_code</a>,
 		<a href="https://twinkleplop.pngwn.at/">Twinkleplop</a>,
 		<a href="https://prismjs.com/">Prism</a>, and <a href="https://shiki.style/">Shiki</a> with each
-		of its two engines, run on the same inputs through one adapter each. It measures throughput,
-		cold start, and memory on one named machine, and bundle size, token counts, and output size,
-		which are the same anywhere.
+		of its two engines, run on the same inputs through one adapter each. It times throughput and
+		cold start on one named machine, and measures bundle size, install footprint, retained memory,
+		token counts, and output size, which come out the same on any machine with the same Node
+		version.
 	</p>
 	<p>
 		The maintainer of this benchmark also maintains fuz_code, so that library is marked wherever it
-		appears, every input is labelled by where it came from, and the
+		appears, every input is labeled by where it came from, and the
 		<a href={resolve('/docs/method')}>method</a> is published for anyone to reproduce.
 	</p>
 	<p>
-		The libraries have different featuresets. Shiki highlights with the TextMate grammars and themes
-		VS Code uses; Twinkleplop aims for a similar feature set, with its own themes, annotations, and
-		Twoslash support; and both do more than fuz_code, which is the smallest of them: a single-pass
-		lexer per language, with CSS classes for its theme. These numbers compare the work all of them
-		share, not what one offers that another doesn't.
+		The libraries have different features. Shiki highlights with the TextMate grammars and themes VS
+		Code uses; Twinkleplop aims for a similar feature set, with its own themes, annotations, and
+		Twoslash support; and both do more than fuz_code, which has the fewest features of the four: a
+		single-pass lexer per language, with CSS classes for its theme. These numbers compare the work
+		all of them share, not what one offers that another doesn't.
 	</p>
 	<p>
 		<a href={resolve('/(site)/results')}>Every result, with filters</a> ·
@@ -46,8 +47,9 @@
 	<h2>Headline figures</h2>
 	<p>
 		Each bar's ratio is to the best library in the chart, where <code>1.00×</code> is the best and a
-		ratio marked <code>≈</code> is inside the machine's noise floor. Hover a bar to compare the
-		others against it instead.
+		ratio marked <code>≈</code> is inside the row's noise floor: the machine's for throughput, and
+		the heap check's tolerance for retained memory. Hover a bar to compare the others against it
+		instead.
 	</p>
 	<div class="charts">
 		{#each data.charts as chart (chart.row.key)}
@@ -74,14 +76,14 @@
 <section>
 	<h2>What the numbers mean in practice</h2>
 	<p>
-		The ratios are large, but whether they matter depends on where the highlighting runs and how
-		often. Which figure to read first:
+		Whether a ratio matters depends on where the highlighting runs and how often. Which figure to
+		read first:
 	</p>
 	<ul>
 		<li>
 			<strong>At build time</strong>, as a static site or documentation build highlights its pages
-			once: throughput sets the build's time and nothing else. Readers get plain HTML, so the bundle
-			size and cold start never reach them.
+			once: throughput sets the build's time and nothing else. Readers get plain HTML, so the JS and
+			the cold start never reach them, though a theme stylesheet still does.
 		</li>
 		<li>
 			<strong>In the browser</strong>: everything a page loads and the cold start to a first
@@ -107,9 +109,10 @@
 			heading="worked out for"
 			label="The HTML throughput worked out for familiar sizes, by library"
 		>
-			The HTML throughput applied to sizes a reader knows. Each figure is the geometric-mean rate
-			over the neutral inputs applied to that size, so it is an estimate: a library's rate differs
-			from input to input, as <a href={resolve('/(site)/results')}>the results page</a> shows.
+			The HTML throughput worked out for sizes a reader knows. Each figure applies the
+			geometric-mean rate over the neutral inputs to that size, so it is an estimate; a library's
+			rate differs from input to input, as <a href={resolve('/(site)/results')}>the results page</a>
+			shows.
 		</MatrixTable>
 	{/if}
 </section>
@@ -129,9 +132,9 @@
 			library pays once, and any language it loads with it, as when a library's TypeScript loads its
 			JS. <strong>One more language</strong> is what the language adds to a bundle that already
 			holds every other timed language, in minified bytes: the price of adding it to a site that has
-			the rest. A language the others already hold, like JS inside TypeScript, adds nothing there.
-			The bars of each group are on one scale, and beside a number is its ratio to the smallest in
-			the row.
+			the rest. A language the others already hold, like JS inside TypeScript, adds little or
+			nothing there. The bars of each group are on one scale, and beside a number is its ratio to
+			the smallest in the row; a row where a library adds nothing has no ratios.
 		</MatrixTable>
 	</section>
 {/if}
@@ -139,7 +142,7 @@
 	<h2>Coverage</h2>
 	<CoverageTable results={data} />
 	<p>
-		The languages measured here are fuz_code's built-in set, so the list favours it: a language
+		The languages measured here are fuz_code's built-in set, so the list favors it: a language
 		fuz_code doesn't have is never measured. Prism and Shiki each support hundreds of languages, and
 		none of that shows here.
 	</p>

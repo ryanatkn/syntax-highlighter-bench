@@ -94,7 +94,7 @@ const AGREEMENT = 0.03;
 /**
  * Measures the anchor.
  *
- * Both readings of a run have to be taken at the same tier of optimisation, or
+ * Both readings of a run have to be taken at the same tier of optimization, or
  * the drift they report is the engine warming up. So the workload is warmed for
  * a fixed time, the reading is the best of several repeats, and it is retaken
  * until two in a row agree, so one interrupt can't become the reading.

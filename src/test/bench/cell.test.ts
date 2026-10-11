@@ -130,7 +130,7 @@ describe('create_timed_call', () => {
 		const before = read_html_sink();
 		assert.strictEqual(create_timed_call(adapter, 'html', 'x', 'json')(), html);
 		assert.strictEqual(read, 1);
-		// the character read is kept, so the read can't be optimised away
+		// the character read is kept, so the read can't be optimized away
 		assert.strictEqual(read_html_sink(), before + 7);
 	});
 });

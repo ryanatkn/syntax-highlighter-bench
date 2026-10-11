@@ -72,7 +72,7 @@ export type CorpusInput = BenchInput & { lang: Lang };
 
 /**
  * The size tiers, by real file size. Each is the largest size, in bytes, that
- * still falls short of the next tier: `small`, `medium`, and `large` centre on
+ * still falls short of the next tier: `small`, `medium`, and `large` center on
  * roughly 1KB, 10KB, and 100KB, split at the geometric midpoints, and `micro`
  * is a snippet of a few lines.
  */
@@ -104,7 +104,7 @@ export const hash_sha256 = (content: Uint8Array | string): string =>
 
 /**
  * Hashes a corpus: the path, language, and content hash of every input, in path
- * order. Any input added, removed, changed, or relabelled changes it.
+ * order. Any input added, removed, changed, or relabeled changes it.
  */
 export const hash_corpus = (inputs: ReadonlyArray<BenchInput>): string =>
 	hash_sha256(

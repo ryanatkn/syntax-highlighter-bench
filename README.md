@@ -17,7 +17,7 @@ plain-text fallback, the harness that times the libraries, warm and from a cold
 start, and writes a results file, the deterministic measurements (bundle size,
 install footprint, retained heap, token counts, output sizes raw and compressed,
 coverage), and the site that renders a results file exist. The deterministic
-numbers are committed as `results/deterministic.json`. The first timed run is
+numbers are committed as `results/deterministic.json`. A timed run is
 published as `results/latest.json`, measured on one named machine, and the site
 renders it.
 
@@ -177,7 +177,7 @@ has the method in full, with what each number means.
 **A process for each library.** A cell is one input in one mode. A process
 measures one library on one cell and loads no other, so no library can move
 another's number: libraries that share code (Shiki's two engines) change how V8
-optimises it for each other, and V8 sizes its young generation from recent
+optimizes it for each other, and V8 sizes its young generation from recent
 allocation, so a time depended on what ran beside it. The process sets up
 exactly the cell's language, checks the output, calibrates its iterations, and
 times its rounds, each after a rewarm (unless one call outlasts it) and a minor
@@ -195,7 +195,7 @@ at a time, and the parent does nothing while it measures.
 **Retries.** A library whose rounds on a cell disagree past a threshold is
 measured again, every pass, a bounded number of times. The attempt kept is the
 one with the lowest spread, never the fastest, which would bias retried numbers
-toward fast and favour a noisier library. `attempts` records it.
+toward fast and favor a noisier library. `attempts` records it.
 
 **The anchor and the noise floor.** A fixed workload with no measured library
 is read before and after every segment of a run; drift past the threshold means
@@ -231,7 +231,7 @@ discarded, and nothing is retried.
   lists the exceptions). A site that loads several languages pays more for
   Markdown.
 - Some inputs are a library's own samples, and some are stress inputs built to
-  find worst cases. Both are labelled, summarized on their own, and kept out of
+  find worst cases. Both are labeled, summarized on their own, and kept out of
   the default view and the headline figures, which use the neutral inputs.
 - A few inputs were built by joining, repeating, or minifying files, and are
   marked synthetic.
@@ -245,12 +245,12 @@ discarded, and nothing is retried.
 
 ## Corpus
 
-Every input is a file under `bench/corpus/`, labelled by where it came from:
+Every input is a file under `bench/corpus/`, labeled by where it came from:
 
 - `neutral` — real files from projects no measured library authored, pinned to
   an upstream commit: the primary set
 - `shiki` — the samples Shiki's own benchmark uses
-- `home` — a measured library's own samples, labelled as its home turf
+- `home` — a measured library's own samples, labeled as its home turf
 - `harness` — one short, syntax-dense snippet per language, written here
 - `stress` — neutral inputs minified, and pathological files (deep nesting,
   very long lines, unterminated constructs, runs of delimiters that never
@@ -383,7 +383,7 @@ The maintainer of this benchmark also maintains fuz_code, so fairness has to be
 structural. By design:
 
 - the maintainer's library is flagged in the results file and on the site
-- every input is labelled by its source — real code no measured library
+- every input is labeled by its source — real code no measured library
   authored, Shiki's own benchmark samples, a library's own samples, or a
   snippet written for this benchmark — and the first is the primary set
 - each adapter documents the entry points it uses, so a library's maintainers
@@ -404,7 +404,7 @@ processes, pools several passes, forces no full collection before a batch
 call. The anchor workload is ported from it, and the adapter
 rules come from the same harness.
 
-Cold start generalises Twinkleplop's cold-start harness across libraries. Kept
+Cold start generalizes Twinkleplop's cold-start harness across libraries. Kept
 from it: a fresh process for each sample, scenarios interleaved round by round,
 the first rounds discarded, the compile cache off, the bundled chunk measured against the unbundled
 import, a bare Node baseline, time to a first highlight, medians rather than

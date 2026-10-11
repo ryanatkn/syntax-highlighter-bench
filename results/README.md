@@ -11,7 +11,7 @@ full on the method page of the site's docs, [`/docs/method`](https://syntax-high
 | --- | --- | --- |
 | `deterministic.json` | the numbers that are the same on any machine: bundle sizes, install footprints, retained heaps (for the Node version the check workflow pins), token counts, output sizes raw and compressed, coverage. `npm run bench:deterministic` regenerates it anywhere, and the check workflow fails when the committed file differs from what regenerates | yes |
 | `latest.json` | the published timed run, which the site renders. Without it the site renders `deterministic.json` and shows no timed number | yes |
-| `<UTC date>_<machine>.json` | a full run, as the harness writes it: named by the UTC date it started and the name given to `--machine`. `latest.json` is a copy of one of these, made by `npm run results:publish` | yes, for a run that is published |
+| `<UTC date>_<machine>.json` | a full run, as the harness writes it: named by the UTC date it started and the name given to `--machine`. `latest.json` is a copy of one of these, made by `npm run results:publish` | yes, for each run that was published |
 | `calibration_<machine>.json` | a machine's noise floor, from a calibration run. A full run on the same machine copies the floor into its own file | yes, beside the run that carries it |
 | `scratch/` | smoke runs and filtered runs, which are never publishable | no: git ignores it |
 | `full_<machine>.journal.jsonl`, `calibrate_<machine>.journal.jsonl` | the journal of a timed run that has not finished: every process's result, appended as it is measured, so a stopped run can be resumed. It is removed when the results file is written | no: git ignores it |
@@ -277,7 +277,7 @@ node -e "const m=require('./results/latest.json').meta;console.log(m.commit,m.no
 - **Memory is a whole process.** `rss_peak_bytes` is the peak resident size of
   a process: Node, the library, and the input, not what the library adds. See
   [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method).
-- **Some inputs are a library's own samples.** They are labelled with that
+- **Some inputs are a library's own samples.** They are labeled with that
   library and kept out of the headline figures. See
   [the corpus](../README.md#corpus).
 

@@ -519,10 +519,10 @@ describe('the commands', { timeout: 30_000 }, () => {
 		}
 	});
 
-	test('the html call hands back a flat string from every library, cold and optimised', () => {
+	test('the html call hands back a flat string from every library, cold and optimized', () => {
 		// some libraries return a rope, and the timed call must pay to flatten it as a
 		// consumer would. Only the engine can say whether a string is flat, and an
-		// optimised call is where a read whose result goes nowhere would be dropped.
+		// optimized call is where a read whose result goes nowhere would be dropped.
 		const script = `
 			import { create_timed_call, load_adapter, read_html_sink } from './bench/cell.ts';
 			const src = 'const a: number = 1;\\nexport const b = [a, "two"];\\n'.repeat(40);
@@ -537,12 +537,12 @@ describe('the commands', { timeout: 30_000 }, () => {
 				run();
 				run();
 				%OptimizeFunctionOnNextCall(run);
-				const optimised = %StringIsFlat(run());
+				const optimized = %StringIsFlat(run());
 				let hot = true;
 				// a string that is flat as returned has no read to drop, so a few calls do
 				const calls = raw ? 20 : 2000;
 				for (let i = 0; i < calls; i++) hot = %StringIsFlat(run()) && hot;
-				flat[id] = { raw, cold, optimised, hot };
+				flat[id] = { raw, cold, optimized, hot };
 			}
 			console.log(JSON.stringify({ flat, sink: read_html_sink() }));
 		`;
@@ -552,16 +552,16 @@ describe('the commands', { timeout: 30_000 }, () => {
 			flat,
 			sink
 		}: {
-			flat: Record<string, { raw: boolean; cold: boolean; optimised: boolean; hot: boolean }>;
+			flat: Record<string, { raw: boolean; cold: boolean; optimized: boolean; hot: boolean }>;
 			sink: number;
 		} = JSON.parse(run.stdout);
 		assert.deepStrictEqual(
 			Object.keys(flat),
 			ADAPTERS.map((a) => a.id)
 		);
-		for (const [id, { cold, optimised, hot }] of Object.entries(flat)) {
+		for (const [id, { cold, optimized, hot }] of Object.entries(flat)) {
 			assert.ok(cold, `${id} cold`);
-			assert.ok(optimised, `${id} optimised`);
+			assert.ok(optimized, `${id} optimized`);
 			assert.ok(hot, `${id} after many calls`);
 		}
 		// the case this guards is real: at least one library returns a rope

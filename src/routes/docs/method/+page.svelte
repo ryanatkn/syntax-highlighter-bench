@@ -40,7 +40,7 @@ node bench/run.ts --help`;
 			The method builds on the comparison harness of
 			<a href="https://github.com/pngwn/twinkleplop">Twinkleplop</a> (MIT), and the anchor workload
 			is ported from it. It differs in giving each library a process of its own, where Twinkleplop
-			measures a cell's libraries together in one. The cold-start scenarios generalise Twinkleplop's
+			measures a cell's libraries together in one. The cold-start scenarios generalize Twinkleplop's
 			cold-start harness across libraries.
 		</p>
 	</section>
@@ -64,13 +64,13 @@ node bench/run.ts --help`;
 		<p>Two effects made that necessary, and both showed up as a library disagreeing with itself:</p>
 		<ul>
 			<li>
-				Libraries that share code change how the JS engine optimises that code for each other.
-				Shiki's two engines share its tokenizer, and in one process the JS engine measured far
+				Libraries that share code change how V8 optimizes that code for each other. Shiki's two
+				engines share its tokenizer, and beside the wasm engine Shiki's JS engine measured far
 				slower than it does alone.
 			</li>
 			<li>
-				The engine sizes its young generation from what has been allocating. In a shared process a
-				library's time on a large input depended on which libraries ran beside it.
+				V8 sizes its young generation from recent allocation. In a shared process a library's time
+				on a large input depended on which libraries ran beside it.
 			</li>
 		</ul>
 		<p>
@@ -80,9 +80,9 @@ node bench/run.ts --help`;
 			pools the rounds of all its passes.
 		</p>
 		<p>
-			The engine runs with its defaults, which is what a consumer gets. One process runs at a time,
-			and the parent does nothing while it measures: it blocks on the child and reads its output
-			after it exits.
+			Node runs with its default flags, which is what a consumer gets. In a timed run one process
+			runs at a time, and the parent does nothing while it measures: it blocks on the child and
+			reads its output after it exits.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -101,18 +101,18 @@ node bench/run.ts --help`;
 			<li>
 				<strong>Iterations calibrated for the library.</strong> Speeds differ by orders of
 				magnitude, so a batch makes the number of calls that fills the target duration. A batch
-				makes at least a few calls while they fit a cap, and a call too long for that is measured
-				once per batch.
+				makes at least a few calls while they fit a cap, as many as fit when fewer do, and one when
+				two no longer fit.
 			</li>
 			<li>
 				<strong>A rewarm and a minor collection before every timed batch.</strong> The library runs
 				untimed until it is back to speed, and a minor collection then clears what the rewarm
-				allocated, so that collection doesn't land inside the batch. No full collection is forced
-				between batches. One forced before every batch puts some libraries through a race each
-				round: it can discard optimised code whose hidden classes only short-lived objects hold, so
-				the library re-optimises inside the clock, and it re-rolls how memory a library allocates
-				outside the JS heap is reused, so a process settles at one of two speeds. A minor collection
-				does neither.
+				allocated, so the collection it would cause doesn't land inside the batch. No full
+				collection is forced between batches. One forced before every batch puts some libraries
+				through a race each round: it can discard optimized code whose hidden classes only
+				short-lived objects hold, so the library re-optimizes inside the clock, and it re-rolls how
+				memory a library allocates outside the JS heap is reused, so a process settles at one of two
+				speeds. A minor collection does neither.
 			</li>
 			<li>
 				<strong>Results are kept and counted.</strong> A batch keeps its last result, and after the
@@ -131,14 +131,14 @@ node bench/run.ts --help`;
 			</li>
 		</ul>
 		<p>
-			The collection needs the process started with <code>--expose-gc</code>, which
+			The forced minor collection needs the process started with <code>--expose-gc</code>, which
 			<code>bench/run.ts</code> passes to each process.
 		</p>
 		<p>
 			A full run measures each library in 3 processes per cell, each timing 4 rounds of 20ms
 			batches, after a 100ms warmup, with a 300ms rewarm before each batch. A library whose one call
-			takes longer than the rewarm gets none: the batch before keeps it warm, and a rewarm would
-			only repeat that call.
+			takes at least as long as the rewarm gets none: the batch before keeps it warm, and a rewarm
+			would only repeat that call.
 		</p>
 		<p>
 			The rewarm is longer than the warmup on purpose. The engine still runs full collections of its
@@ -216,12 +216,12 @@ node bench/run.ts --help`;
 			cell. <TomeLink slug="deterministic" /> describes them, and the bundle sizes a run carries.
 		</p>
 		<p>
-			<code>rss_peak_bytes</code> is a whole process: Node itself, the library as its adapter
-			imports it, with one language set up, and the input. It is not what the library adds to a
-			page, and most of it is the same for every library. Compare it between libraries on the same
-			cell. On a small input it says little about footprint: a process warms up and is timed for a
-			fixed duration, so its peak follows how much the library allocated in that time more than what
-			it holds. What a library holds is the retained heap, described in
+			<code>rss_peak_bytes</code> is a whole process: Node itself, the harness, the library as its
+			adapter imports it, with one language set up, and the input. It is not what the library adds
+			to a page, and most of it is the same for every library. Compare it between libraries on the
+			same cell. On a small input it says little about footprint: a process warms up and is timed
+			for a fixed duration, so its peak follows how much the library allocated in that time more
+			than what it holds. What a library holds is the retained heap, described in
 			<TomeLink slug="deterministic" />.
 		</p>
 	</TomeSection>
@@ -275,7 +275,7 @@ node bench/run.ts --help`;
 			adapter modules themselves are never loaded here. Some of them import every language, which
 			would charge a library for languages the scenario doesn't load. A first highlight makes the
 			call the adapter documents for that module (<code>bundle_html_source</code>), and the check of
-			every built bundle proves it is the call <code>bundle_html</code> makes.
+			every built bundle confirms it returns the same HTML as <code>bundle_html</code>.
 		</p>
 		<p><strong>Two forms</strong> of every scenario, apart from <code>bare</code>:</p>
 		<ul>
@@ -292,9 +292,9 @@ node bench/run.ts --help`;
 			</li>
 		</ul>
 		<p>
-			The gap between the two is mostly Node finding, reading, and compiling many files in place of
-			one, which a browser or a bundled server never pays. Read the form that matches how the
-			library would be shipped.
+			The gap between the two is Node finding, reading, and compiling many files in place of one,
+			and code the bundler removed, which a bundled page or server doesn't pay. Read the form that
+			matches how the library would be shipped.
 		</p>
 		<p>
 			<strong>Start is the start of the process, by its own clock.</strong> The process reads
@@ -341,8 +341,8 @@ node bench/run.ts --help`;
 			that can't be imported outside a bundler would show. A process that was ended, by a signal or
 			an abort, did not fail on its own: that fails the run, which can be resumed, and excludes
 			nothing. A scenario over languages a library doesn't claim is unsupported, and is never run.
-			Every later sample must agree with the first, and a first highlight's HTML must be the size
-			the deterministic results have for that library on that snippet.
+			Every later sample must agree with the first, and when the run carries the deterministic
+			results, a first highlight's HTML must be the size they have for that library on that snippet.
 		</p>
 		<table>
 			<thead>
@@ -384,14 +384,15 @@ node bench/run.ts --help`;
 			data the library loaded, and for a first highlight what one call allocated, at the sizes the
 			engine chose for a process of that age. The retained heap, described in
 			<TomeLink slug="deterministic" />, is the steadier figure for what a library holds: read after
-			collecting garbage, without Node, and the same from one process to the next.
+			collecting garbage, less a bare process's, and the same from one process to the next within a
+			small tolerance.
 		</p>
 		<p>
 			<strong>Nothing is retried.</strong> A disturbance lands on one sample of every scenario, not
 			on one scenario, and the median over many processes sets a slow one aside. Sampling one
 			scenario again later would also take it out of the rounds that make the scenarios comparable.
 			There is no noise floor for cold start either: a calibration measures the timed cells only.
-			Until one exists, treat a difference between two scenarios that is inside either one's
+			Without one, treat a difference between two scenarios that is inside either one's
 			<code>p10_ms</code> to <code>p90_ms</code> band as no difference.
 		</p>
 		<p>
@@ -455,8 +456,8 @@ node bench/run.ts --help`;
 					<td><code>--metrics</code></td>
 					<td>
 						measure only <code>throughput</code> (the timed cells) or only <code>startup</code>
-						(cold start). Both by default, and naming both, or <code>throughput</code> on a
-						calibration, which measures nothing else, is no filter
+						(cold start). Both by default. Naming both is no filter, and neither is
+						<code>throughput</code> on a calibration, which measures nothing else
 					</td>
 				</tr>
 				<tr>
@@ -511,7 +512,8 @@ node bench/run.ts --help`;
 			A full run with no filters is written to <code>results/</code>, named by the UTC date it
 			started and its machine, and it won't overwrite a run already there. A smoke run or a filtered
 			one is written to <code>results/scratch/</code>, which git ignores, so it can't be committed
-			as if it were a result. A failed process fails the run, and no results file is written.
+			as if it were a result. A cell process that fails, or any process ended by a signal, fails the
+			run, and no results file is written; the journal keeps what was measured.
 		</p>
 		<p>
 			<code>--plan</code> makes every check a run makes before it measures, then prints the cells,
@@ -534,8 +536,9 @@ node bench/run.ts --help`;
 		<ul>
 			<li>
 				<strong>What is recorded.</strong> A first line describing the run, then for each stretch of
-				measuring, a segment, its opening anchor reading, one line for every process result, a
-				cell's or a cold-start sample's, and its closing anchor reading.
+				measuring (a segment) a line with its opening anchor reading and load average, one line for
+				every process result, a cell's or a cold-start sample's, and a line with its closing anchor
+				reading.
 			</li>
 			<li>
 				<strong>What must match.</strong> The kind of run, its parameters and filters, the corpus
@@ -601,18 +604,17 @@ node bench/run.ts --help`;
 		<p>
 			The attempt kept is the one with the lowest spread, the earliest if they tie. It is never
 			chosen by its time. Keeping the fastest attempt would pull every retried number toward fast,
-			and would favour a noisier library, which is retried more often. Choosing on agreement alone
+			and would favor a noisier library, which is retried more often. Choosing on agreement alone
 			takes the measurement that was least disturbed, whichever way it moved the number.
 		</p>
 		<p>
 			<code>attempts</code> records how many times a library was measured on a cell, so the numbers
 			that needed a retry can be told from the rest. A retried value's spread and percentiles are
 			those of the attempt that was kept, so they describe its calmest attempt, not everything that
-			was measured, and <code>attempts</code> is what marks it. The summary a run prints counts the
-			retried cells of each library, and lists the library-cells still over the threshold after the
-			last attempt. What should be the same every time, the token count, the output size, and
-			whether the library passed the check, must agree across attempts as it must across passes, or
-			the run fails at that cell.
+			was measured. The summary a run prints counts the retried cells of each library, and lists the
+			library-cells still over the threshold after the last attempt. What should be the same every
+			time (the token count, the output size, and whether the library passed the check) must agree
+			across attempts as it must across passes, or the run fails at that cell.
 		</p>
 		<p>A smoke run doesn't retry, and cold-start scenarios are never retried.</p>
 	</TomeSection>
@@ -729,35 +731,35 @@ node bench/run.ts --help`;
 			lock, the file <code>/tmp/fuz_benchmark.lock</code> that names its process, and holds it for
 			as long as it measures, as does each segment of a resumed run. The path is fixed and ignores
 			<code>TMPDIR</code>, and the lock is fuz_util's benchmark lock, so any other benchmark that
-			uses fuz_util's benchmark lock takes the same one and never measures at the same time as this
-			one. A second run is refused and told who holds the lock. A lock whose process is gone is
-			taken over.
+			uses it takes the same one and never measures at the same time as this one. A second run is
+			refused and told who holds the lock. A lock whose process is gone is taken over.
 		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Caveats" />
 		<ul>
 			<li>
-				<strong>Features vary.</strong> The libraries have different featuresets. Shiki highlights
-				with the TextMate grammars and themes VS Code uses; Twinkleplop aims for a similar feature
-				set, with its own themes, annotations, and Twoslash support; and both do more than fuz_code,
-				which is the smallest of them: a single-pass lexer per language, with CSS classes for its
-				theme. These numbers compare the work all of them share, not what one offers that another
-				doesn't.
+				<strong>Features vary.</strong> The libraries have different features. Shiki highlights with
+				the TextMate grammars and themes VS Code uses; Twinkleplop aims for a similar feature set,
+				with its own themes, annotations, and Twoslash support; and both do more than fuz_code,
+				which has the fewest features of the four: a single-pass lexer per language, with CSS
+				classes for its theme. These numbers compare the work all of them share, not what one offers
+				that another doesn't.
 			</li>
 			<li>
 				<strong>The languages are fuz_code's.</strong> The languages measured are fuz_code's
-				built-in set, so the list favours it: a language fuz_code doesn't have is never measured.
+				built-in set, so the list favors it: a language fuz_code doesn't have is never measured.
 				Prism and Shiki each support hundreds of languages, and none of that shows here.
 			</li>
 			<li>
 				<strong>Classes and inline styles.</strong> Shiki resolves colors while it tokenizes and
 				writes them inline, and the other libraries emit class names that a stylesheet colors. The
-				<code>html</code> mode measures what each library ships, which is not the same work.
+				<code>html</code> mode measures the HTML each library returns by default, which is not the
+				same work.
 			</li>
 			<li>
 				<strong>Token counts differ.</strong> A library that emits fewer tokens for the same source
-				is doing less work for each byte, not the same work faster.
+				may be doing less work for each byte, not the same work faster.
 			</li>
 			<li>
 				<strong>Synchronous paths.</strong> A library with an async API loads in its setup and is
@@ -777,7 +779,7 @@ node bench/run.ts --help`;
 			</li>
 			<li>
 				<strong>Home turf.</strong> Some inputs are a measured library's own samples, which it was
-				developed against. They are labelled with that library wherever they appear, summarized by
+				developed against. They are labeled with that library wherever they appear, summarized by
 				owner, and left out of the default view and the headline figures, which use the neutral
 				inputs.
 			</li>
@@ -793,13 +795,13 @@ node bench/run.ts --help`;
 				not this number.
 			</li>
 			<li>
-				<strong>One bundler's sizes.</strong> A bundle size is what a page built with Vite and the
-				Rolldown inside it, then minified by esbuild, ships; the results file records the three
+				<strong>One bundler's sizes.</strong> A bundle size is what a page ships when Vite, with the
+				Rolldown inside it, builds it and esbuild minifies it; the results file records the three
 				versions. Another bundler can remove different code from the same entry, since what it can
 				prove unused, whether it folds a constant argument into a function, and how it wraps
 				CommonJS all vary. Built by Rollup, which Vite used before Rolldown, with the same options,
 				the bundles differ unevenly: Rollup removes Twinkleplop's diagnostics code, which it proves
-				is never called, and Rolldown keeps it; Rollup specialises a function fuz_code's Markdown
+				is never called, and Rolldown keeps it; Rollup specializes a function fuz_code's Markdown
 				language calls with a constant argument, and Rolldown doesn't; and Rolldown adds a small
 				CommonJS interop helper to Prism's bundles.
 			</li>
@@ -843,12 +845,12 @@ node bench/run.ts --help`;
 			A results file records the commit, the Node version, the machine, the corpus hash, and every
 			library's version and extra packages. From a checkout of that commit, <code>npm ci</code>
 			installs the same versions, and the command for the kind of run measures it again. The
-			deterministic numbers come out the same anywhere, and a run stops if one of its processes
-			disagrees with the committed <TomeLink slug="deterministic" />. A full run with no filters is
-			refused unless that file describes it, so run the smoke run first: it checks every cell and
-			every first highlight against the file, before a long run can stop on a disagreement. The
-			timed ones depend on the machine, so compare the ratios between libraries rather than the
-			times.
+			deterministic numbers come out the same on any machine running the same Node version, the
+			retained heap within its tolerance, and a run stops if one of its processes disagrees with the
+			committed <TomeLink slug="deterministic" />. A full run with no filters is refused unless that
+			file describes it. Run the smoke run first: it checks every cell and every first highlight
+			against the file, before a long run can stop on a disagreement. The timed numbers depend on
+			the machine, so compare the ratios between libraries rather than the times.
 		</p>
 		<p>
 			A quiet machine matters more than a fast one: close other programs, and prefer a fixed CPU

@@ -98,19 +98,19 @@ describe('check_output', () => {
 	});
 
 	// What Shiki renders when a loaded grammar matches nothing: every line wrapped,
-	// and its text in one span of the theme's default colour.
+	// and its text in one span of the theme's default color.
 	const SHIKI_DEFAULT_COLOUR_FALLBACK =
 		'<pre class="shiki github-light" style="background-color:#fff;color:#24292e" tabindex="0"><code>' +
 		'<span class="line"><span style="color:#24292E">const a = 1;</span></span>\n' +
 		'<span class="line"><span style="color:#24292E">const b = `x${a}`;</span></span></code></pre>';
 
-	test('the per-input floor alone lets a default-colour fallback through', () => {
+	test('the per-input floor alone lets a default-color fallback through', () => {
 		// two kinds of span, like prose-heavy Markdown, so this floor cannot tell them apart
 		const adapter = create_adapter({ html: () => SHIKI_DEFAULT_COLOUR_FALLBACK });
 		assert.ok(check_output(adapter, 'ts', 'const a = 1').ok);
 	});
 
-	test('the snippet gate excludes a default-colour fallback', () => {
+	test('the snippet gate excludes a default-color fallback', () => {
 		assert.ok(MIN_SNIPPET_SPAN_KINDS > MIN_SPAN_KINDS);
 		const adapter = create_adapter({ html: () => SHIKI_DEFAULT_COLOUR_FALLBACK });
 		const result = check_output(adapter, 'ts', 'const a = 1', MIN_SNIPPET_SPAN_KINDS);

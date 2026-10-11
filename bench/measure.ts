@@ -18,8 +18,8 @@
  *   outlasts the rewarm gets none: the batch before keeps it warm, and a rewarm
  *   would only repeat that call. No full collection is forced: one
  *   between rounds puts some libraries through a race every round. A forced
- *   full collection discards optimised code whose hidden classes only per-call
- *   objects hold, so the library re-optimises inside the clock, and it re-rolls
+ *   full collection discards optimized code whose hidden classes only per-call
+ *   objects hold, so the library re-optimizes inside the clock, and it re-rolls
  *   how memory the library allocates outside the heap is reused, so a process
  *   settles at one of two speeds per round. A minor collection does neither.
  * - **Results are kept.** A batch keeps its last result, and that result is
@@ -200,7 +200,7 @@ export const measure_call = (
 	const { rounds, target_ms, warmup_ms, rewarm_ms } = options;
 	const { now, collect_minor } = deps;
 
-	// a library that isn't warm measures the optimiser
+	// a library that isn't warm measures the optimizer
 	const warm_ns = run_for(call.run, warmup_ms, now);
 	// when one call already exceeds the target, probing would only repeat a slow call
 	const per_op_ns =

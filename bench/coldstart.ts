@@ -40,7 +40,7 @@
  * sample reports that no cache directory is in use: with it a second process
  * would not compile what it loads, and would not be cold.
  *
- * The scenario set and the method generalise the cold-start harness of
+ * The scenario set and the method generalize the cold-start harness of
  * Twinkleplop (https://github.com/pngwn/twinkleplop, MIT) across libraries: a
  * process per sample, scenarios interleaved, first rounds discarded, bundled
  * against unbundled, a bare baseline, time to first highlight.
@@ -237,7 +237,7 @@ export interface PlannedStartup {
  * once, slot by slot. The library a slot starts with rotates from round to
  * round and from slot to slot, so no library always runs first in its slot. The
  * order within a slot is a rotation, so a library usually follows the same
- * neighbour.
+ * neighbor.
  *
  * Every round holds every scenario, so the scenarios are interleaved over the
  * whole of the measuring: a machine that slows down slows every scenario's

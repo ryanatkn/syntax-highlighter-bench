@@ -38,9 +38,9 @@
 			site renders.
 		</p>
 		<p>
-			The languages measured are fuz_code's built-in set, so the list favours it: a language
-			fuz_code doesn't have is never measured. Prism and Shiki each support hundreds of languages,
-			and none of that shows here.
+			The languages measured are fuz_code's built-in set, so the list favors it: a language fuz_code
+			doesn't have is never measured. Prism and Shiki each support hundreds of languages, and none
+			of that shows here.
 		</p>
 	</section>
 	<TomeSection>
@@ -170,9 +170,8 @@
 			<li>
 				<code>timed</code> — every timed language, which every library claims, and
 				<code>without:&lt;lang&gt;</code> — the same less one of them. Subtracting the second from
-				the first gives what a language adds to a bundle that already holds all the others. Unlike
-				<code>single:&lt;lang&gt;</code> less <code>core</code>, that never includes runtime the
-				first language loaded pays for, and a language the others already hold adds nothing.
+				the first gives what one more language adds, without the runtime the first language pays
+				for. <TomeLink slug="deterministic" /> says how to read it.
 			</li>
 		</ul>
 		<p>
