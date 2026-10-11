@@ -6,7 +6,7 @@
 .table-scroll {
 	overflow: auto;
 	max-height: 85svh;
-	margin-bottom: var(--space_lg);
+	margin-bottom: var(--flow_margin, var(--space_lg));
 }
 .table-scroll > table {
 	width: 100%;

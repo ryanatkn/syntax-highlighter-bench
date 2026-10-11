@@ -20,7 +20,7 @@
 
 <style>
 	figure {
-		margin: 0 0 var(--space_lg);
+		margin: 0 0 var(--flow_margin, var(--space_lg));
 	}
 	ul {
 		display: flex;

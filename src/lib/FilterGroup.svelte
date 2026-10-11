@@ -34,7 +34,7 @@
 			</label>
 		{/each}
 	</div>
-	<div class="row gap_xs">
+	<div class="row gap_xs sized_sm">
 		<button
 			type="button"
 			aria-label="select every choice of {legend}"

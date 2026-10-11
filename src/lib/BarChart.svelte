@@ -93,7 +93,7 @@
 		</div>
 	{/if}
 	<p class="bar-notes">
-		<small>{`${row.direction} is better${note ? ` - ${note}` : ''}`}</small>
+		<small>{`${row.direction} is better${note ? ` — ${note}` : ''}`}</small>
 		{#if row.note}<small>{row.note}</small>{/if}
 	</p>
 </figure>

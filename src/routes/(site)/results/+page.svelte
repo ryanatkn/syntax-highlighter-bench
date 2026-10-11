@@ -565,6 +565,11 @@
 		align-items: flex-start;
 		gap: var(--space_lg);
 	}
+	/* the gap spaces the controls, as in fuz_css's `.row`, so their flow margins would
+	   only pad the bottom of the form */
+	.filters > :global(*) {
+		margin: 0;
+	}
 	.sections {
 		display: flex;
 		flex-wrap: wrap;
