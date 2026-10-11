@@ -32,9 +32,10 @@ import{D as e,F as t,G as n,I as r,L as i,M as a,Q as o,_t as s,at as c,d as l,f
 			formed, but it is not a working component: unrelated scripts share one scope, so their names
 			collide and Svelte's parser rejects it. No source is rewritten to avoid that. The manifest
 			lists every component it is built from.</p>`,1),K=i(`<!> <p><code>bench/corpus/manifest.json</code> holds one <!> for
-			each input: its path, source, language, tier, size in bytes and lines, SHA-256, whether it is
-			synthetic, and its provenance. A results file carries the same entries for the inputs it
-			measured, described in <!>.</p> <p>Provenance is a list of <!> pins, each a repository, a
+			each input: its path, source (with the library, for a home input), language, tier, size in
+			bytes and lines, SHA-256, whether it is synthetic, its provenance, and for a derived stress
+			input its derivation. A results file carries the same entries for the inputs it measured,
+			described in <!>.</p> <p>Provenance is a list of <!> pins, each a repository, a
 			commit, a path, a hash, and a license:</p> <ul><li>none, for a harness snippet or a stress input written here</li> <li>one, for a verbatim copy, whose hash must equal the input's; the copy is still marked
 				synthetic when its upstream built it by joining files</li> <li>one, for a derived stress input, whose <code>derivation</code> names the transformation that
 				made it from that file</li> <li>several, for a synthetic input, naming what it was built from</li></ul> <p>The manifest also holds a hash over the whole corpus. A run records it, so two runs over

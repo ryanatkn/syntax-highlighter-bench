@@ -28,8 +28,8 @@ import{F as e,L as t,M as n,Q as r,_t as i,at as a,ft as o,nt as s,pt as c,rt as
 				its script and style languages, renders differently and fails.</li> <li>For a bundle of several languages, the HTML must have as many kinds of styled span as the
 				snippet gate of <!> asks for. Equality doesn't hold there by
 				design: a Markdown fence is highlighted when its language is in the bundle, and left plain
-				in a process with one language loaded.</li></ul> <p>A bundle that doesn't import or exports nothing fails too. The check doesn't prove a bundle is
-			the smallest that works.</p>`,1),C=t(`<!> <p>One set holds no languages, and for each language one set holds it alone, so the bytes a
+				in a process with one language loaded.</li></ul> <p>A bundle that fails to import, or exports nothing, fails too. The check doesn't prove a bundle
+			is the smallest that works.</p>`,1),C=t(`<!> <p>One set holds no languages, and for each language one set holds it alone, so the bytes a
 			language adds to a library are <code>single:&lt;lang&gt;</code> minus <code>core</code>, with
 			no extra measurement. The results page derives that view from the sets and never stores it, so
 			it can't drift from them. It is the default view of the bundle sizes there.</p> <p>The sum of those differences over a set and the set's measured size differ when a library
@@ -83,11 +83,12 @@ import{F as e,L as t,M as n,Q as r,_t as i,at as a,ft as o,nt as s,pt as c,rt as
 				counted at the size it has grown to, which it never gives back. The OS backs only the pages
 				it has touched, so resident memory can be lower.</li></ul> <p>The process imports the bundle, not the adapter: some adapters import every language
 			statically, and an adapter is TypeScript, which would load Node's type stripper into the
-			reading. The generated module holds nothing of the harness, as a cold-start process doesn't.</p> <p>It runs with three flags, for this reading only. The timed cells run with <code>--expose-gc</code> alone, for their minor collections, and cold start with none. <code>--expose-gc</code> gives it the collections. <code>--max-semi-space-size=16</code> pins
-			the young generation, which V8 otherwise sizes from the machine's memory, and a small one
-			leaves some libraries holding a different amount. <code>--single-threaded</code> keeps the
-			engine from finishing compilation on another thread between the collections and the reading,
-			which otherwise moves Shiki's figures by kilobytes from one process to the next.</p> <p>A theme in a stylesheet is held by the page, not the library, so a library that writes its
+			reading. The generated module holds nothing of the harness, as a cold-start process doesn't.</p> <p>It runs with three flags, for this reading only: the timed cells run with <code>--expose-gc</code> alone, and cold start with none. <code>--expose-gc</code> gives it
+			the collections. <code>--max-semi-space-size=16</code> pins the young generation, which V8
+			otherwise sizes from the machine's memory, and a small one leaves some libraries holding a
+			different amount. <code>--single-threaded</code> keeps the engine from finishing compilation
+			on another thread between the collections and the reading, which otherwise moves Shiki's
+			figures by kilobytes from one process to the next.</p> <p>A theme in a stylesheet is held by the page, not the library, so a library that writes its
 			styles inline holds its theme in these figures and one that writes classes doesn't, as with
 			the bundle sizes. The figures are after one highlight of a small snippet; larger inputs leave
 			more, most of all for regexp and wasm engines.</p>`,1),D=t(`<!> <p>The coverage matrix is each adapter's language map: <code>true</code> for a language the
@@ -97,14 +98,13 @@ import{F as e,L as t,M as n,Q as r,_t as i,at as a,ft as o,nt as s,pt as c,rt as
 			and no commit. The Node version does shape the compressed sizes and the heaps (below), but a
 			file naming it would differ between machines that agree, and a commit can't name the tree it
 			is itself committed in. What the numbers do depend on is in the file:</p> <ul><li>each library's version, and the versions of its separately versioned packages</li> <li>each library's install closure, as a hash</li> <li>the corpus hash</li> <li>the versions of Vite, of the Rolldown inside it, and of esbuild, and the compression levels,
-				in <!></li></ul> <p>Two dependencies are not recorded by version. The gzip and brotli sizes, of bundles and of
-			HTML alike, come from the zlib and brotli inside Node, and a Node with another version of
-			either can compress to a few bytes more or less. The file is generated on the Node version the
-			checks run on. And the retained heaps follow V8's object layout: they are for the Node version
-			the checks run on, on x64, without pointer compression, as official Node builds are. The
-			install footprints follow the versions the lockfile installs, which a dependency update moves
-			without moving a library's own version; the closure hash records them. A failed check says
-			which of these it looks like.</p> <p> <code>≈</code>.</p>`,1),k=t(`<!> <p>A timed run, described in <!>, takes its cells' token counts and output
+				in <!></li></ul> <p>Node itself is not recorded, and two of its parts shape the numbers. The gzip and brotli
+			sizes, of bundles and of HTML alike, come from the zlib and brotli inside Node, and another
+			version of either can compress to a few bytes more or less. The retained heaps follow V8's
+			object layout: they are for x64 without pointer compression, as official Node builds are. So
+			the file is generated on the Node version the checks run on. The install footprints follow the
+			versions the lockfile installs, which a dependency update moves without moving a library's own
+			version; the closure hash records them. A failed check says which of these it looks like.</p> <p> <code>≈</code>.</p>`,1),k=t(`<!> <p>A timed run, described in <!>, takes its cells' token counts and output
 			sizes from its own processes, by the same check under the same setup. When the deterministic
 			file describes the run (the same library versions and extra packages, install closures,
 			corpus, and feature sets), the run does two more things:</p> <ul><li>it compares each library's first result on a cell with the file, and stops at a difference</li> <li>it copies the bundle sizes, the install footprints, the retained heaps, and the HTML's
@@ -128,10 +128,9 @@ npm run bench:deterministic -- --check  <span class="token_comment"># regenerate
 			bundles doesn't isolate one language's share, and can come out negative. A language the others
 			already hold, like JS inside TypeScript, adds nothing there: an addition under
 			16 bytes is shown as already included, and a language every library
-			already includes has no row.`)),e(t,o)},$$slots:{default:!0}});var R=a(L,2);h(R,{children:(t,n)=>{var r=w(),o=l(r);g(o,{text:`Token counts and output sizes`});var c=a(o,2),d=a(s(c));f(d,{slug:`corpus`}),i(7),u(c),i(12),e(t,r)},$$slots:{default:!0}});var z=a(R,2);h(z,{children:(t,n)=>{var r=T(),o=l(r);g(o,{text:`Install footprint`});var c=a(o,2),d=a(s(c),3);p(d,{name:`BenchInstall`}),i(5),u(c),i(10),e(t,r)},$$slots:{default:!0}});var B=a(z,2);h(B,{children:(t,n)=>{var r=E(),o=l(r);g(o,{text:`Retained heap`});var c=a(o,2),d=a(s(c));p(d,{name:`BenchHeap`}),i(7),u(c),i(8),e(t,r)},$$slots:{default:!0}});var V=a(B,2);h(V,{children:(t,n)=>{var r=D(),o=l(r);g(o,{text:`Coverage`});var c=a(o,2),d=a(s(c),3);p(d,{name:`BenchCoverageEntry`});var m=a(d,2);f(m,{slug:`adapters`}),i(),u(c),e(t,r)},$$slots:{default:!0}});var H=a(V,2);h(H,{children:(t,o)=>{var c=O(),d=l(c);g(d,{text:`What the file records`});var f=a(d,4),m=a(s(f),6),h=a(s(m));p(h,{name:`BenchBundler`}),u(m),u(f);var _=a(f,4),b=s(_);i(2),u(_),r(e=>n(b,`A heap reading can also differ from the last by a little between two processes on the same
-			machine. Two readings agree to well under a kibibyte, and the check still compares them within
+			already includes has no row.`)),e(t,o)},$$slots:{default:!0}});var R=a(L,2);h(R,{children:(t,n)=>{var r=w(),o=l(r);g(o,{text:`Token counts and output sizes`});var c=a(o,2),d=a(s(c));f(d,{slug:`corpus`}),i(7),u(c),i(12),e(t,r)},$$slots:{default:!0}});var z=a(R,2);h(z,{children:(t,n)=>{var r=T(),o=l(r);g(o,{text:`Install footprint`});var c=a(o,2),d=a(s(c),3);p(d,{name:`BenchInstall`}),i(5),u(c),i(10),e(t,r)},$$slots:{default:!0}});var B=a(z,2);h(B,{children:(t,n)=>{var r=E(),o=l(r);g(o,{text:`Retained heap`});var c=a(o,2),d=a(s(c));p(d,{name:`BenchHeap`}),i(7),u(c),i(8),e(t,r)},$$slots:{default:!0}});var V=a(B,2);h(V,{children:(t,n)=>{var r=D(),o=l(r);g(o,{text:`Coverage`});var c=a(o,2),d=a(s(c),3);p(d,{name:`BenchCoverageEntry`});var m=a(d,2);f(m,{slug:`adapters`}),i(),u(c),e(t,r)},$$slots:{default:!0}});var H=a(V,2);h(H,{children:(t,o)=>{var c=O(),d=l(c);g(d,{text:`What the file records`});var f=a(d,4),m=a(s(f),6),h=a(s(m));p(h,{name:`BenchBundler`}),u(m),u(f);var _=a(f,4),b=s(_);i(2),u(_),r(e=>n(b,`Two heap readings on the same machine agree to well under a kibibyte, but the check allows
 			${e??``} or ${y*100}% of the larger,
-			whichever is larger, and every other number exactly. Regenerating keeps a committed reading
-			that agrees, so an unchanged tree regenerates an unchanged file, and a change smaller than the
-			tolerance isn't recorded until it, with later ones, exceeds it. The site reads two numbers
-			within the tolerance as level, marked `),[()=>v(16384)]),e(t,c)},$$slots:{default:!0}});var U=a(H,2);h(U,{children:(t,n)=>{var r=k(),o=l(r);g(o,{text:`Beside a timed run`});var c=a(o,2),d=a(s(c));f(d,{slug:`method`}),i(),u(c),i(6),e(t,r)},$$slots:{default:!0}});var W=a(U,2);h(W,{children:(t,n)=>{var r=A(),a=l(r);g(a,{text:`Kept current`}),i(2),e(t,r)},$$slots:{default:!0}}),e(t,c)},$$slots:{default:!0}}),o()}export{M as t};
+			whichever is larger, and compares every other number exactly. Regenerating keeps a committed
+			reading that agrees, so an unchanged tree regenerates an unchanged file, and a change smaller
+			than the tolerance isn't recorded until it, with later ones, exceeds it. The site reads two
+			numbers within the tolerance as level, marked `),[()=>v(16384)]),e(t,c)},$$slots:{default:!0}});var U=a(H,2);h(U,{children:(t,n)=>{var r=k(),o=l(r);g(o,{text:`Beside a timed run`});var c=a(o,2),d=a(s(c));f(d,{slug:`method`}),i(),u(c),i(6),e(t,r)},$$slots:{default:!0}});var W=a(U,2);h(W,{children:(t,n)=>{var r=A(),a=l(r);g(a,{text:`Kept current`}),i(2),e(t,r)},$$slots:{default:!0}}),e(t,c)},$$slots:{default:!0}}),o()}export{M as t};
