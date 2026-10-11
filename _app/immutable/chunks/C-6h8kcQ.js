@@ -1,0 +1,1 @@
+var e=[`micro`,`small`,`medium`,`large`],t=[`tokenize`,`html`],n=[`neutral`,`shiki`,`home`,`harness`,`stress`],r=1.25,i=.005;export{r as a,i,e as n,n as r,t};

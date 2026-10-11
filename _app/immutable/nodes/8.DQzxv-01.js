@@ -1,0 +1,1 @@
+export{t as component}from"../chunks/CGD5sQl6.js";
