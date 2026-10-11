@@ -7,8 +7,8 @@
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 	import Code from '@fuzdev/fuz_code/Code.svelte';
 
-	import { format_percent } from '$lib/bench_format.ts';
-	import { docs_data_context } from '$lib/docs_data.ts';
+	import { format_percent } from '#lib/bench_format.ts';
+	import { docs_data_context } from '#lib/docs_data.ts';
 
 	const tome = tome_get_by_slug('method');
 
@@ -791,6 +791,17 @@ node bench/run.ts --help`;
 				full. With Shiki's default limit (500ms per line), a line that takes longer comes back with
 				its rest as one plain token: a consumer with default options gets a fallback on that line,
 				not this number.
+			</li>
+			<li>
+				<strong>One bundler's sizes.</strong> A bundle size is what a page built with Vite and the
+				Rolldown inside it, then minified by esbuild, ships; the results file records the three
+				versions. Another bundler can remove different code from the same entry, since what it can
+				prove unused, whether it folds a constant argument into a function, and how it wraps
+				CommonJS all vary. Built by Rollup, which Vite used before Rolldown, with the same options,
+				the bundles differ unevenly: Rollup removes Twinkleplop's diagnostics code, which it proves
+				is never called, and Rolldown keeps it; Rollup specialises a function fuz_code's Markdown
+				language calls with a constant argument, and Rolldown doesn't; and Rolldown adds a small
+				CommonJS interop helper to Prism's bundles.
 			</li>
 			<li>
 				<strong>Synthetic inputs.</strong> A few inputs were built by joining or repeating files to

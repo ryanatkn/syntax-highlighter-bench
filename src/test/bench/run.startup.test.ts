@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { parse_bench_results, type BenchResults } from '$lib/results_schema.ts';
+import { parse_bench_results, type BenchResults } from '#lib/results_schema.ts';
 import type { CellResult, CellSpec } from '../../../bench/cell.ts';
 import { MIN_SNIPPET_SPAN_KINDS } from '../../../bench/check_output.ts';
 import {

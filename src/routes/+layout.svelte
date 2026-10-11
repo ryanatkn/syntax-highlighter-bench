@@ -7,8 +7,8 @@
 	import { SiteState, site_context } from '@fuzdev/fuz_ui/site.svelte.ts';
 	import pkg_json from 'virtual:pkg.json';
 
-	import FixtureBanner from '$lib/FixtureBanner.svelte';
-	import { logo_syntax_highlighter_bench } from '$lib/logo.ts';
+	import FixtureBanner from '#lib/FixtureBanner.svelte';
+	import { logo_syntax_highlighter_bench } from '#lib/logo.ts';
 	import type { LayoutProps } from './$types.js';
 
 	const { children, data }: LayoutProps = $props();

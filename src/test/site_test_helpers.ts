@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import { parse_bench_results, type BenchResults } from '$lib/results_schema.ts';
+import { parse_bench_results, type BenchResults } from '#lib/results_schema.ts';
 
 const fixture_text = readFileSync(
 	new URL('./fixtures/results/fixture_run.json', import.meta.url),

@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { join } from 'node:path';
 
-import { BenchRunFilters, bench_run_is_complete } from '$lib/results_schema.ts';
+import { BenchRunFilters, bench_run_is_complete } from '#lib/results_schema.ts';
 import type { HighlighterAdapter } from '../../../bench/adapter.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import { TIMED_LANGS, type Lang } from '../../../bench/langs.ts';

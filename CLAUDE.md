@@ -117,8 +117,9 @@ no flags. Every module there must hold to:
 
 - erasable syntax only — no enums, parameter properties, or namespaces
   (`erasableSyntaxOnly` in `tsconfig.json` enforces it)
-- relative imports with explicit `.ts` extensions — no `$lib` or other aliases,
-  which Node doesn't resolve
+- imports with explicit `.ts` extensions that Node resolves on its own:
+  relative paths, packages, and the `#lib/*` subpath imports in `package.json`,
+  never SvelteKit's `$app/*` or a Vite alias
 - `import type` (or inline `type`) for types
 
 The site never imports from `bench/`. The harness may import
@@ -234,7 +235,8 @@ and `meta.commit` are null: they say where timed numbers came from, and the
 schema requires each as soon as a file has any. A timestamp or a commit would
 also make the committed file change on every regeneration, and a commit can't
 name the tree it is itself committed in. `meta.bundler` (`BenchBundler`: the
-versions of Vite, Rollup, and esbuild, and the compression levels) is set
+versions of Vite, the Rolldown inside it, and esbuild, and the compression
+levels; a file measured before Vite 8 names Rollup instead) is set
 exactly when `bundle` is not empty, and the deterministic pass's other sizes
 come with it: `install` covers every roster library, `heap` every timed
 language each library claims (and no other), and every `html` cell has
@@ -495,7 +497,7 @@ tiers, and commands, and the generated `bench/corpus/INPUTS.md` for the list.
   the headline (which reads `neutral` only). The generator owns the directory:
   it writes every file, removes any other, and writes the manifest entries of
   its inputs. Never edit a file there. Two kinds: **derived** (a neutral input
-  minified by esbuild through Vite's `transformWithEsbuild`, or JSON
+  minified by esbuild (`minify_with_esbuild`, as the bundle sizes are), or JSON
   reserialized without whitespace; the source's pins as provenance, synthetic,
   and a `derivation` naming the esbuild version, since another version may give
   other bytes) and **written** (a pathological file per timed language, its
@@ -529,11 +531,22 @@ each set of `FEATURE_SETS`:
   any, the entry is `{unsupported: [...]}` and nothing is built.
 - `build_bundle` bundles `adapter.bundle_entry(set.langs)` with Vite's build API
   in library mode (ES, `write: false`, no source map, `minify: false`), then
-  minifies the chunk once, whole, with Vite's `transformWithEsbuild`
-  (`minify: true`). Library mode never minifies the whitespace of an ES chunk,
-  whatever `build.minify` says, so the second step is what makes the figure a
-  minified one. A non-library build would minify in one step, but it wraps a
-  dynamic import in Vite's preload helper, which is bytes no library ships.
+  minifies the chunk once, whole, with esbuild called directly
+  (`minify_with_esbuild`), not through Vite: Vite 8 no longer ships esbuild,
+  and its `transformWithEsbuild` is deprecated. `build.target` is pinned to the
+  minifier's `esnext`, since Vite's default moves between majors. Library mode
+  never minifies the whitespace of an ES chunk, whatever `build.minify` says, so
+  the second step is what makes the figure a minified one. A non-library build
+  would minify in one step, but it wraps a dynamic import in Vite's preload
+  helper, which is bytes no library ships.
+- The figure is what a page built by Vite with the Rolldown inside it ships.
+  Another bundler can remove different code from the same entry, unevenly
+  across libraries: built by Rollup (Vite 7) with the same options, Rollup
+  removes Twinkleplop's diagnostics code, which it proves is never called, and
+  Rolldown keeps it; Rollup specialises a function fuz_code's Markdown language
+  calls with a constant argument, and Rolldown doesn't; and Rolldown adds a
+  small CommonJS interop helper to Prism's bundles. The method page's caveats
+  say the same to readers.
 - The entry is a virtual module whose id sits under `bench/`, served by a
   plugin: its imports resolve from this repo's `node_modules`, and no path of
   the machine reaches the output.
@@ -576,7 +589,9 @@ each set of `FEATURE_SETS`:
   that a build under vitest bundles a library's development build.
 - No hashed file names, banner, or source map: one chunk under a fixed name,
   never written by Vite.
-- The versions of Vite, Rollup, and esbuild are in `meta.bundler`, and a test
+- The versions of Vite, Rolldown, and esbuild are in `meta.bundler`, read from
+  Vite's `rolldownVersion` and esbuild's own `version` (Vite 8 still exports
+  `rollupVersion` and `esbuildVersion`, as fixed stand-ins), and a test
   compares the committed file's with the installed ones.
 - The gzip and brotli sizes, of bundles and of the cells' HTML alike, depend
   on the zlib and brotli inside Node. That is
@@ -662,8 +677,8 @@ wasm engines.
   A heap line outside the tolerance says it is a heap reading and names the Node
   version and arch.
 - **Site**: heaps are left out of the exact comparison. `find_moved_since`
-  looks at versions, closures, and corpus only; when nothing moved and the
-  exact numbers agree, heaps beyond the tolerance (`bench_heaps_agree`) add
+  looks at versions, closures, corpus, and bundler only; when nothing moved and
+  the exact numbers agree, heaps beyond the tolerance (`bench_heaps_agree`) add
   `HEAP_MOVED` and render the run as a snapshot, since a Node upgrade moves them
   and nothing else records it. A heap difference never hides an exact one.
 
@@ -1135,8 +1150,9 @@ from one named machine; deterministic numbers regenerate anywhere.
 - A published run is the one source of every number on a page, its bundle
   sizes and token counts included, and it is held against the deterministic
   file. `find_moved_since` compares each library's version, its extra
-  packages, each library's install `closure`, and the corpus hash. With nothing
-  moved, `sets`, `coverage`,
+  packages, each library's install `closure`, the corpus hash, and, when
+  both files hold sizes, `meta.bundler` (Vite, the Rolldown or Rollup inside
+  it, esbuild, and the compression levels). With nothing moved, `sets`, `coverage`,
   `bundle`, `install`, and each cell's `tokens`, `output`, and `compressed`
   must be deep-equal, or the
   build fails naming the first difference (`find_first_difference`). With
@@ -1273,7 +1289,7 @@ the ratio scale, as tsv.fuz.dev's charts do.
 **Filter state is the URL query** on `/results`. The page prerenders with the
 defaults and reads `page.url.searchParams` only after it has mounted, since
 reading it while prerendering throws. A control calls `goto` with
-`replaceState`, and the selection is derived back from the URL.
+`replace`, and the selection is derived back from the URL.
 `decode_results_filters` never throws: unknown keys are ignored, unknown ids
 dropped, and a parameter with nothing valid falls back to its default.
 
@@ -1296,9 +1312,11 @@ wording.
 
 The measured libraries are devDependencies: `@fuzdev/fuz_code`, `prismjs`
 (with `@types/prismjs` and `prism-svelte`), `shiki`, and `@twinkleplop/core`
-with its per-language packages and `@twinkleplop/theme-github`. Vite stays on
-7.x, and it is also what builds the measured bundles: a Vite upgrade changes
-the committed sizes.
+with its per-language packages and `@twinkleplop/theme-github`. Vite builds
+the site and the measured bundles alike, and `esbuild` is a devDependency of
+its own because it minifies them: an upgrade of Vite (and so Rolldown) or of
+esbuild changes the committed sizes, so regenerate the deterministic file, and
+for esbuild the derived stress inputs too (`npm run corpus:stress`).
 
 ## Project standards
 

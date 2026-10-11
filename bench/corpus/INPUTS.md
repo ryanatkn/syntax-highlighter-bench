@@ -123,10 +123,10 @@ Corpus hash: `e649d70d435efac06e26c753d9424bbf30122fcae8e8037396b3cc340ea1c101`
 | input | lang | tier | bytes | lines | synthetic | license | upstream |
 | --- | --- | --- | --: | --: | --- | --- | --- |
 | `stress/bash/nested.sh` | bash | small | 2233 | 58 |  |  | written here |
-| `stress/css/default.min.css` | css | medium | 8359 | 1 | yes | LicenseRef-W3C-Software-and-Document-2023 | minified by Vite 7.3.6's transformWithEsbuild, esbuild 0.28.1, from [w3c/csswg-drafts@0da42c8afd](https://github.com/w3c/csswg-drafts/blob/0da42c8afd3a2a237be8fcfe1831b40d0d35aca4/shared/style/default.css) `shared/style/default.css` |
+| `stress/css/default.min.css` | css | medium | 8359 | 1 | yes | LicenseRef-W3C-Software-and-Document-2023 | minified by esbuild 0.28.1, from [w3c/csswg-drafts@0da42c8afd](https://github.com/w3c/csswg-drafts/blob/0da42c8afd3a2a237be8fcfe1831b40d0d35aca4/shared/style/default.css) `shared/style/default.css` |
 | `stress/css/selectors.css` | css | medium | 29316 | 135 |  |  | written here |
 | `stress/html/unclosed.html` | html | medium | 20358 | 80 |  |  | written here |
-| `stress/js/client.min.js` | js | medium | 28413 | 11 | yes | MIT | minified by Vite 7.3.6's transformWithEsbuild, esbuild 0.28.1, from [sveltejs/kit@55ac0d5264](https://github.com/sveltejs/kit/blob/55ac0d5264036a11eace0feb7d193432c90bd135/packages/kit/src/runtime/client/client.js) `packages/kit/src/runtime/client/client.js` |
+| `stress/js/client.min.js` | js | medium | 28413 | 11 | yes | MIT | minified by esbuild 0.28.1, from [sveltejs/kit@55ac0d5264](https://github.com/sveltejs/kit/blob/55ac0d5264036a11eace0feb7d193432c90bd135/packages/kit/src/runtime/client/client.js) `packages/kit/src/runtime/client/client.js` |
 | `stress/js/nested_templates.js` | js | medium | 14828 | 86 |  |  | written here |
 | `stress/js/unterminated.js` | js | medium | 17013 | 409 |  |  | written here |
 | `stress/json/ast.min.json` | json | large | 68385 | 1 | yes | Apache-2.0 | minified: parsed and serialized again with no whitespace, from [microsoft/typescript-go@89d5d5b284](https://github.com/microsoft/typescript-go/blob/89d5d5b2849a0db0957065889ca58536fa6d2e4a/_scripts/ast.json) `_scripts/ast.json` |

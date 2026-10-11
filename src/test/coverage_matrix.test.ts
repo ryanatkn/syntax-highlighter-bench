@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 
-import { to_coverage_matrix } from '$lib/coverage_matrix.ts';
+import { to_coverage_matrix } from '#lib/coverage_matrix.ts';
 import { load_deterministic } from './site_test_helpers.ts';
 
 const results = load_deterministic();

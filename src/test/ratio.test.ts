@@ -9,7 +9,7 @@ import {
 	to_ratio,
 	to_ratio_color,
 	to_ratio_level
-} from '$lib/ratio.ts';
+} from '#lib/ratio.ts';
 
 describe('to_ratio', () => {
 	test('is how many times worse the value is, in either direction', () => {

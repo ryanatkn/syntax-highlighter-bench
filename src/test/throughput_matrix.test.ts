@@ -1,15 +1,15 @@
 import { assert, describe, test } from 'vitest';
 
-import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
-import { matrix_row_entry, matrix_row_value, to_matrix_ratios } from '$lib/matrix.ts';
-import { BenchMode, BenchSize } from '$lib/results_schema.ts';
+import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
+import { matrix_row_entry, matrix_row_value, to_matrix_ratios } from '#lib/matrix.ts';
+import { BenchMode, BenchSize } from '#lib/results_schema.ts';
 import {
 	results_have_throughput,
 	to_throughput_badges,
 	to_throughput_groups,
 	to_throughput_summary,
 	type ThroughputSelection
-} from '$lib/throughput_matrix.ts';
+} from '#lib/throughput_matrix.ts';
 import { load_deterministic, load_fixture, to_library_ids } from './site_test_helpers.ts';
 
 /** A number to three decimals, to tell two means apart. */

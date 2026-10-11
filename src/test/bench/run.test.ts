@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 
-import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
+import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +11,7 @@ import {
 	bench_results_is_publishable,
 	type BenchCell,
 	type BenchRunFilters
-} from '$lib/results_schema.ts';
+} from '#lib/results_schema.ts';
 import type { CellResult } from '../../../bench/cell.ts';
 import { plan_startup_round, plan_startup_scenarios } from '../../../bench/coldstart.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';

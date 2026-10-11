@@ -3,10 +3,10 @@ import {
 	to_language_weight_groups,
 	to_practice_group,
 	type HeadlineChart
-} from '$lib/headline.ts';
-import type { MatrixGroup } from '$lib/matrix.ts';
-import type { BenchResults } from '$lib/results_schema.ts';
-import { load_site_results_for_build } from '$lib/server/site_results_load.ts';
+} from '#lib/headline.ts';
+import type { MatrixGroup } from '#lib/matrix.ts';
+import type { BenchResults } from '#lib/results_schema.ts';
+import { load_site_results_for_build } from '#lib/server/site_results_load.ts';
 
 /** What the landing page shows: the rosters, its headline figures, and what each language costs. */
 export interface LandingData extends Pick<BenchResults, 'meta' | 'langs' | 'coverage'> {

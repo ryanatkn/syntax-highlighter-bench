@@ -90,9 +90,12 @@
 		which are the same on any machine: corpus
 		<code title={meta.corpus_hash}>{format_hash(meta.corpus_hash)}</code
 		>{#if meta.bundler}
-			, bundles built by Vite {meta.bundler.vite} (Rollup {meta.bundler.rollup}, esbuild
-			{meta.bundler.esbuild}), gzip level {meta.bundler.gzip_level}, brotli quality
-			{meta.bundler.brotli_quality}
+			, bundles built by Vite {meta.bundler.vite} ({#if 'rolldown' in meta.bundler}
+				Rolldown {meta.bundler.rolldown}
+			{:else}
+				Rollup {meta.bundler.rollup}
+			{/if}) and minified by esbuild {meta.bundler.esbuild}, gzip level {meta.bundler.gzip_level},
+			brotli quality {meta.bundler.brotli_quality}
 		{/if}.
 		{@render children?.()}
 	</p>

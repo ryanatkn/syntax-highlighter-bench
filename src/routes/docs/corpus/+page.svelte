@@ -7,8 +7,8 @@
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 	import Code from '@fuzdev/fuz_code/Code.svelte';
 
-	import { docs_data_context } from '$lib/docs_data.ts';
-	import InputsTable from '$lib/InputsTable.svelte';
+	import { docs_data_context } from '#lib/docs_data.ts';
+	import InputsTable from '#lib/InputsTable.svelte';
 
 	const tome = tome_get_by_slug('corpus');
 

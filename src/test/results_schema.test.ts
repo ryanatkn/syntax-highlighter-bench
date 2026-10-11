@@ -13,7 +13,7 @@ import {
 	to_bench_cell_id,
 	type BenchStartupKey,
 	to_max_compressed_bytes
-} from '$lib/results_schema.ts';
+} from '#lib/results_schema.ts';
 
 const FIXTURE_URL = new URL('./fixtures/results/fixture_run.json', import.meta.url);
 
@@ -391,7 +391,7 @@ describe('unsupported and excluded', () => {
 
 	test('rejects a bundle entry that is both or neither shape', () => {
 		const data = load_fixture();
-		data.bundle.prism!.docs = { ...data.bundle.prism!.docs!, unsupported: ['xml'] } as any;
+		data.bundle.prism!.docs = { ...data.bundle.prism!.docs!, unsupported: ['xml'] };
 		assert.ok(!BenchResults.safeParse(data).success);
 		const data2 = load_fixture();
 		data2.bundle.prism!.docs = { unsupported: [] };
@@ -1667,6 +1667,18 @@ describe('bundle', () => {
 			(data3.meta.bundler as any)[key] = value;
 			assert_rejects(data3, `meta.bundler.${key}`);
 		}
+	});
+
+	test('the bundler inside Vite is Rolldown, or Rollup for a file measured before Vite 8', () => {
+		const data = load_fixture();
+		const bundler: Record<string, unknown> = data.meta.bundler!;
+		bundler.rollup = '4.0.0';
+		assert_rejects(data, 'meta.bundler: a bundler names exactly one of rolldown and rollup');
+		delete bundler.rolldown;
+		bundler.vite = '7.0.0';
+		BenchResults.parse(data);
+		delete bundler.rollup;
+		assert_rejects(data, 'meta.bundler: a bundler names exactly one of rolldown and rollup');
 	});
 });
 

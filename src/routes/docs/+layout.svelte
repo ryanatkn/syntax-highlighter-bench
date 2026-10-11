@@ -6,9 +6,9 @@
 	import { Library, library_context } from '@fuzdev/fuz_ui/library.svelte.ts';
 	import { site_context } from '@fuzdev/fuz_ui/site.svelte.ts';
 
-	import { docs_data_context } from '$lib/docs_data.ts';
+	import { docs_data_context } from '#lib/docs_data.ts';
 	import { tomes } from './tomes.ts';
-	import { library_json } from '$routes/library.ts';
+	import { library_json } from '#routes/library.ts';
 	import type { LayoutProps } from './$types.js';
 
 	const { children, data }: LayoutProps = $props();
@@ -24,7 +24,7 @@
 
 <Docs {tomes}>
 	{#snippet primary_nav()}
-		<a href={resolve('/results')}>results</a>
+		<a href={resolve('/(site)/results')}>results</a>
 	{/snippet}
 	<!-- the default footer, less its link to fuz.dev: this site isn't part of the Fuz stack -->
 	{#snippet footer()}

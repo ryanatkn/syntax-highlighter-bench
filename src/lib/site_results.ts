@@ -12,6 +12,7 @@ import {
 	bench_results_is_publishable,
 	describe_bench_run,
 	parse_bench_results,
+	type BenchBundler,
 	type BenchLibrary,
 	type BenchResults
 } from './results_schema.ts';
@@ -67,14 +68,19 @@ const to_versions = (library: BenchLibrary): string =>
 		Object.entries(library.extra_packages ?? {}).sort(([a], [b]) => a.localeCompare(b))
 	]);
 
+/** What builds and minifies the bundles, as a reader names it. */
+const format_bundler_build = (bundler: BenchBundler): string =>
+	`Vite ${bundler.vite} (${'rolldown' in bundler ? `Rolldown ${bundler.rolldown}` : `Rollup ${bundler.rollup}`}) and minified by esbuild ${bundler.esbuild}`;
+
 /**
  * What differs between a published run and the deterministic results in the
  * things a deterministic number depends on: each library's version with its
- * extra packages, the versions of its dependencies (its install closure), and
- * the corpus.
+ * extra packages, the versions of its dependencies (its install closure), the
+ * corpus, and what built and compressed the bundles (`BenchBundler`), when both
+ * files hold bundle sizes.
  *
  * @returns a phrase for each thing that moved, none when the run describes the
- * same libraries and corpus as the deterministic results
+ * same libraries, corpus, and bundler as the deterministic results
  */
 export const find_moved_since = (run: BenchResults, deterministic: BenchResults): Array<string> => {
 	const moved: Array<string> = [];
@@ -101,6 +107,18 @@ export const find_moved_since = (run: BenchResults, deterministic: BenchResults)
 		}
 	}
 	if (run.meta.corpus_hash !== deterministic.meta.corpus_hash) moved.push('the corpus changed');
+	const { bundler: then } = run.meta;
+	const { bundler: now } = deterministic.meta;
+	if (then && now) {
+		if (format_bundler_build(then) !== format_bundler_build(now)) {
+			moved.push(`bundles are now built by ${format_bundler_build(now)}`);
+		}
+		if (then.gzip_level !== now.gzip_level || then.brotli_quality !== now.brotli_quality) {
+			moved.push(
+				`sizes are now compressed at gzip level ${now.gzip_level} and brotli quality ${now.brotli_quality}`
+			);
+		}
+	}
 	return moved;
 };
 

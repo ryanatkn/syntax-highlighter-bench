@@ -15,13 +15,16 @@
 	const site = site_context.get();
 
 	// the root's breadcrumb would link to the page itself, so there the mark leads to the docs
-	const at_root = $derived(page.url.pathname === resolve('/'));
+	const at_root = $derived(page.url.pathname === resolve('/(site)'));
 </script>
 
 <header class="site-header">
 	<Breadcrumb root_path={at_root ? '/results' : undefined} />
 	<nav aria-label="Site" class="row gap_md">
-		<a href={resolve('/results')} class={{ selected: page.url.pathname === resolve('/results') }}>
+		<a
+			href={resolve('/(site)/results')}
+			class={{ selected: page.url.pathname === resolve('/(site)/results') }}
+		>
 			results
 		</a>
 		<a href={resolve('/docs')}>docs</a>

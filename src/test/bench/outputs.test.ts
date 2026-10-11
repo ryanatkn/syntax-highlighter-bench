@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 
-import { BenchCell, BenchMode } from '$lib/results_schema.ts';
+import { BenchCell, BenchMode } from '#lib/results_schema.ts';
 import type { HighlighterAdapter } from '../../../bench/adapter.ts';
 import { MIN_SNIPPET_SPAN_KINDS } from '../../../bench/check_output.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';

@@ -11,7 +11,7 @@ import {
 import { dirname, join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-import { BenchStartup, type BenchRunFilters } from '$lib/results_schema.ts';
+import { BenchStartup, type BenchRunFilters } from '#lib/results_schema.ts';
 import type { HighlighterAdapter } from '../../../bench/adapter.ts';
 import { MIN_SNIPPET_SPAN_KINDS } from '../../../bench/check_output.ts';
 import {

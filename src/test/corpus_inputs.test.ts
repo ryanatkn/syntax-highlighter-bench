@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 
-import { format_provenance, group_inputs, to_provenance_url } from '$lib/corpus_inputs.ts';
+import { format_provenance, group_inputs, to_provenance_url } from '#lib/corpus_inputs.ts';
 import { load_deterministic } from './site_test_helpers.ts';
 
 const { inputs } = load_deterministic();

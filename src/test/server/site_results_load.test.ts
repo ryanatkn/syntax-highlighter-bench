@@ -10,7 +10,7 @@ import {
 	SITE_LATEST_PATH,
 	load_site_results,
 	site_fixture_is_enabled
-} from '$lib/server/site_results_load.ts';
+} from '#lib/server/site_results_load.ts';
 import {
 	load_deterministic_json,
 	load_fixture_json,

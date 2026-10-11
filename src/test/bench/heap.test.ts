@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 
-import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '$lib/bench_constants.ts';
-import { heap_readings_agree } from '$lib/results_schema.ts';
+import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '#lib/bench_constants.ts';
+import { heap_readings_agree } from '#lib/results_schema.ts';
 import {
 	HEAP_CODE_SPACES,
 	HEAP_NODE_FLAGS,

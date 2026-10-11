@@ -5,8 +5,8 @@
 	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 
-	import { find_without_set } from '$lib/bundle_matrix.ts';
-	import { docs_data_context } from '$lib/docs_data.ts';
+	import { find_without_set } from '#lib/bundle_matrix.ts';
+	import { docs_data_context } from '#lib/docs_data.ts';
 
 	const tome = tome_get_by_slug('languages');
 

@@ -11,7 +11,7 @@ import {
 	to_selected_libraries,
 	to_selected_reference,
 	type ResultsFilters
-} from '$lib/results_filters.ts';
+} from '#lib/results_filters.ts';
 import { load_deterministic } from './site_test_helpers.ts';
 
 const results = load_deterministic();

@@ -2,13 +2,13 @@ import { assert, describe, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 
-import { HEAP_TOLERANCE_KB } from '$lib/bench_constants.ts';
+import { HEAP_TOLERANCE_KB } from '#lib/bench_constants.ts';
 import {
 	BenchMode,
 	bench_results_is_publishable,
 	parse_bench_results,
 	type BenchResults
-} from '$lib/results_schema.ts';
+} from '#lib/results_schema.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import {
 	carry_deterministic,

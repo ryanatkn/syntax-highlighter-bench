@@ -2,7 +2,7 @@ import { assert, beforeAll, describe, test } from 'vitest';
 import { globSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-import { BenchCoverageEntry, BenchLibrary } from '$lib/results_schema.ts';
+import { BenchCoverageEntry, BenchLibrary } from '#lib/results_schema.ts';
 import { LangNotSetUpError, type HighlighterAdapter } from '../../../bench/adapter.ts';
 import { evaluate_bundle_html_source } from '../../../bench/bundle_check.ts';
 import { MIN_SNIPPET_SPAN_KINDS, analyze_html, check_output } from '../../../bench/check_output.ts';

@@ -2052,7 +2052,7 @@
 					"note": null
 				}
 			],
-			"derivation": "minified by Vite 7.3.6's transformWithEsbuild, esbuild 0.28.1"
+			"derivation": "minified by esbuild 0.28.1"
 		},
 		{
 			"file": "stress/css/selectors.css",
@@ -2100,7 +2100,7 @@
 					"note": null
 				}
 			],
-			"derivation": "minified by Vite 7.3.6's transformWithEsbuild, esbuild 0.28.1"
+			"derivation": "minified by esbuild 0.28.1"
 		},
 		{
 			"file": "stress/js/nested_templates.js",

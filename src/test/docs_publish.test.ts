@@ -1,9 +1,9 @@
 import { assert, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { BENCH_ANCHOR_STABLE_BELOW } from '$lib/results_schema.ts';
-import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
-import { SITE_DETERMINISTIC_PATH, SITE_LATEST_PATH } from '$lib/server/site_results_load.ts';
+import { BENCH_ANCHOR_STABLE_BELOW } from '#lib/results_schema.ts';
+import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
+import { SITE_DETERMINISTIC_PATH, SITE_LATEST_PATH } from '#lib/server/site_results_load.ts';
 import { LOAD_BUSY_ABOVE, RUN_FLAGS } from '../../bench/run_options.ts';
 
 // the page states by hand what the harness and `package.json` define

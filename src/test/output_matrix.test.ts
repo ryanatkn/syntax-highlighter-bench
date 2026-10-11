@@ -1,8 +1,8 @@
 import { assert, describe, test } from 'vitest';
 
-import { matrix_row_entry, matrix_row_value } from '$lib/matrix.ts';
-import { OUTPUT_MEASURES, to_output_groups, type OutputSelection } from '$lib/output_matrix.ts';
-import { BenchSize } from '$lib/results_schema.ts';
+import { matrix_row_entry, matrix_row_value } from '#lib/matrix.ts';
+import { OUTPUT_MEASURES, to_output_groups, type OutputSelection } from '#lib/output_matrix.ts';
+import { BenchSize } from '#lib/results_schema.ts';
 import { load_deterministic, load_fixture, to_library_ids } from './site_test_helpers.ts';
 
 const results = load_deterministic();

@@ -7,7 +7,7 @@
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 	import Code from '@fuzdev/fuz_code/Code.svelte';
 
-	import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '$lib/bench_constants.ts';
+	import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '#lib/bench_constants.ts';
 
 	const tome = tome_get_by_slug('deterministic');
 
@@ -51,8 +51,8 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			</li>
 			<li>
 				Vite's library mode never removes the whitespace of an ES module, which suits a library and
-				not a page. So the module is then minified once, whole, by the esbuild inside Vite. No
-				bundle in the roster ends up carrying a license comment.
+				not a page. So the module is then minified once, whole, by esbuild. No bundle in the roster
+				ends up carrying a license comment.
 			</li>
 			<li>Compression is Node's zlib and brotli.</li>
 		</ul>
@@ -366,8 +366,8 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			<li>each library's version, and the versions of its separately versioned packages</li>
 			<li>the corpus hash</li>
 			<li>
-				the versions of Vite and of the Rollup and esbuild inside it, and the compression levels, in
-				<DeclarationLink name="BenchBundler" />
+				the versions of Vite, of the Rolldown inside it, and of esbuild, and the compression levels,
+				in <DeclarationLink name="BenchBundler" />
 			</li>
 		</ul>
 		<p>

@@ -7,7 +7,7 @@
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 	import { resolve } from '$app/paths';
 
-	import { docs_data_context } from '$lib/docs_data.ts';
+	import { docs_data_context } from '#lib/docs_data.ts';
 
 	const tome = tome_get_by_slug('overview');
 
@@ -25,7 +25,7 @@
 		<p>
 			A run produces one results file holding many metrics, and the site is a view over that file
 			where a reader picks the libraries, languages, and metrics to compare:
-			<a href={resolve('/results')}>the results page</a>.
+			<a href={resolve('/(site)/results')}>the results page</a>.
 		</p>
 	</section>
 	<TomeSection>

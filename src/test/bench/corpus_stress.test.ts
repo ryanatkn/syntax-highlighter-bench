@@ -54,10 +54,7 @@ describe('the stress inputs', () => {
 		const esbuild = stress.filter((i) => i.derivation?.includes('esbuild'));
 		assert.ok(esbuild.length > 0);
 		for (const input of esbuild) {
-			assert.match(
-				input.derivation!,
-				/^minified by Vite \d+\.\d+\.\d+'s .+, esbuild \d+\.\d+\.\d+$/
-			);
+			assert.match(input.derivation!, /^minified by esbuild \d+\.\d+\.\d+$/);
 		}
 	});
 
@@ -90,7 +87,7 @@ describe('find_stress_differences', () => {
 		);
 		const differences = find_stress_differences(changed, manifest);
 		assert.include(differences.join('\n'), `${first!.file}: differs from what generates`);
-		assert.include(differences.join('\n'), 'Vite and esbuild pin the minified bytes');
+		assert.include(differences.join('\n'), 'esbuild pins the minified bytes');
 		assert.include(
 			find_stress_differences(rest, manifest).join('\n'),
 			`${first!.file}: not generated, so it would be removed`

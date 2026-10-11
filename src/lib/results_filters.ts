@@ -173,7 +173,7 @@ export const encode_results_filters = (
  * nothing valid
  */
 export const decode_results_filters = (
-	params: URLSearchParams,
+	params: Pick<URLSearchParams, 'get'>,
 	options: ResultsFilterOptions,
 	defaults: ResultsFilters
 ): ResultsFilters => {

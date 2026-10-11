@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 
-import { to_bar_chart } from '$lib/bar_chart.ts';
-import { to_matrix_row, to_value_entry, type MatrixEntry, type MatrixRow } from '$lib/matrix.ts';
+import { to_bar_chart } from '#lib/bar_chart.ts';
+import { to_matrix_row, to_value_entry, type MatrixEntry, type MatrixRow } from '#lib/matrix.ts';
 
 const LIBRARIES = ['a', 'b', 'c'];
 

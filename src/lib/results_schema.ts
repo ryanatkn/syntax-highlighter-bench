@@ -344,21 +344,65 @@ export type BenchRun = z.infer<typeof BenchRun>;
 export const bench_run_is_complete = (run: Pick<BenchRun, 'kind' | 'filters'>): boolean =>
 	run.kind !== 'smoke' && Object.values(run.filters).every((filter) => filter === null);
 
+/** The version of Vite that bundled, first in either bundler's keys. */
+const bundler_vite = z.string().min(1).meta({ description: 'The version of Vite that bundled.' });
+
+/** What every bundler records after the one inside Vite, whichever it is. */
+const bundler_shape = {
+	esbuild: z.string().min(1).meta({ description: 'The version of esbuild that minified.' }),
+	gzip_level: z.number().int().min(1).max(9),
+	brotli_quality: z.number().int().min(0).max(11)
+};
+
+/** What bundles from Vite 8 on: Vite with the Rolldown inside it. */
+export const BenchBundlerRolldown = z.strictObject({
+	vite: bundler_vite,
+	rolldown: z
+		.string()
+		.min(1)
+		.meta({ description: 'The version of Rolldown inside that Vite, which bundled.' }),
+	...bundler_shape
+});
+export type BenchBundlerRolldown = z.infer<typeof BenchBundlerRolldown>;
+
+/** What bundled up to Vite 7, which files measured then record: Vite with the Rollup inside it. */
+export const BenchBundlerRollup = z.strictObject({
+	vite: bundler_vite,
+	rollup: z
+		.string()
+		.min(1)
+		.meta({ description: 'The version of Rollup inside that Vite, which bundled.' }),
+	...bundler_shape
+});
+export type BenchBundlerRollup = z.infer<typeof BenchBundlerRollup>;
+
+/** The two keys a bundler is told apart by. */
+const BUNDLER_KEYS = ['rolldown', 'rollup'] as const;
+
 /**
  * What the bundle sizes were built and compressed with. Together with the
  * libraries' versions it is what the sizes depend on, apart from the zlib and
  * brotli inside the Node that compressed them. The compression levels are also
  * the ones the HTML's compressed sizes (`BenchCell.compressed`) are taken at.
+ * It names exactly one of `rolldown` and `rollup`, and is reported against the
+ * shape it names, so a malformed one never reads as a bare "Invalid input".
  */
-export const BenchBundler = z.strictObject({
-	vite: z.string().min(1).meta({ description: 'The version of Vite that bundled.' }),
-	rollup: z.string().min(1).meta({ description: 'The version of Rollup inside that Vite.' }),
-	esbuild: z
-		.string()
-		.min(1)
-		.meta({ description: 'The version of esbuild inside that Vite, which minified.' }),
-	gzip_level: z.number().int().min(1).max(9),
-	brotli_quality: z.number().int().min(0).max(11)
+export const BenchBundler = z.union([BenchBundlerRolldown, BenchBundlerRollup], {
+	error: (issue) => {
+		const { input } = issue;
+		const named =
+			typeof input === 'object' && input !== null ? BUNDLER_KEYS.filter((k) => k in input) : [];
+		if (named.length !== 1) return 'a bundler names exactly one of rolldown and rollup';
+		const parsed = (named[0] === 'rolldown' ? BenchBundlerRolldown : BenchBundlerRollup).safeParse(
+			input
+		);
+		const problems = parsed.success
+			? []
+			: parsed.error.issues.map((i) =>
+					i.path.length === 0 ? i.message : `${i.path.join('.')}: ${i.message}`
+				);
+		return `a bundler built with ${named[0]}: ${problems.join('; ')}`;
+	}
 });
 export type BenchBundler = z.infer<typeof BenchBundler>;
 

@@ -7,7 +7,7 @@
 	import TomeSectionHeader from '@fuzdev/fuz_ui/TomeSectionHeader.svelte';
 	import { tome_get_by_slug } from '@fuzdev/fuz_ui/tome.ts';
 
-	import { docs_data_context } from '$lib/docs_data.ts';
+	import { docs_data_context } from '#lib/docs_data.ts';
 
 	const tome = tome_get_by_slug('results');
 
@@ -210,11 +210,13 @@
 		</p>
 		<p>
 			A published run is also held against the deterministic file. When the two describe the same
-			library versions, the same install closures, and the same corpus, their deterministic numbers
-			must be equal: the feature sets, the coverage, the bundle sizes, the install footprints, and
-			each cell's token counts and output sizes, raw and compressed. A difference fails the build
-			and names the first place they differ. The retained heaps must agree within a reading's
-			jitter. When a library's version, its dependencies, or the corpus has moved since the run, or
+			library versions, the same install closures, the same corpus, and the same bundler and
+			compression levels, their deterministic numbers must be equal: the feature sets, the coverage,
+			the bundle sizes, the install footprints, and each cell's token counts and output sizes, raw
+			and compressed. A difference fails the build and names the first place they differ. The
+			retained heaps must agree within a reading's jitter. When a library's version, its
+			dependencies, the corpus, or what built and compressed the bundles (the versions of Vite, of
+			the bundler inside it, and of esbuild, and the compression levels) has moved since the run, or
 			the retained heaps differ by more, as they do when the Node version moves, the run is shown as
 			the snapshot it is, and the line that says where the numbers came from also says what has
 			moved since.

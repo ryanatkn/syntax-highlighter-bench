@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 
-import { BenchLang } from '$lib/results_schema.ts';
+import { BenchLang } from '#lib/results_schema.ts';
 import {
 	LANG_LABELS,
 	LANG_ROSTER,

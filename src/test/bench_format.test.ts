@@ -9,7 +9,7 @@ import {
 	format_percent,
 	format_ratio,
 	format_significant
-} from '$lib/bench_format.ts';
+} from '#lib/bench_format.ts';
 
 describe('formatters', () => {
 	test('format_significant keeps about three digits', () => {

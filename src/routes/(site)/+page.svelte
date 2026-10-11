@@ -3,11 +3,11 @@
 
 	import Card from '@fuzdev/fuz_ui/Card.svelte';
 
-	import BarChart from '$lib/BarChart.svelte';
-	import CoverageTable from '$lib/CoverageTable.svelte';
-	import LibrariesTable from '$lib/LibrariesTable.svelte';
-	import MatrixTable from '$lib/MatrixTable.svelte';
-	import Provenance from '$lib/Provenance.svelte';
+	import BarChart from '#lib/BarChart.svelte';
+	import CoverageTable from '#lib/CoverageTable.svelte';
+	import LibrariesTable from '#lib/LibrariesTable.svelte';
+	import MatrixTable from '#lib/MatrixTable.svelte';
+	import Provenance from '#lib/Provenance.svelte';
 	import type { PageProps } from './$types.js';
 
 	const { data }: PageProps = $props();
@@ -36,7 +36,7 @@
 		share, not what one offers that another doesn't.
 	</p>
 	<p>
-		<a href={resolve('/results')}>Every result, with filters</a> ·
+		<a href={resolve('/(site)/results')}>Every result, with filters</a> ·
 		<a href={resolve('/docs/method')}>how it is measured</a> ·
 		<a href={resolve('/docs/corpus')}>the inputs</a> ·
 		<a href={resolve('/docs/adapters')}>the adapters, and how to add a library</a>
@@ -64,8 +64,8 @@
 		See <a href={resolve('/docs/method')}>the method</a> for what each number means.
 	</Provenance>
 	<p>
-		These are summaries. <a href={resolve('/results')}>The results page</a> has every cell behind
-		them, on inputs from other sources too.
+		These are summaries. <a href={resolve('/(site)/results')}>The results page</a> has every cell
+		behind them, on inputs from other sources too.
 		<a href={resolve('/docs/method#Caveats')}>The caveats</a> say what the numbers don't: the
 		libraries don't do identical work, and Shiki's HTML carries inline styles where the others emit
 		classes.
@@ -109,7 +109,7 @@
 		>
 			The HTML throughput applied to sizes a reader knows. Each figure is the geometric-mean rate
 			over the neutral inputs applied to that size, so it is an estimate: a library's rate differs
-			from input to input, as <a href={resolve('/results')}>the results page</a> shows.
+			from input to input, as <a href={resolve('/(site)/results')}>the results page</a> shows.
 		</MatrixTable>
 	{/if}
 </section>
@@ -160,7 +160,7 @@
 </section>
 
 <section class="cards">
-	<Card href={resolve('/results')}>every result, with filters</Card>
+	<Card href={resolve('/(site)/results')}>every result, with filters</Card>
 	<Card href={resolve('/docs/method')}>how it is measured</Card>
 	<Card href={resolve('/docs/corpus')}>the inputs</Card>
 	<Card href={resolve('/docs/adapters')}>the adapters, and how to add a library</Card>

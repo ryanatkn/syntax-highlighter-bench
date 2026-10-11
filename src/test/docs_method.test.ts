@@ -8,8 +8,8 @@ import {
 	BenchRunMetric,
 	BenchStartup,
 	BenchStartupScenario
-} from '$lib/results_schema.ts';
-import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
+} from '#lib/results_schema.ts';
+import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
 import { FULL_PARAMS, RUN_FLAGS } from '../../bench/run_options.ts';
 
 // these docs state by hand what the harness defines, because the site never imports it

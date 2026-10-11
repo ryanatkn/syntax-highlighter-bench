@@ -11,15 +11,15 @@
 		to_combined_sets,
 		to_install_group,
 		type BundleCompression
-	} from '$lib/bundle_matrix.ts';
-	import { format_source_key } from '$lib/cell_groups.ts';
-	import FilterGroup from '$lib/FilterGroup.svelte';
-	import FilterSelect from '$lib/FilterSelect.svelte';
-	import { results_have_heap, to_heap_groups } from '$lib/heap_matrix.ts';
-	import MatrixTable from '$lib/MatrixTable.svelte';
-	import { format_library_tag } from '$lib/library_labels.ts';
-	import { OUTPUT_MEASURES, to_output_groups } from '$lib/output_matrix.ts';
-	import Provenance from '$lib/Provenance.svelte';
+	} from '#lib/bundle_matrix.ts';
+	import { format_source_key } from '#lib/cell_groups.ts';
+	import FilterGroup from '#lib/FilterGroup.svelte';
+	import FilterSelect from '#lib/FilterSelect.svelte';
+	import { results_have_heap, to_heap_groups } from '#lib/heap_matrix.ts';
+	import MatrixTable from '#lib/MatrixTable.svelte';
+	import { format_library_tag } from '#lib/library_labels.ts';
+	import { OUTPUT_MEASURES, to_output_groups } from '#lib/output_matrix.ts';
+	import Provenance from '#lib/Provenance.svelte';
 	import {
 		RESULTS_METRICS,
 		decode_results_filters,
@@ -30,15 +30,15 @@
 		to_selected_reference,
 		type ResultsFilters,
 		type ResultsMetric
-	} from '$lib/results_filters.ts';
-	import { find_startup_bare, to_startup_groups } from '$lib/startup_matrix.ts';
+	} from '#lib/results_filters.ts';
+	import { find_startup_bare, to_startup_groups } from '#lib/startup_matrix.ts';
 	import {
 		THROUGHPUT_UNITS,
 		results_have_throughput,
 		to_throughput_groups,
 		to_throughput_summary,
 		type ThroughputUnit
-	} from '$lib/throughput_matrix.ts';
+	} from '#lib/throughput_matrix.ts';
 	import type { PageProps } from './$types.js';
 
 	const { data }: PageProps = $props();
@@ -61,11 +61,9 @@
 
 	const update = (patch: Partial<ResultsFilters>): void => {
 		const query = encode_results_filters({ ...filters, ...patch }, defaults).toString();
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		void goto(resolve('/results') + (query ? `?${query}` : ''), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
+		void goto(resolve('/(site)/results') + (query ? `?${query}` : ''), {
+			replace: true,
+			reset: false
 		});
 	};
 

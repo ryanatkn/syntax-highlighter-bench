@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { brotliCompressSync, constants, gunzipSync, gzipSync } from 'node:zlib';
 
-import { BenchBundler } from '$lib/results_schema.ts';
+import { BenchBundler } from '#lib/results_schema.ts';
 import { check_bundle } from '../../../bench/bundle_check.ts';
 import { MIN_SNIPPET_SPAN_KINDS } from '../../../bench/check_output.ts';
 import { ADAPTERS } from '../../../bench/libraries.ts';
@@ -200,10 +200,14 @@ describe('read_bundler', () => {
 	test('records the versions the sizes depend on, and the compression levels', async () => {
 		const bundler = BenchBundler.parse(await read_bundler());
 		assert.strictEqual(bundler.vite, require('vite/package.json').version);
+		// the versions installed, never the stand-ins Vite 8 still exports as `rollupVersion` and
+		// `esbuildVersion`
+		const require_from_vite = createRequire(require.resolve('vite/package.json'));
+		assert.ok('rolldown' in bundler);
+		assert.strictEqual(bundler.rolldown, require_from_vite('rolldown/package.json').version);
+		assert.strictEqual(bundler.esbuild, require('esbuild/package.json').version);
 		assert.strictEqual(bundler.gzip_level, GZIP_LEVEL);
 		assert.strictEqual(bundler.brotli_quality, BROTLI_QUALITY);
-		// Vite stays on 7.x
-		assert.match(bundler.vite, /^7\./);
 	});
 });
 

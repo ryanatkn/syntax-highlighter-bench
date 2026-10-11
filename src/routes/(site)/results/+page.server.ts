@@ -1,5 +1,5 @@
-import type { MatrixResults } from '$lib/matrix.ts';
-import { load_site_results_for_build } from '$lib/server/site_results_load.ts';
+import type { MatrixResults } from '#lib/matrix.ts';
+import { load_site_results_for_build } from '#lib/server/site_results_load.ts';
 
 /** The results page gets the whole file but the corpus inputs, which the docs show. */
 export const load = (): { results: MatrixResults; moved: Array<string> } => {

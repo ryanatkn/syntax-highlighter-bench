@@ -6,8 +6,8 @@
  * Two kinds:
  *
  * - **derived** — a neutral input transformed, as real code is shipped: the
- *   JS and CSS minified by esbuild through Vite's `transformWithEsbuild`
- *   (as the bundle sizes are), and the JSON serialized again with no
+ *   JS and CSS minified by esbuild (`minify_with_esbuild`, as the bundle sizes
+ *   are), and the JSON serialized again with no
  *   whitespace. Each keeps its source's pins as provenance and names the
  *   transformation in `derivation`. esbuild's version is part of it, since
  *   another version may minify to other bytes.
@@ -41,6 +41,7 @@ import {
 	type LoadedCorpusManifest
 } from './corpus.ts';
 import type { Lang } from './langs.ts';
+import { minify_with_esbuild } from './sizes.ts';
 
 /** The directory, within the corpus, that this script owns. */
 export const STRESS_DIR = 'stress/';
@@ -62,24 +63,15 @@ interface StressDerivation {
 }
 
 /**
- * Minified by esbuild through Vite, as the bundle sizes are. esbuild ends the
- * output with a newline.
+ * Minified by esbuild, as the bundle sizes are. esbuild ends the output with a
+ * newline.
  */
 const create_minify_derivation = (loader: 'js' | 'css'): StressDerivation => ({
 	describe: async () => {
-		const vite = await import('vite');
-		return `minified by Vite ${vite.version}'s transformWithEsbuild, esbuild ${vite.esbuildVersion}`;
+		const { version } = await import('esbuild');
+		return `minified by esbuild ${version}`;
 	},
-	derive: async (source, file) => {
-		const { transformWithEsbuild } = await import('vite');
-		const result = await transformWithEsbuild(source, file, {
-			loader,
-			minify: true,
-			sourcemap: false,
-			...(loader === 'js' ? { format: 'esm', target: 'esnext' } : {})
-		});
-		return result.code;
-	}
+	derive: (source, file) => minify_with_esbuild(source, file, loader)
 });
 
 const MINIFY_JSON: StressDerivation = {
@@ -545,7 +537,7 @@ export const find_stress_differences = (
 			differences.push(
 				`${input.file}: made by "${entry.derivation}", and now by "${input.derivation}"` +
 					(input.derivation?.includes('esbuild')
-						? ': Vite and esbuild pin the minified bytes, so a new version means regenerating'
+						? ': esbuild pins the minified bytes, so a new version means regenerating'
 						: '')
 			);
 		}

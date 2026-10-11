@@ -15,14 +15,14 @@ import {
 	to_bundle_total_groups,
 	to_combined_sets,
 	to_install_group
-} from '$lib/bundle_matrix.ts';
+} from '#lib/bundle_matrix.ts';
 import {
 	matrix_row_entry,
 	matrix_row_value,
 	to_matrix_ratios,
 	type MatrixEntry
-} from '$lib/matrix.ts';
-import type { BenchBundleSizes } from '$lib/results_schema.ts';
+} from '#lib/matrix.ts';
+import type { BenchBundleSizes } from '#lib/results_schema.ts';
 import { load_deterministic, to_library_ids } from './site_test_helpers.ts';
 
 // the committed results, so the tables are checked against real sizes

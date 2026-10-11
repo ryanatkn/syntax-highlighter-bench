@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { BenchResults, heap_readings_agree, parse_bench_results } from '$lib/results_schema.ts';
+import { BenchResults, heap_readings_agree, parse_bench_results } from '#lib/results_schema.ts';
 import {
 	STARTUP_DIR,
 	plan_startup_scenarios,

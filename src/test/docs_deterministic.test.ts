@@ -7,7 +7,7 @@ import {
 	BenchCellOutput,
 	BenchHeap,
 	BenchInstall
-} from '$lib/results_schema.ts';
+} from '#lib/results_schema.ts';
 import { HEAP_NODE_FLAGS } from '../../bench/heap.ts';
 import { ADAPTERS } from '../../bench/libraries.ts';
 import { BROTLI_QUALITY, GZIP_LEVEL } from '../../bench/sizes.ts';

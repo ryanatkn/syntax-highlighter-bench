@@ -13,7 +13,7 @@ import {
 	to_value_entry,
 	type MatrixEntry,
 	type MatrixRow
-} from '$lib/matrix.ts';
+} from '#lib/matrix.ts';
 
 const LIBRARIES = ['a', 'b', 'c'];
 

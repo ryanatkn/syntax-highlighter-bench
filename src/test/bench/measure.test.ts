@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 
-import { BenchCellValue } from '$lib/results_schema.ts';
+import { BenchCellValue } from '#lib/results_schema.ts';
 import {
 	MAX_ITERATIONS,
 	MAX_MEASUREMENT_MS,

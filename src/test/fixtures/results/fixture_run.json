@@ -158,9 +158,9 @@
 			"max": 0.04489795944714614
 		},
 		"bundler": {
-			"vite": "7.0.0",
-			"rollup": "4.0.0",
-			"esbuild": "0.25.0",
+			"vite": "8.0.0",
+			"rolldown": "1.0.0",
+			"esbuild": "0.28.0",
 			"gzip_level": 9,
 			"brotli_quality": 11
 		}

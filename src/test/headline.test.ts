@@ -7,8 +7,8 @@ import {
 	to_headline_charts,
 	to_language_weight_groups,
 	to_practice_group
-} from '$lib/headline.ts';
-import { matrix_row_entry, matrix_row_value } from '$lib/matrix.ts';
+} from '#lib/headline.ts';
+import { matrix_row_entry, matrix_row_value } from '#lib/matrix.ts';
 import { load_deterministic, load_fixture, to_library_ids } from './site_test_helpers.ts';
 
 const to_titles = (charts: ReturnType<typeof to_headline_charts>): Array<string> =>

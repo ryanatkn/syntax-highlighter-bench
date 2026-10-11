@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BenchInput } from '$lib/results_schema.ts';
+import { BenchInput } from '#lib/results_schema.ts';
 import {
 	CORPUS_DIR,
 	CORPUS_INPUTS_PATH,

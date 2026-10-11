@@ -79,8 +79,8 @@ that fails the output check or crawls on one is a finding, recorded as an
 exclusion or a slow number, not a reason to soften the input.
 
 - **Derived** — a neutral input transformed the way real code ships: the
-  JS and the CSS minified by esbuild through Vite's
-  `transformWithEsbuild` (the call the bundle sizes use), and the JSON parsed and
+  JS and the CSS minified by esbuild (`minify_with_esbuild`, the call the bundle
+  sizes use), and the JSON parsed and
   serialized again with no whitespace. Each comes out as one long line. The
   sources are picked so the result stays under the large neutral inputs: the
   large JS input (the medium one minifies to a few KB), the medium

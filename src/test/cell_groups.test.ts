@@ -9,8 +9,8 @@ import {
 	to_missing_cell_entry,
 	to_source_key,
 	to_source_keys
-} from '$lib/cell_groups.ts';
-import { BenchMode, BenchSize } from '$lib/results_schema.ts';
+} from '#lib/cell_groups.ts';
+import { BenchMode, BenchSize } from '#lib/results_schema.ts';
 import { load_deterministic, load_fixture } from './site_test_helpers.ts';
 
 const deterministic = load_deterministic();

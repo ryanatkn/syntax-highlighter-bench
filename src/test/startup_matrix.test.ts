@@ -6,13 +6,13 @@ import {
 	matrix_row_is_complete,
 	matrix_row_value,
 	to_matrix_ratios
-} from '$lib/matrix.ts';
+} from '#lib/matrix.ts';
 import {
 	find_startup_bare,
 	to_startup_groups,
 	to_startup_noise_ms,
 	to_startup_value
-} from '$lib/startup_matrix.ts';
+} from '#lib/startup_matrix.ts';
 import { load_deterministic, load_fixture, to_library_ids } from './site_test_helpers.ts';
 
 const fixture = load_fixture();

@@ -11,9 +11,9 @@
  * module, with no source map and nothing written to disk by Vite. Vite's library
  * mode never minifies the whitespace of an ES build, which is right for a
  * library and wrong for what a page ships, so the build leaves minifying off and
- * the chunk is then minified once, whole, by the esbuild inside Vite
- * (`transformWithEsbuild` with `minify: true`; esbuild would keep license
- * comments, and none reaches it). Resolution is a production browser build's, from this repo's
+ * the chunk is then minified once, whole, by esbuild called directly
+ * (`minify_with_esbuild`; esbuild would keep license comments, and none
+ * reaches it). Resolution is a production browser build's, from this repo's
  * `node_modules`. The entry is a virtual module, so no path of this machine
  * reaches the output.
  *
@@ -30,7 +30,7 @@
  * Both are reported raw, gzipped, and brotli-compressed, as the JS is.
  *
  * **Determinism.** The numbers depend on the libraries' versions, on Vite and
- * the Rollup and esbuild inside it (`BenchBundler` records them), and, for the
+ * the Rolldown inside it, on esbuild (`BenchBundler` records the three), and, for the
  * compressed figures, on Node's zlib and brotli. They don't depend on the
  * machine, the directory, or the time. `NODE_ENV` would change them, since Vite
  * picks its resolve conditions from it, so a build sets it and checks that the
@@ -167,6 +167,35 @@ const with_production_env = async <T>(fn: () => Promise<T>): Promise<T> => {
 };
 
 /**
+ * Minifies JS or CSS with esbuild, called directly: the one minifier every
+ * measured byte goes through, the bundles, the theme stylesheets, and the
+ * derived stress inputs alike. Its version is in `BenchBundler.esbuild`, and a
+ * stress input's `derivation` names it, since another version may minify to
+ * other bytes.
+ *
+ * @param code - the source to minify
+ * @param file - the file name esbuild reports in an error
+ * @param loader - how esbuild reads `code`
+ * @returns the minified source, ending with a newline
+ * @throws if esbuild can't parse `code`
+ */
+export const minify_with_esbuild = async (
+	code: string,
+	file: string,
+	loader: 'js' | 'css'
+): Promise<string> => {
+	const { transform } = await import('esbuild');
+	const result = await transform(code, {
+		loader,
+		sourcefile: file,
+		minify: true,
+		sourcemap: false,
+		...(loader === 'js' ? { format: 'esm', target: 'esnext' } : {})
+	});
+	return result.code;
+};
+
+/**
  * Bundles and minifies a module.
  *
  * @param source - the module's source, as an adapter's `bundle_entry` returns it
@@ -180,7 +209,7 @@ export const build_bundle = (
 	external: ReadonlyArray<string> = []
 ): Promise<string> =>
 	with_production_env(async () => {
-		const { build, transformWithEsbuild } = await import('vite');
+		const { build } = await import('vite');
 		const built = await build({
 			configFile: false,
 			envFile: false,
@@ -201,12 +230,14 @@ export const build_bundle = (
 			],
 			build: {
 				write: false,
+				// the minifier's target: Vite's default moves between majors, so it is pinned here
+				target: 'esnext',
 				minify: false,
 				sourcemap: false,
 				reportCompressedSize: false,
 				copyPublicDir: false,
 				lib: { entry: ENTRY_ID, formats: ['es'], fileName: 'bundle' },
-				rollupOptions: { external: [...external], output: { inlineDynamicImports: true } }
+				rolldownOptions: { external: [...external], output: { codeSplitting: false } }
 			}
 		});
 		const outputs = (Array.isArray(built) ? built : [built]).flatMap((b) =>
@@ -231,14 +262,7 @@ export const build_bundle = (
 		}
 		// Vite's library mode keeps the whitespace of an ES chunk whatever `minify` says, so that a
 		// consumer's bundler can still shake it. The figure is what a page ships: minified whole
-		const minified = await transformWithEsbuild(chunk.code, 'bundle.js', {
-			loader: 'js',
-			format: 'esm',
-			target: 'esnext',
-			minify: true,
-			sourcemap: false
-		});
-		return minified.code;
+		return minify_with_esbuild(chunk.code, 'bundle.js', 'js');
 	});
 
 /**
@@ -253,15 +277,13 @@ export const measure_theme_css = async (
 ): Promise<BenchByteSizes | null> => {
 	const paths = resolve_theme_css(adapter);
 	if (paths === null) return null;
-	const { transformWithEsbuild } = await import('vite');
 	const sizes: Array<BenchByteSizes> = [];
 	for (const path of paths) {
-		const minified = await transformWithEsbuild(readFileSync(path, 'utf8'), basename(path), {
-			loader: 'css',
-			minify: true,
-			sourcemap: false
-		});
-		sizes.push(measure_compressed(minified.code));
+		sizes.push(
+			measure_compressed(
+				await minify_with_esbuild(readFileSync(path, 'utf8'), basename(path), 'css')
+			)
+		);
 	}
 	return sum_byte_sizes(sizes);
 };
@@ -281,11 +303,11 @@ export const measure_wasm = (adapter: Pick<HighlighterAdapter, 'wasm'>): BenchBy
 
 /** What the sizes are built and compressed with. */
 export const read_bundler = async (): Promise<BenchBundler> => {
-	const vite = await import('vite');
+	const [vite, esbuild] = await Promise.all([import('vite'), import('esbuild')]);
 	return BenchBundler.parse({
 		vite: vite.version,
-		rollup: vite.rollupVersion,
-		esbuild: vite.esbuildVersion,
+		rolldown: vite.rolldownVersion,
+		esbuild: esbuild.version,
 		gzip_level: GZIP_LEVEL,
 		brotli_quality: BROTLI_QUALITY
 	} satisfies BenchBundler);

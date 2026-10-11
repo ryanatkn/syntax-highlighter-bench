@@ -3,15 +3,16 @@ import { assert, describe, test } from 'vitest';
 import {
 	BENCH_ANCHOR_STABLE_BELOW,
 	describe_bench_run,
+	type BenchBundlerRolldown,
 	type BenchResults
-} from '$lib/results_schema.ts';
+} from '#lib/results_schema.ts';
 import {
 	HEAP_MOVED,
 	bench_results_are_timed,
 	find_first_difference,
 	find_moved_since,
 	resolve_site_results
-} from '$lib/site_results.ts';
+} from '#lib/site_results.ts';
 import {
 	load_deterministic_json,
 	load_fixture_json,
@@ -267,6 +268,29 @@ describe('a published run beside the deterministic results', () => {
 		assert.include(moved[0], library.id);
 		assert.include(moved[0], 'extra packages');
 		assert.strictEqual(moved[1], 'the corpus changed');
+	});
+
+	test('a bundler or compression level that moved is named', () => {
+		const deterministic = load_matching_json();
+		const bundler = deterministic.meta.bundler!;
+		assert.ok('rolldown' in bundler);
+		bundler.rolldown = '99.0.0';
+		bundler.brotli_quality = 10;
+		const { moved } = resolve_latest(load_fixture_json(), deterministic);
+		assert.deepStrictEqual(moved, [
+			`bundles are now built by Vite ${bundler.vite} (Rolldown 99.0.0) and minified by esbuild ${bundler.esbuild}`,
+			`sizes are now compressed at gzip level ${bundler.gzip_level} and brotli quality 10`
+		]);
+	});
+
+	test('a run built with Rollup against a file built with Rolldown has moved', () => {
+		const run = load_fixture_json();
+		const { esbuild, gzip_level, brotli_quality } = run.meta.bundler!;
+		run.meta.bundler = { vite: '7.0.0', rollup: '4.0.0', esbuild, gzip_level, brotli_quality };
+		const now = load_matching_json().meta.bundler as BenchBundlerRolldown;
+		assert.deepStrictEqual(find_moved_since(run, load_matching_json()), [
+			`bundles are now built by Vite ${now.vite} (Rolldown ${now.rolldown}) and minified by esbuild ${now.esbuild}`
+		]);
 	});
 
 	test('the fixture run against the committed results has moved, and says what', () => {

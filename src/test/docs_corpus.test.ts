@@ -1,7 +1,7 @@
 import { assert, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { BenchSource } from '$lib/results_schema.ts';
+import { BenchSource } from '#lib/results_schema.ts';
 import { SIZE_TIER_LIMITS } from '../../bench/corpus.ts';
 import { ADAPTERS } from '../../bench/libraries.ts';
 

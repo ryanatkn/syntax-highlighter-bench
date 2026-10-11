@@ -1,13 +1,13 @@
 import { assert, describe, test } from 'vitest';
 
-import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '$lib/bench_constants.ts';
+import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '#lib/bench_constants.ts';
 import {
 	HEAP_MEASURES,
 	results_have_heap,
 	to_heap_floor,
 	to_heap_groups
-} from '$lib/heap_matrix.ts';
-import { matrix_row_entry, matrix_row_value } from '$lib/matrix.ts';
+} from '#lib/heap_matrix.ts';
+import { matrix_row_entry, matrix_row_value } from '#lib/matrix.ts';
 import { load_deterministic, to_library_ids } from './site_test_helpers.ts';
 
 const results = load_deterministic();

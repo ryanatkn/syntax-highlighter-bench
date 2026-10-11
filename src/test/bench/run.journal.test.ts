@@ -1,7 +1,7 @@
 import { afterEach, assert, beforeEach, describe, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
 
-import { SPREAD_DISTURBED_ABOVE } from '$lib/bench_constants.ts';
+import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
 import {
 	chmodSync,
 	existsSync,
@@ -15,7 +15,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { parse_bench_results, type BenchResults } from '$lib/results_schema.ts';
+import { parse_bench_results, type BenchResults } from '#lib/results_schema.ts';
 import type { CellResult, CellSpec } from '../../../bench/cell.ts';
 import { load_corpus_manifest } from '../../../bench/corpus.ts';
 import {

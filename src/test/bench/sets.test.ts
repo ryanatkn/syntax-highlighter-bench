@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 
-import { BenchSet } from '$lib/results_schema.ts';
+import { BenchSet } from '#lib/results_schema.ts';
 import { LANGS, is_lang } from '../../../bench/langs.ts';
 import { CORE_SET_ID, FEATURE_SETS, to_single_set_id } from '../../../bench/sets.ts';
 
