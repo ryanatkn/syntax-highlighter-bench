@@ -1227,7 +1227,9 @@ page loads with what it is made of, and the docs set's JS alone. A figure the
 file holds no number for is left out. Then the HTML rate worked out for sizes a
 reader knows (`to_practice_group`: one 10 kB block, blocks in a 16 ms frame,
 1 MB of source), and what each language costs (`to_language_weight_groups`: the
-floor, the first language, one more language). Each chart's bars take the
+runtime alone, the `docs` and `timed` sets, then each language's whole
+`single:<lang>` bundle, all gzipped; the
+differences, what each language and one more language add, are on `/results`). Each chart's bars take the
 library's color (`to_library_color`), the same in every chart, and its ratios
 the ratio scale, as tsv.fuz.dev's charts do.
 

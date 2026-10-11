@@ -5,6 +5,7 @@ import {
 	find_single_set,
 	find_timed_set,
 	find_without_set,
+	MARGINAL_INCLUDED_BELOW,
 	INSTALL_MEASURES,
 	to_bundle_beside_group,
 	to_bundle_cost_groups,
@@ -220,21 +221,32 @@ describe('to_bundle_cost_groups', () => {
 	test('one more language is every timed language less the set without it, minified', () => {
 		const marginal = groups[2]!;
 		const timed_langs = results.langs.filter((lang) => lang.timed).map((lang) => lang.id);
+		const added = (library: string, lang: string): number =>
+			sizes(library, 'timed').raw - sizes(library, `without:${lang}`).raw;
+		// a language every library already includes has no row
 		assert.deepStrictEqual(
 			marginal.rows.map((row) => row.key),
-			timed_langs.map((lang) => `marginal:${lang}`)
+			timed_langs
+				.filter((lang) =>
+					libraries.some((library) => added(library, lang) >= MARGINAL_INCLUDED_BELOW)
+				)
+				.map((lang) => `marginal:${lang}`)
 		);
-		const rust = marginal.rows.find((row) => row.key === 'marginal:rust')!;
-		for (const library of libraries) {
-			assert.strictEqual(
-				matrix_row_value(rust, library),
-				sizes(library, 'timed').raw - sizes(library, 'without:rust').raw,
-				library
-			);
-		}
-		// every library claims every timed language, so none is unsupported here
 		for (const row of marginal.rows) {
-			for (const library of libraries) assert.ok(matrix_row_value(row, library) !== null);
+			const lang = row.key.slice('marginal:'.length);
+			for (const library of libraries) {
+				const bytes = added(library, lang);
+				// every library claims every timed language, so none is unsupported here
+				if (bytes < MARGINAL_INCLUDED_BELOW) {
+					assert.deepStrictEqual(
+						matrix_row_entry(row, library),
+						{ kind: 'none', text: 'already included' },
+						library
+					);
+				} else {
+					assert.strictEqual(matrix_row_value(row, library), bytes, library);
+				}
+			}
 		}
 	});
 });

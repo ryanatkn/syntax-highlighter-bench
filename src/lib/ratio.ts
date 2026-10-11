@@ -38,16 +38,19 @@ export const RATIO_LEVEL_LIMITS: ReadonlyArray<number> = [0.9, 1.1, 2, 5, 10, 10
 /**
  * The color of each level, as fuz_css variables that adapt to the color scheme:
  * better than the reference, level with the baseline, then five steps worse,
- * through yellow, orange, red, and brown to purple.
+ * through yellow, orange, red, and purple to a deeper purple. Hue alone doesn't
+ * separate the warm steps once a cell mixes its tint down, since orange and red
+ * are close, so orange is a lighter step than red, and brown, a muted orange at
+ * this step, isn't used.
  */
 export const RATIO_LEVEL_COLORS: ReadonlyArray<string> = [
 	'var(--palette_j_50)',
 	'var(--palette_b_50)',
 	'var(--palette_e_50)',
-	'var(--palette_h_50)',
+	'var(--palette_h_40)',
 	'var(--palette_c_50)',
-	'var(--palette_f_50)',
-	'var(--palette_d_50)'
+	'var(--palette_d_50)',
+	'var(--palette_d_70)'
 ];
 
 /** One level of the color scale as a key shows it: its color and the ratios it covers. */

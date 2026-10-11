@@ -82,9 +82,9 @@ describe('to_headline_charts', () => {
 });
 
 describe('to_language_weight_groups', () => {
-	test('the floor, then what each language costs over it', () => {
+	test('the runtime, then each language as the whole bundle a page loads', () => {
 		const results = load_deterministic();
-		const [core, langs] = to_language_weight_groups(results);
+		const [core, , langs] = to_language_weight_groups(results);
 		assert.strictEqual(core!.key, 'core');
 		assert.strictEqual(langs!.key, 'langs');
 		assert.strictEqual(langs!.rows.length, results.langs.length);
@@ -94,13 +94,27 @@ describe('to_language_weight_groups', () => {
 		assert.ok(!('unsupported' in floor) && !('unsupported' in ts));
 		assert.strictEqual(matrix_row_value(core!.rows[0]!, 'fuz_code'), floor[HEADLINE_COMPRESSION]);
 		const ts_row = langs!.rows.find((row) => row.key === 'lang:ts')!;
-		assert.strictEqual(
-			matrix_row_value(ts_row, 'fuz_code'),
-			ts[HEADLINE_COMPRESSION] - floor[HEADLINE_COMPRESSION]
-		);
+		// the whole bundle, never a difference
+		assert.strictEqual(matrix_row_value(ts_row, 'fuz_code'), ts[HEADLINE_COMPRESSION]);
 		// a language a library doesn't claim is unsupported, never a zero
 		const xml = langs!.rows.find((row) => row.key === 'lang:xml')!;
 		assert.strictEqual(matrix_row_entry(xml, 'twinkleplop').kind, 'unsupported');
+	});
+
+	test('the default set and every timed language lead, each as one bundle', () => {
+		const results = load_deterministic();
+		const sets = to_language_weight_groups(results)[1]!;
+		assert.strictEqual(sets.key, 'sets');
+		assert.deepStrictEqual(
+			sets.rows.map((row) => row.key),
+			['set:docs', 'set:timed']
+		);
+		for (const row of sets.rows) {
+			const set = results.bundle.twinkleplop![row.key.slice('set:'.length)]!;
+			assert.ok(!('unsupported' in set));
+			// every library claims both, so each has a number
+			assert.strictEqual(matrix_row_value(row, 'twinkleplop'), set[HEADLINE_COMPRESSION]);
+		}
 	});
 });
 

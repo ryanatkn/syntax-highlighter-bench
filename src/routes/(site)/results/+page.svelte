@@ -401,8 +401,8 @@
 						The minified JS of each library over each feature set, measured as one bundle, and
 						everything a page loads with it.
 					{:else}
-						What each language costs in a library's minified JS: the floor with no language, the
-						first language, and one more beside the others.
+						What each language costs in a library's minified JS: the floor with no language, each
+						language over it, and one more beside the others.
 					{/if}
 					{#snippet more()}
 						<p>
@@ -413,13 +413,14 @@
 								compressed on its own, so a library whose engine ships as wasm is not compared on
 								its JS alone.
 							{:else}
-								The first language is the bundle with that language alone, less the bundle with
-								none. One more language is what it adds to a bundle of every other timed language,
-								always in minified bytes, whatever the Bytes selector says: compressing a whole
-								bundle doesn't separate one part of it. The floor plus each language alone is not a
-								bundle, so it has no ratio: it exceeds the set's measured size when a library shares
-								code between languages, or when one language brings another with it, as HTML brings
-								the script and style languages.
+								Each language is the bundle with that language alone, less the bundle with none. One
+								more language is what it adds to a bundle of every other timed language, always in
+								minified bytes, whatever the Bytes selector says: compressing a whole bundle doesn't
+								separate one part of it. An addition of a few bytes or none shows as already
+								included, and a language every library already includes has no row. The floor plus
+								each language alone is not a bundle, so it has no ratio: it exceeds the set's
+								measured size when a library shares code between languages, or when one language
+								brings another with it, as HTML brings the script and style languages.
 							{/if}
 							The wasm binary and the theme stylesheet are loaded beside the JS, and each has a row
 							of its own.

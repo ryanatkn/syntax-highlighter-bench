@@ -129,15 +129,19 @@
 			label="What each language costs in JS, by library"
 			bars
 		>
-			What each language's grammar costs, in two ways. <strong>The first language</strong> is the JS
-			a page loads for that language alone, minified and compressed with gzip, less the library with
-			no language: it includes any runtime the language needs that the floor leaves out, which a
-			library pays once, and any language it loads with it, as when a library's TypeScript loads its
-			JS. <strong>One more language</strong> is what the language adds to a bundle that already
-			holds every other timed language, in minified bytes: the price of adding it to a site that has
-			the rest. A language the others already hold, like JS inside TypeScript, adds little or
-			nothing there. The bars of each group are on one scale, and beside a number is its ratio to
-			the smallest in the row; a row where a library adds nothing has no ratios.
+			The JS a page loads for its languages, minified and gzipped: several in one bundle, then each
+			language alone. Each bundle holds the library's runtime, shown alone in the first row, which
+			highlights nothing by itself. <em>Everything a page loads</em> above gives one set's total,
+			with the wasm binary and theme stylesheet beside the JS.
+			{#snippet more()}
+				<p>
+					A bundle of several languages is smaller than the sum of their bundles, since it holds the
+					runtime once and shares what the languages share, as TypeScript shares JS. The bars of
+					each group are on one scale, and beside a number is its ratio to the smallest in the row.
+					<a href={resolve('/(site)/results')}>The results page</a> has what each language adds over
+					the runtime, and what one more language adds to a bundle that holds the others.
+				</p>
+			{/snippet}
 		</MatrixTable>
 	</section>
 {/if}

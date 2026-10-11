@@ -8,7 +8,9 @@
 
 import { BENCH_MODES, BENCH_SIZES } from './bench_constants.ts';
 import {
-	to_bundle_cost_groups,
+	find_core_set,
+	find_single_set,
+	find_timed_set,
 	to_bundle_loaded_entry,
 	to_bundle_size_entry
 } from './bundle_matrix.ts';
@@ -23,6 +25,7 @@ import {
 	type MatrixRow
 } from './matrix.ts';
 import { DEFAULT_FORM, DEFAULT_SET, DEFAULT_SOURCE } from './results_filters.ts';
+import type { BenchSet } from './results_schema.ts';
 import { to_startup_groups } from './startup_matrix.ts';
 import { results_have_throughput, to_throughput_summary } from './throughput_matrix.ts';
 
@@ -179,18 +182,62 @@ export const to_headline_charts = (results: MatrixResults): Array<HeadlineChart>
 };
 
 /**
- * What each language's grammar adds to a library's JS: the floor, the
- * library with no language, then each language alone less that floor, every
- * one minified and compressed with `HEADLINE_COMPRESSION`.
+ * What a page loads for its languages: the runtime, the library with no
+ * language, which highlights nothing alone, then bundles of several languages
+ * (the default set and every timed language, which every library claims), then
+ * each language's whole bundle, runtime included, every one minified and
+ * compressed with `HEADLINE_COMPRESSION`. Whole bundles rather than
+ * differences, so every number is one a page ships; the results page has what
+ * each language adds.
  *
  * @returns the groups, none for a file that measured no bundle
  */
-export const to_language_weight_groups = (results: MatrixResults): Array<MatrixGroup> =>
-	to_bundle_cost_groups(results, {
-		langs: results.langs.map((lang) => lang.id),
-		set: DEFAULT_SET,
-		compression: HEADLINE_COMPRESSION
-	}).filter((group) => group.key === 'core' || group.key === 'langs' || group.key === 'marginal');
+export const to_language_weight_groups = (results: MatrixResults): Array<MatrixGroup> => {
+	const core = find_core_set(results.sets);
+	if (!core || Object.keys(results.bundle).length === 0) return [];
+	const to_row = (
+		key: string,
+		label: string,
+		set: BenchSet | null,
+		note: string | null = null
+	): MatrixRow => {
+		const row = to_matrix_row({ key, label, note, unit: 'bytes', direction: 'lower' });
+		for (const { id } of results.meta.libraries) {
+			row.entries[id] = to_bundle_size_entry(results, id, set, HEADLINE_COMPRESSION);
+		}
+		return row;
+	};
+	const several = [
+		results.sets.find((set) => set.id === DEFAULT_SET),
+		find_timed_set(results.sets, results.langs)
+	].filter((set) => set !== undefined && set !== null);
+	const groups: Array<MatrixGroup> = [
+		{
+			key: 'core',
+			label: 'The runtime',
+			note: 'the library with no language: it highlights nothing alone, and every bundle below holds it',
+			rows: [to_row('core', core.label, core)]
+		}
+	];
+	// the sets lead the languages, as a summary of what follows
+	if (several.length > 0) {
+		groups.push({
+			key: 'sets',
+			label: 'Several languages',
+			note: 'one bundle of them all, runtime included',
+			rows: several.map((set) => to_row(`set:${set.id}`, set.label, set, set.langs.join(', ')))
+		});
+	}
+	groups.push({
+		key: 'langs',
+		label: 'One language',
+		note: 'the whole bundle of a page that highlights only this language, runtime included',
+		rows: results.langs.map((lang) =>
+			to_row(`lang:${lang.id}`, lang.label, find_single_set(results.sets, lang.id))
+		)
+	});
+	return groups;
+};
 
 /** The size of the code block the practical figures are worked out for, in bytes. */
 export const PRACTICE_BLOCK_BYTES = 10_000;

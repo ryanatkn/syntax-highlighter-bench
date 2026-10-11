@@ -28,6 +28,20 @@ export type BundleCompression = 'raw' | 'gzip' | 'brotli';
 /** Every compression, in display order. */
 export const BUNDLE_COMPRESSIONS: ReadonlyArray<BundleCompression> = ['gzip', 'brotli', 'raw'];
 
+/** How a size of each compression is described in a group's note. */
+const COMPRESSION_NOTES: Record<BundleCompression, string> = {
+	raw: 'minified',
+	gzip: 'minified and gzipped',
+	brotli: 'minified and brotli-compressed'
+};
+
+/**
+ * Below this many minified bytes, what one more language adds is shown as
+ * already included rather than as a number: a few bytes are a separator or an
+ * import, not a grammar.
+ */
+export const MARGINAL_INCLUDED_BELOW = 16;
+
 /** Which bundle table to show: what each language costs, or each set's total. */
 export type BundleView = 'incremental' | 'totals';
 
@@ -226,8 +240,9 @@ export const to_bundle_increment_entry = (
  * needs, which the first language loaded pays for. It is never compressed:
  * compression works across a whole bundle, so the difference of two compressed
  * bundles doesn't isolate one language's share, and can come out negative. A
- * language the others already hold adds nothing. Unmeasured when the file
- * holds neither set.
+ * language the others already hold adds nothing, and an addition under
+ * `MARGINAL_INCLUDED_BELOW` is shown as already included. Unmeasured when the
+ * file holds neither set.
  */
 export const to_bundle_marginal_entry = (
 	results: Pick<MatrixResults, 'bundle' | 'sets' | 'langs'>,
@@ -242,10 +257,10 @@ export const to_bundle_marginal_entry = (
 	if (all.kind !== 'value') return all;
 	if (less.kind !== 'value') return less;
 	const added = all.value - less.value;
+	if (added < MARGINAL_INCLUDED_BELOW) return { kind: 'none', text: 'already included' };
 	return to_value_entry(added, {
 		details: [
-			`${format_bytes(all.value)} with every timed language, less ${format_bytes(less.value)} without this one, minified`,
-			...(added <= 0 ? ['the other languages already hold it'] : [])
+			`${format_bytes(all.value)} with every timed language, less ${format_bytes(less.value)} without this one, minified`
 		]
 	});
 };
@@ -353,7 +368,7 @@ export const to_bundle_cost_groups = (
 		{
 			key: 'core',
 			label: 'The floor',
-			note: 'the library with no language',
+			note: `the library with no language, ${COMPRESSION_NOTES[compression]}`,
 			rows: [
 				to_bundle_row(results, { key: 'core', label: core.label }, (library) =>
 					to_bundle_size_entry(results, library, core, compression)
@@ -362,19 +377,13 @@ export const to_bundle_cost_groups = (
 		},
 		{
 			key: 'langs',
-			label: 'The first language',
-			note: 'the language alone, less the floor: with any runtime the floor leaves out',
+			label: 'Each language',
+			note: `its bundle less the floor, ${COMPRESSION_NOTES[compression]}: with any runtime the floor leaves out`,
 			rows: results.langs
 				.filter((lang) => selection.langs.includes(lang.id))
 				.map((lang) =>
-					to_bundle_row(
-						results,
-						{
-							key: `lang:${lang.id}`,
-							label: lang.label,
-							note: lang.timed ? null : 'not timed'
-						},
-						(library) => to_bundle_increment_entry(results, library, lang.id, compression)
+					to_bundle_row(results, { key: `lang:${lang.id}`, label: lang.label }, (library) =>
+						to_bundle_increment_entry(results, library, lang.id, compression)
 					)
 				)
 		}
@@ -386,16 +395,20 @@ export const to_bundle_cost_groups = (
 			selection.langs.includes(lang.id) &&
 			find_without_set(results.sets, results.langs, lang.id) !== null
 	);
-	if (timed && marginal_langs.length > 0) {
+	const marginal_rows = marginal_langs
+		.map((lang) =>
+			to_bundle_row(results, { key: `marginal:${lang.id}`, label: lang.label }, (library) =>
+				to_bundle_marginal_entry(results, library, lang.id)
+			)
+		)
+		// a language every library already includes says only that something else embeds it
+		.filter((row) => Object.values(row.entries).some((entry) => entry.kind !== 'none'));
+	if (timed && marginal_rows.length > 0) {
 		groups.push({
 			key: 'marginal',
 			label: 'One more language',
-			note: 'every timed language, less all of them but this one, in minified bytes: near zero when the others already bring it in, as HTML and Svelte bring their script and style languages',
-			rows: marginal_langs.map((lang) =>
-				to_bundle_row(results, { key: `marginal:${lang.id}`, label: lang.label }, (library) =>
-					to_bundle_marginal_entry(results, library, lang.id)
-				)
-			)
+			note: 'what it adds to a bundle of every other timed language, minified and never compressed, whatever the Bytes selector says: already included when another language embeds it, as HTML and Svelte embed their script and style languages',
+			rows: marginal_rows
 		});
 	}
 	const set = to_combined_sets(results.sets, results.langs).find((s) =>
