@@ -735,8 +735,9 @@ sources.
 ## Timed harness
 
 `node bench/run.ts` is a run; `node --expose-gc bench/cell.ts '<spec>'` is one
-library on one cell, which only the parent spawns. The anchor and the lock
-follow Twinkleplop's comparison harness (MIT), and the timing engine is adapted
+library on one cell, which only the parent spawns. The anchor and the idea
+of a machine lock follow Twinkleplop's comparison harness (MIT; the lock itself
+is fuz_util's, not shared with Twinkleplop's), and the timing engine is adapted
 from it; a process per library, rather than per cell, is a change made here.
 The credit is in the README and in the doc comments of `bench/run.ts`,
 `bench/cell.ts`, `bench/measure.ts`, and `bench/anchor.ts`, the last of which is

@@ -35,8 +35,9 @@
  * there again, a bounded number of times, keeping the attempt whose rounds
  * agreed best.
  *
- * The anchor and the lock follow the comparison harness of Twinkleplop
- * (https://github.com/pngwn/twinkleplop, MIT), as does spawning a fresh process
+ * The anchor follows the comparison harness of Twinkleplop
+ * (https://github.com/pngwn/twinkleplop, MIT), as do a machine-wide lock (here
+ * fuz_util's, which Twinkleplop's runs don't share) and spawning a fresh process
  * per cell; a process per library is this harness's change.
  *
  * Node-only.

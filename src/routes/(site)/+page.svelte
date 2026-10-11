@@ -33,8 +33,10 @@
 		The libraries have different features. Shiki highlights with the TextMate grammars and themes VS
 		Code uses; Twinkleplop aims for a similar feature set, with its own themes, annotations, and
 		Twoslash support; and both do more than fuz_code, which has the fewest features of the four: a
-		single-pass lexer per language, with CSS classes for its theme. These numbers compare the work
-		all of them share, not what one offers that another doesn't.
+		single-pass lexer per language, with CSS classes for its theme. Their fidelity differs too: how
+		finely each splits the same source, and how accurately it classifies each part. These numbers
+		compare the work all of them share, not what one offers that another doesn't, and they time each
+		library's output without scoring its quality.
 	</p>
 	<p>
 		<a href={resolve('/(site)/results')}>Every result, with filters</a> ·
@@ -42,6 +44,7 @@
 		<a href={resolve('/docs/corpus')}>the inputs</a> ·
 		<a href={resolve('/docs/adapters')}>the adapters, and how to add a library</a>
 	</p>
+	<p>AI disclosure: this is an LLM-generated repo guided by a person.</p>
 </section>
 <section>
 	<h2>Headline figures</h2>

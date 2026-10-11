@@ -743,8 +743,10 @@ node bench/run.ts --help`;
 				the TextMate grammars and themes VS Code uses; Twinkleplop aims for a similar feature set,
 				with its own themes, annotations, and Twoslash support; and both do more than fuz_code,
 				which has the fewest features of the four: a single-pass lexer per language, with CSS
-				classes for its theme. These numbers compare the work all of them share, not what one offers
-				that another doesn't.
+				classes for its theme. Their fidelity differs too: how finely each splits the same source,
+				and how accurately it classifies each part. These numbers compare the work all of them
+				share, not what one offers that another doesn't, and they time each library's output without
+				scoring its quality.
 			</li>
 			<li>
 				<strong>The languages are fuz_code's.</strong> The languages measured are fuz_code's
@@ -838,6 +840,97 @@ node bench/run.ts --help`;
 				application, gives the engine a different history than a process holding one library.
 			</li>
 		</ul>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="Compared with Twinkleplop's benchmark" />
+		<p>
+			Twinkleplop's own <a href="https://github.com/pngwn/twinkleplop">comparison harness</a> is the
+			one this method builds on, and the two answer different questions: it tracks Twinkleplop
+			against other libraries across its own versions, and this one compares a fixed roster on
+			shared inputs. Where they differ, as of Twinkleplop 0.3.1:
+		</p>
+		<table>
+			<thead>
+				<tr>
+					<th></th>
+					<th>Twinkleplop's</th>
+					<th>this benchmark</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>libraries</td>
+					<td>Twinkleplop, Shiki (both engines), Prism, sugar-high, speed-highlight</td>
+					<td>fuz_code, Twinkleplop, Prism, Shiki (both engines)</td>
+				</tr>
+				<tr>
+					<td>languages</td>
+					<td>a broad set, most of what Twinkleplop supports</td>
+					<td>the timed languages every library here supports</td>
+				</tr>
+				<tr>
+					<td>inputs</td>
+					<td>generated inputs at three sizes per language, and Shiki's samples</td>
+					<td>
+						pinned files no measured library wrote as the headline, with Shiki's samples, the
+						libraries' own, snippets, and stress inputs kept apart
+					</td>
+				</tr>
+				<tr>
+					<td>isolation</td>
+					<td>one process per cell, its libraries alternating within each round</td>
+					<td>one process per library and pass, in a rotating order</td>
+				</tr>
+				<tr>
+					<td>rounds</td>
+					<td>one pass of several rounds, a short rewarm, a full collection each round</td>
+					<td>several passes of a few rounds each, a longer rewarm, a minor collection only</td>
+				</tr>
+				<tr>
+					<td>statistics</td>
+					<td>median, minimum, p10 and p90, and a bootstrap interval</td>
+					<td>median, p10 and p90, spread, each pass's median, and the gap between processes</td>
+				</tr>
+				<tr>
+					<td>retries and noise</td>
+					<td>no retries; a calibrated noise floor for its A/B harness, not the comparison</td>
+					<td>
+						a disturbed cell is measured again; a calibrated noise floor for the comparison itself
+					</td>
+				</tr>
+				<tr>
+					<td>HTML timing</td>
+					<td>the returned string is discarded, so a library returning a rope never flattens it</td>
+					<td>one character of the string is read inside the clock, which flattens it</td>
+				</tr>
+				<tr>
+					<td>cold start</td>
+					<td>Twinkleplop alone, with scenarios about its own internals</td>
+					<td>every library, through the same bundle entries, in the results file</td>
+				</tr>
+				<tr>
+					<td>other metrics</td>
+					<td>none in the comparison</td>
+					<td>bundle size, install footprint, retained heap, token counts, output sizes</td>
+				</tr>
+				<tr>
+					<td>history</td>
+					<td>a history of published runs across versions</td>
+					<td>each published run stands alone</td>
+				</tr>
+				<tr>
+					<td>machine</td>
+					<td>
+						a bare-metal server with boost off, the run confined to cores away from the system's
+					</td>
+					<td>a laptop with boost, SMT, and ASLR left at their defaults</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			Numbers from the two are not comparable with each other: the machines, the inputs, and the
+			HTML timing differ.
+		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Reproducing a run" />

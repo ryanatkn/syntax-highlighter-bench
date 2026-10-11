@@ -21,6 +21,8 @@ numbers are committed as `results/deterministic.json`. A timed run is
 published as `results/latest.json`, measured on one named machine, and the site
 renders it.
 
+AI disclosure: this is an LLM-generated repo guided by a person.
+
 ## Quick start
 
 Prerequisites:
@@ -216,6 +218,9 @@ discarded, and nothing is retried.
 - Shiki resolves colors while tokenizing and writes them inline; the others
   emit classes. The `html` mode measures what each library ships, which is not
   the same work.
+- The libraries differ in features and in fidelity: how finely each splits
+  the same source, and how accurately it classifies each part. The numbers
+  time each library's output without scoring its quality.
 - Token counts differ between libraries, and fewer tokens is less work, not
   faster work.
 - In a cell every library is warm, and just rewarmed after a minor
@@ -394,28 +399,38 @@ structural. By design:
 
 The measurement method builds on the comparison harness of
 [Twinkleplop](https://github.com/pngwn/twinkleplop) (MIT). Kept from it: a
-fresh process for each cell, iterations calibrated per library, an untimed
-rewarm and a minor collection before timing, token counts recorded, machine
-drift detected, and a machine lock. Changed here: Twinkleplop measures a cell's
-libraries together in one process, alternating within each round, and this
-harness gives each library a process of its own, rotates the order of the
+fresh process for each cell, iterations calibrated per library, language
+binding kept out of the timed loop, an untimed rewarm and a minor collection
+before timing, token counts recorded, a check before measuring that excludes a
+library returning nothing (and records it as excluded), machine drift detected
+by an anchor workload, ported from it, and a machine-wide lock (here
+fuz_util's, which Twinkleplop's runs don't share). The first adapter rules come
+from the same harness: the same stage, explicit languages with no fallback, and
+token counts recorded rather than equalized. So do Shiki's two engines measured
+as two libraries, Shiki's benchmark samples as an input source, and the `docs`
+feature set, fixed before any numbers. The calibration follows Twinkleplop's
+A/B harness: an A/A run whose 95th-percentile deviation is the floor for one
+cell, with a separate floor for a geometric mean. Changed here: Twinkleplop measures a
+cell's libraries together in one process, alternating within each round, and
+this harness gives each library a process of its own, rotates the order of the
 processes, pools several passes, forces no full collection before a batch
 (Twinkleplop's forces one every round), and reads the HTML inside the timed
-call. The anchor workload is ported from it, and the adapter
-rules come from the same harness.
+call.
 
 Cold start generalizes Twinkleplop's cold-start harness across libraries. Kept
 from it: a fresh process for each sample, scenarios interleaved round by round,
-the first rounds discarded, the compile cache off, the bundled chunk measured against the unbundled
-import, a bare Node baseline, time to a first highlight, medians rather than
-means, and the machine lock. Changed here: the scenarios run for every library
-through the adapters' bundle entries; a time is the process's own clock from
-its start, read once, where Twinkleplop reports a parent-side wall time and
-marks inside the process; the process is a generated module with no harness
-code; the library that goes first rotates; every sample is checked; and the
-samples are journaled as part of a run. Its scenarios that are about
-Twinkleplop's own internals (a stubbed compiler, shipping a compiled grammar,
-the compile cache turned on) are not here.
+the first rounds discarded, the compile cache off, the bundled chunk measured
+against the unbundled import, a bare Node baseline, time to a first highlight,
+medians rather than means, and the machine lock. Changed here: the scenarios
+run for every library through the adapters' bundle entries; a time is the
+process's own clock from its start, read once when the scenario's work is done,
+where Twinkleplop reads that clock between each step and also reports a wall
+time measured by the parent, spawn included; the process is a generated module
+with no harness code; the library that goes first rotates; every sample is
+checked; and the samples are journaled as part of a run. Its scenarios that are
+about Twinkleplop's own internals (a stubbed compiler, the cost of binding a
+language, shipping a compiled grammar, the compile cache turned on) are not
+here.
 
 Statistics and formatting come from
 [fuz_util](https://github.com/fuzdev/fuz_util).

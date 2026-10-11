@@ -27,6 +27,7 @@
 			where a reader picks the libraries, languages, and metrics to compare:
 			<a href={resolve('/(site)/results')}>the results page</a>.
 		</p>
+		<p>AI disclosure: this is an LLM-generated repo guided by a person.</p>
 	</section>
 	<TomeSection>
 		<TomeSectionHeader text="What exists" />
