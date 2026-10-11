@@ -902,7 +902,7 @@ export const BenchHeap = z.strictObject({
 	}),
 	code_kb: z.number().int().nonnegative().meta({
 		description:
-			"V8's code spaces in use, in KiB: the regular expressions compiled to native code as well as optimised functions. Machine code is the architecture's, and the figure is x64's."
+			"V8's code spaces in use, in KiB: the regular expressions compiled to native code as well as optimized functions. Machine code is the architecture's, and the figure is x64's."
 	}),
 	external_kb: z.number().int().nonnegative().meta({
 		description:

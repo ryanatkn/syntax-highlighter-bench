@@ -35,7 +35,7 @@ describe('to_anchor_drift', () => {
 	test('with more than two readings it is the two that differ most, earlier to later', () => {
 		// the ends agree, and the middle shows the machine changed state
 		assert.deepStrictEqual(to_anchor_drift([1000, 1100, 1000]), { drift: 0.1, stable: false });
-		// each neighbour is under the threshold, and the whole is not
+		// each neighbor is under the threshold, and the whole is not
 		const anchor = to_anchor_drift([1000, 980, 1010]);
 		assert.closeTo(anchor.drift, 30 / 980, 1e-12);
 		assert.ok(!anchor.stable);

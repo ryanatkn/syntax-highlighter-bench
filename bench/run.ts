@@ -953,7 +953,7 @@ export type LibraryOutcome =
  *
  * It never looks at the times. Keeping the fastest attempt would bias every
  * retried number toward fast, and a library that is noisier would be retried
- * more often and so favoured more.
+ * more often and so favored more.
  *
  * @param spreads - each attempt's spread, in the order measured
  * @returns the index of the attempt to keep
@@ -1850,7 +1850,7 @@ export const plan_run = (options: RunOptions, bench_options: RunBenchOptions = {
 	};
 };
 
-/** Says what run a journal records, so a leftover from another run is recognisable. */
+/** Says what run a journal records, so a leftover from another run is recognizable. */
 const describe_journal = (journal: Journal): string => {
 	const { kind, filters, generated_at } = journal.header;
 	const filtered = Object.entries(filters)

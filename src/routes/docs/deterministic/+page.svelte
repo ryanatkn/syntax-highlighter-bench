@@ -8,6 +8,7 @@
 	import Code from '@fuzdev/fuz_code/Code.svelte';
 
 	import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '#lib/bench_constants.ts';
+	import { format_bytes } from '#lib/bench_format.ts';
 
 	const tome = tome_get_by_slug('deterministic');
 
@@ -51,8 +52,8 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			</li>
 			<li>
 				Vite's library mode never removes the whitespace of an ES module, which suits a library and
-				not a page. So the module is then minified once, whole, by esbuild. No bundle in the roster
-				ends up carrying a license comment.
+				not a page. So the module is then minified once, whole, by esbuild, which keeps license
+				comments: Prism's bundles carry the one in its core file.
 			</li>
 			<li>Compression is Node's zlib and brotli.</li>
 		</ul>
@@ -165,10 +166,10 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 	<TomeSection>
 		<TomeSectionHeader text="What a language costs" />
 		<p>
-			One set holds no languages and one holds each language alone, so the bytes a language adds to
-			a library are <code>single:&lt;lang&gt;</code> minus <code>core</code>, with no extra
-			measurement. The results page derives that view from the sets and never stores it, so it can't
-			drift from them. It is the default view of the bundle sizes there.
+			One set holds no languages, and for each language one set holds it alone, so the bytes a
+			language adds to a library are <code>single:&lt;lang&gt;</code> minus <code>core</code>, with
+			no extra measurement. The results page derives that view from the sets and never stores it, so
+			it can't drift from them. It is the default view of the bundle sizes there.
 		</p>
 		<p>
 			The sum of those differences over a set and the set's measured size differ when a library
@@ -315,7 +316,7 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			</li>
 			<li>
 				<code>code_kb</code> — the bytes in use in those two spaces. They hold the regular
-				expressions the engine compiled to native code as well as the functions it optimised, so a
+				expressions the engine compiled to native code as well as the functions it optimized, so a
 				library that lexes with regular expressions holds much of its memory here. Machine code is
 				the processor's: the figures are for x64.
 			</li>
@@ -332,7 +333,8 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			reading. The generated module holds nothing of the harness, as a cold-start process doesn't.
 		</p>
 		<p>
-			It runs with three flags, for this reading only: no timed number is measured with a flag.
+			It runs with three flags, for this reading only. The timed cells run with
+			<code>--expose-gc</code> alone, for their minor collections, and cold start with none.
 			<code>--expose-gc</code> gives it the collections. <code>--max-semi-space-size=16</code> pins
 			the young generation, which V8 otherwise sizes from the machine's memory, and a small one
 			leaves some libraries holding a different amount. <code>--single-threaded</code> keeps the
@@ -359,11 +361,13 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 		<TomeSectionHeader text="What the file records" />
 		<p>
 			A deterministic file holds no timed value, so it records no machine, no time, no Node version,
-			and no commit: none of them shaped its numbers, and a commit can't name the tree it is itself
-			committed in. What the numbers do depend on is in the file:
+			and no commit. The Node version does shape the compressed sizes and the heaps (below), but a
+			file naming it would differ between machines that agree, and a commit can't name the tree it
+			is itself committed in. What the numbers do depend on is in the file:
 		</p>
 		<ul>
 			<li>each library's version, and the versions of its separately versioned packages</li>
+			<li>each library's install closure, as a hash</li>
 			<li>the corpus hash</li>
 			<li>
 				the versions of Vite, of the Rolldown inside it, and of esbuild, and the compression levels,
@@ -371,22 +375,23 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			</li>
 		</ul>
 		<p>
-			Two dependencies are not in the file. The gzip and brotli sizes, of bundles and of HTML alike,
-			come from the zlib and brotli inside Node, and a Node with another version of either can
-			compress to a few bytes more or less. The file is generated on the Node version the checks run
-			on. The install footprints follow the versions the lockfile installs, which a dependency
-			update moves without moving a library's own version. And the retained heaps follow V8's object
-			layout: they are for the Node version the checks run on, on x64, without pointer compression,
-			as official Node builds are. A failed check says which of these it looks like.
+			Two dependencies are not recorded by version. The gzip and brotli sizes, of bundles and of
+			HTML alike, come from the zlib and brotli inside Node, and a Node with another version of
+			either can compress to a few bytes more or less. The file is generated on the Node version the
+			checks run on. And the retained heaps follow V8's object layout: they are for the Node version
+			the checks run on, on x64, without pointer compression, as official Node builds are. The
+			install footprints follow the versions the lockfile installs, which a dependency update moves
+			without moving a library's own version; the closure hash records them. A failed check says
+			which of these it looks like.
 		</p>
 		<p>
 			A heap reading can also differ from the last by a little between two processes on the same
 			machine. Two readings agree to well under a kibibyte, and the check still compares them within
-			{HEAP_TOLERANCE_KB} KiB or {HEAP_TOLERANCE_RATIO * 100}% of the larger, whichever is larger,
-			and every other number exactly. Regenerating keeps a committed reading that agrees, so an
-			unchanged tree regenerates an unchanged file, and a change smaller than the tolerance isn't
-			recorded until it, with later ones, exceeds it. The site reads two numbers within the
-			tolerance as level, marked <code>≈</code>.
+			{format_bytes(HEAP_TOLERANCE_KB * 1024)} or {HEAP_TOLERANCE_RATIO * 100}% of the larger,
+			whichever is larger, and every other number exactly. Regenerating keeps a committed reading
+			that agrees, so an unchanged tree regenerates an unchanged file, and a change smaller than the
+			tolerance isn't recorded until it, with later ones, exceeds it. The site reads two numbers
+			within the tolerance as level, marked <code>≈</code>.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -394,8 +399,8 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 		<p>
 			A timed run, described in <TomeLink slug="method" />, takes its cells' token counts and output
 			sizes from its own processes, by the same check under the same setup. When the deterministic
-			file describes the run, which is the same library versions, install closures, corpus, and
-			feature sets, the run does two more things:
+			file describes the run (the same library versions and extra packages, install closures,
+			corpus, and feature sets), the run does two more things:
 		</p>
 		<ul>
 			<li>
@@ -423,11 +428,11 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 	<TomeSection>
 		<TomeSectionHeader text="Kept current" />
 		<p>
-			On every change the repository's check workflow runs the tests,
-			<code>bench:deterministic -- --check</code>, and a smoke run of every library on every cell.
-			The deterministic check rebuilds every bundle and recounts every input, and fails with the
-			places that differ when the committed file is stale. Nothing in the workflow is a measurement
-			of speed.
+			On every change the repository's check workflow runs <code>gro check</code>,
+			<code>bench:deterministic -- --check</code>, and a smoke run of every library on every cell
+			and cold-start scenario. The deterministic check rebuilds every bundle and recounts every
+			input, and fails with the places that differ when the committed file is stale. Nothing in the
+			workflow is a measurement of speed.
 		</p>
 	</TomeSection>
 </TomeContent>

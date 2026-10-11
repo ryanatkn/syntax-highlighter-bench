@@ -27,7 +27,7 @@ describe('group_inputs', () => {
 		}
 	});
 
-	test('a home group is labelled with the library', () => {
+	test('a home group is labeled with the library', () => {
 		const home = groups.find((group) => group.source_key === 'home:twinkleplop')!;
 		assert.strictEqual(home.label, 'home: twinkleplop');
 		assert.include(home.note, 'twinkleplop');

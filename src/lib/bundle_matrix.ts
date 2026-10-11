@@ -409,7 +409,7 @@ export const to_bundle_cost_groups = (
 					{
 						key: 'set:sum',
 						kind: 'summary',
-						label: 'sum of the rows above',
+						label: 'floor plus each language alone',
 						note: 'the floor plus each language alone: not a bundle',
 						// no page loads this sum, so the libraries are not ranked by it
 						compared: false
@@ -505,7 +505,7 @@ export const to_install_group = (results: MatrixResults): MatrixGroup | null => 
 	return {
 		key: 'install',
 		label: 'Install footprint',
-		note: "the package's runtime dependencies, each package once",
+		note: 'the packages and their runtime dependencies, each package once',
 		rows: INSTALL_MEASURES.map(({ id, label, unit }) =>
 			to_bundle_row(results, { key: `install:${id}`, label, unit }, (library) =>
 				Object.hasOwn(results.install, library)

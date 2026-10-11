@@ -21,7 +21,7 @@
 				<th scope="col">version</th>
 				<th scope="col">HTML output</th>
 				<th scope="col">engine</th>
-				<th scope="col">default theme</th>
+				<th scope="col">default theme's color schemes</th>
 				<th scope="col">what is measured</th>
 			</tr>
 		</thead>

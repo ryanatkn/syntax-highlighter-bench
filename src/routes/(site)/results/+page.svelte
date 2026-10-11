@@ -210,7 +210,7 @@
 	<p>
 		<small>
 			A <code>home</code> source is a library's own samples: home turf for that library, and always
-			labelled with its name. The libraries contributed very different amounts, so home inputs are
+			labeled with its name. The libraries contributed very different amounts, so home inputs are
 			grouped and summarized by owner and never pooled.
 			<a href={resolve('/docs/corpus')}>The corpus docs</a> list every input.
 		</small>
@@ -248,11 +248,11 @@
 						{reference}
 					>
 						A warm library on one input, in one mode. MB/s compares across inputs of different
-						sizes, and time per call does not: the large inputs differ several times over in size. A
-						geometric mean covers only the rows where every selected library has a number, and says
-						how many. A <em>disturbed</em> mark is a value whose rounds disagreed, and
-						<em>retried</em> one that was measured again. A ratio marked <code>≈</code> is inside
-						the machine's noise floor.
+						sizes, and time per call does not: inputs in one size tier can differ several times over
+						in bytes. A geometric mean covers only the rows where every selected library has a
+						number, and says how many. A <em>disturbed</em> mark is a value whose rounds disagreed,
+						and <em>retried</em> one that was measured again. A ratio marked <code>≈</code> is
+						inside the machine's noise floor.
 					</MatrixTable>
 				{/if}
 			{/if}
@@ -289,14 +289,14 @@
 						What each library adds to a fresh Node process: the scenario's median time less the bare
 						Node baseline's, which every sample includes. The details of a row give the whole time
 						and the process's peak memory. Bundled is the one chunk whose size is reported below,
-						and unbundled is the same module imported from <code>node_modules</code>. A ratio
-						between small additions is large even when the processes take nearly the same time. An
-						addition smaller than bare Node's own spread, the gap between its 10th and 90th
-						percentile, is marked <em>in the noise</em>: it can't be told from adding nothing, and
-						has no ratio. In a row with such an addition the others are compared with that spread
-						instead of with the best, and marked <code>≥</code>: at least so many times the spread,
-						and so at least so many times the best, which is smaller than the spread. Such a row is
-						left out of the mean. A reference library is used only in the rows where its own
+						and unbundled imports the same entry with its imports resolved from
+						<code>node_modules</code>. A ratio between small additions is large even when the
+						processes take nearly the same time. An addition smaller than bare Node's own band, from
+						its 10th to its 90th percentile, is marked <em>in the noise</em>: it can't be told from
+						adding nothing, and has no ratio. In a row with such an addition the others are compared
+						with that band instead of with the best, and marked <code>≥</code>: at least so many
+						times the band, and so at least so many times the best, which is inside it. Such a row
+						is left out of the mean. A reference library is used only in the rows where its own
 						addition is outside the noise.
 					</MatrixTable>
 				{/if}
@@ -344,11 +344,12 @@
 						adds the wasm binary and the theme stylesheet to the JS, each compressed on its own, so
 						a library whose engine ships as wasm is not compared on its JS alone.
 					{:else}
-						What each language costs in a library's minified JS: the bundle with that language
-						alone, less the bundle with none. The sum of the rows of a set is not a bundle, so it
-						has no ratio: it exceeds the set's measured size when a library shares code between
-						languages, or when one language brings another with it, as HTML brings the script and
-						style languages.
+						What each language costs in a library's minified JS. The first language is the bundle
+						with that language alone, less the bundle with none. One more language is what it adds
+						to a bundle of every other timed language, always in minified bytes, whatever the Bytes
+						selector says. The floor plus each language alone is not a bundle, so it has no ratio:
+						it exceeds the set's measured size when a library shares code between languages, or when
+						one language brings another with it, as HTML brings the script and style languages.
 					{/if}
 					The wasm binary and the theme stylesheet are loaded beside the JS, and each has a row of
 					its own.
@@ -395,14 +396,14 @@
 					garbage until the heap settles. Each number is what that process holds over a bare one,
 					after one highlight of a small snippet; larger inputs leave more, most of all for regexp
 					and wasm engines. Machine code holds the regular expressions the engine compiled as well
-					as optimised functions, and is the processor's: these figures are x64's. External memory
+					as optimized functions, and is the processor's: these figures are x64's. External memory
 					is where a WebAssembly engine keeps its linear memory, counted at the size it has grown
 					to, which it never gives back; the OS backs only the pages it has touched, so resident
 					memory can be lower. All three are summed first and ranked: a smaller figure is less
-					memory for the same highlight. Two readings within the tolerance a reading is checked
-					against are marked <code>≈</code>. A theme in a stylesheet is held by the page, not the
-					library, so a library that writes its styles inline holds its theme here and one with
-					classes doesn't. The figures are for one Node version;
+					memory for the same highlight. A ratio within the heap check's tolerance is marked
+					<code>≈</code>. A theme in a stylesheet is held by the page, not the library, so a library
+					that writes its styles inline holds its theme here and one with classes doesn't. The
+					figures are for one Node version;
 					<a href={resolve('/docs/deterministic')}>the deterministic metrics docs</a> say which, and
 					what moves them.
 				</MatrixTable>
@@ -438,11 +439,11 @@
 					{reference}
 					colored={false}
 				>
-					How many tokens each library finds in an input, and how large its HTML is, raw or
-					compressed as a server would send it. The ratios are not colored, because smaller is not
-					better here: libraries split the same source differently and wrap their HTML differently,
-					so fewer tokens is less output, not a faster library, and HTML with inline styles carries
-					its theme where HTML with classes leaves it to a stylesheet.
+					How many tokens each library finds in an input, and how large its HTML is: in elements,
+					and in bytes, raw or compressed as a server would send it. The ratios are not colored,
+					because smaller is not better here: libraries split the same source differently and wrap
+					their HTML differently, so fewer tokens is a coarser split, not a better one, and HTML
+					with inline styles carries its theme where HTML with classes leaves it to a stylesheet.
 					<a href={resolve('/docs/deterministic')}>The deterministic metrics docs</a> say what each
 					counts.
 				</MatrixTable>

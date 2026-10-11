@@ -10,6 +10,7 @@
  * @module
  */
 
+import { format_bytes } from './bench_format.ts';
 import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from './bench_constants.ts';
 import type { BenchHeap } from './results_schema.ts';
 import {
@@ -47,7 +48,7 @@ export const HEAP_MEASURES: ReadonlyArray<{
 	{
 		id: 'code',
 		label: 'Machine code',
-		note: "compiled regular expressions and optimised functions, as x64's",
+		note: 'compiled regular expressions and optimized functions, on x64',
 		compared: true
 	},
 	{
@@ -110,7 +111,7 @@ export const to_heap_groups = (
 		if (entry === undefined) return { kind: 'unmeasured' };
 		return to_value_entry(to_heap_bytes(entry, measure), {
 			details: [
-				`V8 heap ${entry.retained_kb} KiB, machine code ${entry.code_kb} KiB, external ${entry.external_kb} KiB`
+				`V8 heap ${format_bytes(entry.retained_kb * 1024)}, machine code ${format_bytes(entry.code_kb * 1024)}, external ${format_bytes(entry.external_kb * 1024)}`
 			]
 		});
 	};

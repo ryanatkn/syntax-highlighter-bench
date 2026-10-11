@@ -310,7 +310,7 @@ describe('a timed run keeps a journal', () => {
 		const error = await catch_run_error(parse(), machine.options);
 		assert.strictEqual(error.exit_code, 2);
 		assert.match(error.message, /a journal exists: pass --resume .* or remove /);
-		// and says what it records, so a leftover from another run is recognisable
+		// and says what it records, so a leftover from another run is recognizable
 		assert.match(
 			error.message,
 			/it records a full run started \S+, filtered to libraries fuz_code,prism; langs json; sizes micro; metrics throughput, holding 3 results/

@@ -19,15 +19,6 @@
 		</aside>
 	</section>
 	<TomeSection>
-		<TomeSectionHeader text="A published run" />
-		<p>
-			Timed numbers will be published from one named machine, calibrated first, with the machine,
-			the commands, and the checks a run must pass written beside them. The run is committed as
-			<code>results/latest.json</code>, and the site then renders it in place of the deterministic
-			results. Until then the harness can be run by anyone, and <TomeLink slug="method" /> says how.
-		</p>
-	</TomeSection>
-	<TomeSection>
 		<TomeSectionHeader text="More views" />
 		<p>Each of these is a view over the same results file:</p>
 		<ul>
@@ -35,9 +26,7 @@
 			<li>
 				a page for each language, with every library's rendering of the same sample side by side
 			</li>
-			<li>
-				the change from one published run to the next, for every library, once there are two runs
-			</li>
+			<li>the change from one published run to the next, for every library</li>
 			<li>the throughput cells run in the reader's own browser</li>
 		</ul>
 	</TomeSection>
@@ -48,7 +37,6 @@
 				Markdown with the languages of its fenced blocks loaded, beside the cells that load Markdown
 				alone
 			</li>
-			<li>inputs built to be a worst case, which regex grammars tend to handle very differently</li>
 			<li>other runtimes than Node</li>
 		</ul>
 	</TomeSection>

@@ -449,7 +449,7 @@ export interface PlannedCell {
 	/** The ids of the libraries to measure: the selected ones that claim the language. */
 	libraries: Array<string>;
 	/**
-	 * A number that differs between neighbouring cells and between the modes of
+	 * A number that differs between neighboring cells and between the modes of
 	 * one input. The library a cell's first pass starts with advances by it.
 	 */
 	rotation: number;

@@ -18,7 +18,7 @@ import type { Lang } from './langs.ts';
 /**
  * How many differently-styled spans the HTML of any input must have. A
  * plain-text fallback produces none, or only structural kinds: a per-line
- * wrapper, plus one default-colour span in Shiki. Prose-heavy Markdown
+ * wrapper, plus one default-color span in Shiki. Prose-heavy Markdown
  * legitimately produces as few as two, so this floor alone cannot tell them
  * apart; the snippet floor does.
  */

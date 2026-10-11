@@ -11,7 +11,7 @@
  * - **retained**: the bytes used in every V8 heap space but the two that hold
  *   machine code (`HEAP_CODE_SPACES`).
  * - **code**: the bytes used in those two. They hold the regular expressions V8
- *   compiled to native code as well as optimised functions, so a regexp engine
+ *   compiled to native code as well as optimized functions, so a regexp engine
  *   holds much of its memory here. Machine code is the architecture's: the
  *   figure is x64's.
  * - **external**: `process.memoryUsage().external`, the memory V8 is told about

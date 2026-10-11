@@ -46,8 +46,8 @@ schema, the timed harness with its cold-start scenarios, the deterministic
 metrics (bundle size, install footprint, retained heap, token counts, output
 sizes raw and compressed, coverage) with their
 committed results file, the site that renders a results file (the landing page
-and `/results`), and the docs that describe them. The first full run, from
-laptop1, is committed with its calibration and published as
+and `/results`), and the docs that describe them. Full runs from laptop1
+are committed with the calibration, and the latest is published as
 `results/latest.json`, so the site renders it. The committed results files
 are data: never put a measured number in the docs.
 A table that renders the file is data, and prose is not.
@@ -193,7 +193,7 @@ tuned to flatter a result. Adding a set is one line.
   language's incremental cost
 - `docs` — what a documentation site imports, matching Twinkleplop's docs
   bundle
-- `web_rust` — labelled "web + rust", footnoted as fuz_code's full set (home
+- `web_rust` — labeled "web + rust", footnoted as fuz_code's full set (home
   turf); named by content because the site is neutral
 - `all` — every language id
 - `timed` — every timed language, which every library claims, and
@@ -452,7 +452,7 @@ Two floors, used in order by a harness:
    doesn't. A library that fails is excluded from the language.
 2. **The per-input floor**: each input must reach `MIN_SPAN_KINDS`. This one is
    low because prose-heavy Markdown legitimately has few kinds, so it can't tell
-   that from Shiki's fallback (a line wrapper plus one default-colour span). The
+   that from Shiki's fallback (a line wrapper plus one default-color span). The
    gate can.
 
 It throws, rather than failing, for a language the adapter doesn't claim (that
@@ -543,7 +543,7 @@ each set of `FEATURE_SETS`:
   Another bundler can remove different code from the same entry, unevenly
   across libraries: built by Rollup (Vite 7) with the same options, Rollup
   removes Twinkleplop's diagnostics code, which it proves is never called, and
-  Rolldown keeps it; Rollup specialises a function fuz_code's Markdown language
+  Rolldown keeps it; Rollup specializes a function fuz_code's Markdown language
   calls with a constant argument, and Rolldown doesn't; and Rolldown adds a
   small CommonJS interop helper to Prism's bundles. The method page's caveats
   say the same to readers.
@@ -645,8 +645,8 @@ harness snippet once through `bundle_html_source`, drops the HTML, and calls
 bytes back and forth forever). It then sums `v8.getHeapSpaceStatistics()` less
 `HEAP_CODE_SPACES` as `retained_kb`,
 separately sums those two spaces as `code_kb` (they hold irregexp's native
-code as well as optimised functions, so a regexp engine's memory is largely
-there: leaving them out would favour it; machine code is the architecture's,
+code as well as optimized functions, so a regexp engine's memory is largely
+there: leaving them out would favor it; machine code is the architecture's,
 x64 recorded), and reads `process.memoryUsage().external` (a wasm engine's
 linear memory, at the size it has grown to and never gives back; the OS backs
 only touched pages, so RSS can be lower). `to_bench_heap` subtracts a bare
@@ -753,7 +753,7 @@ process, so the roster can't move another library's number. Two effects made
 that necessary, both found by measuring a library alone against the same
 library beside others:
 
-- libraries that share code change how V8 optimises it for each other (Shiki's
+- libraries that share code change how V8 optimizes it for each other (Shiki's
   two engines share its tokenizer core, and the JS engine read far
   slower beside the wasm one)
 - V8 sizes its young generation from recent allocation, so a library's time on
@@ -808,9 +808,9 @@ already flat. Reading a character flattens it inside the clock (a cost
 set by the size of the output, not by the library, so it weighs most on the
 fastest one), and the
 character is added to a module-level sink: a read whose result is unused is
-dropped once V8 optimises the call, and the string then stays a rope. A test
+dropped once V8 optimizes the call, and the string then stays a rope. A test
 asks V8 (`%StringIsFlat`) that the call's result is flat for every adapter, cold
-and optimised. In
+and optimized. In
 `tokenize` mode nothing is lazy: every adapter returns materialized arrays.
 
 **The timing engine** (`measure_call`), in order:
@@ -833,8 +833,8 @@ puts some libraries through a race each round:
 
 - A mark-compact clears hidden classes that only live objects hold. A
   library that makes a fresh class instance per call loses the class between
-  calls, and V8 discards every optimised function embedding it ("embedded weak
-  objects cleared" under `--trace-deopt`), so the next batch re-optimises
+  calls, and V8 discards every optimized function embedding it ("embedded weak
+  objects cleared" under `--trace-deopt`), so the next batch re-optimizes
   inside the clock.
 - A library that allocates outside the JS heap per call (a typed
   array's backing store) gets that memory back only at a collection, so a
@@ -975,13 +975,13 @@ there exceeds `SPREAD_DISTURBED_ABOVE` (`passes_are_disturbed`) is measured agai
 every pass (`plan_retry`), up to `retries` times and until an attempt isn't
 disturbed. `select_attempt` keeps the attempt with the lowest spread, the
 earliest on a tie, and never looks at the times: selecting on speed would bias
-retried numbers toward fast and favour whichever library is noisier. `attempts`
+retried numbers toward fast and favor whichever library is noisier. `attempts`
 on the value says how many there were, and the summary counts them for each
 library. Retries are journaled like any result, with their attempt number.
 Smoke runs don't retry.
 
 **Cold start** (`bench/coldstart.ts`, with the processes run by `bench/run.ts`).
-The scenario set and method generalise Twinkleplop's cold-start harness (MIT,
+The scenario set and method generalize Twinkleplop's cold-start harness (MIT,
 credited in the README and the module's doc comment).
 
 - **A sample is one fresh Node process**, and a scenario is what it does:
@@ -1117,7 +1117,7 @@ directory, so `gro check` neither takes nor waits on the machine's. The CLI has
 no such flag, and setting `TMPDIR` no longer separates two runs, so a second
 smoke run started while any benchmark holds the lock is refused: wait for it.
 That is right, since a smoke run's parallel processes would disturb the run
-that holds it. The lock's own behaviour is tested in fuz_util.
+that holds it. The lock's own behavior is tested in fuz_util.
 
 **Keep the spawning tests few.** `src/test/bench/run.spawn.test.ts` is the only
 file that starts harness processes, and each costs a Node start. How a
@@ -1302,9 +1302,9 @@ from a page's.
 
 The maintainer of this benchmark also maintains fuz_code, so fairness is
 structural: the maintainer's library is flagged (`by_maintainer` in
-`meta.libraries`), inputs are labelled by source with the neutral set primary,
+`meta.libraries`), inputs are labeled by source with the neutral set primary,
 adapters document their entry points for each library's maintainers to review,
-and the method is published. Snippets written here are labelled `harness`,
+and the method is published. Snippets written here are labeled `harness`,
 never `neutral`. Keep site and docs copy neutral — no library gets promotional
 wording.
 

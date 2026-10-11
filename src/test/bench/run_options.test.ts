@@ -476,7 +476,7 @@ describe('plan_cells', () => {
 		assert.ok(only_prism.every((cell) => cell.input.lang !== 'rust'));
 	});
 
-	test('rotation differs between the modes of an input and between neighbouring inputs', () => {
+	test('rotation differs between the modes of an input and between neighboring inputs', () => {
 		// what the starting library of a cell's first pass advances by
 		const cells = plan_cells(inputs, NO_FILTERS, ADAPTERS);
 		for (let i = 0; i < cells.length - 2; i += 2) {

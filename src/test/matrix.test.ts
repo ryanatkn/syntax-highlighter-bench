@@ -286,7 +286,7 @@ describe('to_geomean_row', () => {
 describe('format_matrix_value', () => {
 	const cases: Array<[value: number, unit: MatrixRow['unit'], expected: string]> = [
 		[55.556, 'mb_per_sec', '55.6 MB/s'],
-		[5425.347, 'ops_per_sec', '5,425 ops/s'],
+		[5425.347, 'ops_per_sec', '5,425 calls/s'],
 		[184_320, 'ns', '184 µs'],
 		[2.01, 'ms', '2.01 ms'],
 		[12_822, 'bytes', '12.8 kB'],
