@@ -220,8 +220,8 @@ import{D as e,F as t,G as n,L as r,M as i,Q as a,_t as o,at as s,ft as c,it as l
 				and how accurately it classifies each part. These numbers compare the work all of them
 				share, not what one offers that another doesn't, and they time each library's output without
 				scoring its quality.</li> <li><strong>The languages are fuz_code's.</strong> The languages measured are fuz_code's
-				built-in set, so the list favors it: a language fuz_code doesn't have is never measured.
-				Prism and Shiki each support hundreds of languages, and none of that shows here.</li> <li><strong>Classes and inline styles.</strong> Shiki resolves colors while it tokenizes and
+				built-in set, so the list favors it. Prism and Shiki each support hundreds of languages, and
+				none of that shows here.</li> <li><strong>Classes and inline styles.</strong> Shiki resolves colors while it tokenizes and
 				writes them inline, and the other libraries emit class names that a stylesheet colors. The <code>html</code> mode measures the HTML each library returns by default, which is not the
 				same work.</li> <li><strong>Token counts differ.</strong> A library that emits fewer tokens for the same source
 				may be doing less work for each byte, not the same work faster.</li> <li><strong>Synchronous paths.</strong> A library with an async API loads in its setup and is
