@@ -38,9 +38,8 @@
 			site renders.
 		</p>
 		<p>
-			The languages measured are fuz_code's built-in set, so the list favors it: a language fuz_code
-			doesn't have is never measured. Prism and Shiki each support hundreds of languages, and none
-			of that shows here.
+			The languages measured are fuz_code's built-in set, so the list favors it. Prism and Shiki
+			each support hundreds of languages, and none of that shows here.
 		</p>
 	</section>
 	<TomeSection>
