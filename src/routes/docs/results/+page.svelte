@@ -37,16 +37,31 @@
 		<TomeSectionHeader text="Sections" />
 		<ul>
 			<li>
-				<DeclarationLink name="BenchMeta" /> — the machine, Node version, commit, and corpus hash;
-				what kind of run it was and how it measured, in <DeclarationLink name="BenchRun" />, with
-				the retries it allowed, how cold start was sampled, how many segments it was measured in,
-				and the load average it started at; the roster of libraries with their versions and the
-				color schemes their default themes cover; the excluded list for cells, and
-				<code>startup_excluded</code> for cold-start scenarios, in
-				<DeclarationLink name="BenchStartupExcluded" />; the anchor's drift; the machine's noise
-				floor; the run's own process noise, in <DeclarationLink name="BenchProcessNoise" />, from
-				every pair of a value's passes; what the bundle sizes were built with, and the compression
-				levels every compressed size is taken at, in <DeclarationLink name="BenchBundler" />
+				<DeclarationLink name="BenchMeta" /> — where the numbers came from:
+				<ul>
+					<li>the machine, Node version, commit, and corpus hash</li>
+					<li>
+						the kind of run and how it measured, in <DeclarationLink name="BenchRun" />: the retries
+						it allowed, how cold start was sampled, how many segments it was measured in, and the
+						load average it started at
+					</li>
+					<li>
+						the roster of libraries, with their versions and the color schemes their default themes
+						cover
+					</li>
+					<li>
+						what was excluded: from cells in the excluded list, and from cold-start scenarios in
+						<code>startup_excluded</code>, in <DeclarationLink name="BenchStartupExcluded" />
+					</li>
+					<li>
+						the anchor's drift, the machine's noise floor, and the run's own process noise from
+						every pair of a value's passes, in <DeclarationLink name="BenchProcessNoise" />
+					</li>
+					<li>
+						what built the bundles and the compression levels of every compressed size, in
+						<DeclarationLink name="BenchBundler" />
+					</li>
+				</ul>
 			</li>
 			<li>
 				<DeclarationLink name="BenchLang" /> and <DeclarationLink name="BenchSet" /> — the language
@@ -54,8 +69,7 @@
 			</li>
 			<li>
 				<DeclarationLink name="BenchInput" /> — the inputs the run measured, each with its source,
-				size tier, hash, and the upstream commit it was copied from, as in the
-				<TomeLink slug="corpus" /> manifest
+				size tier, hash, and provenance, as in the <TomeLink slug="corpus" /> manifest
 			</li>
 			<li>
 				<DeclarationLink name="BenchCell" /> — one input measured in one mode, with each library's
@@ -191,7 +205,7 @@
 		</p>
 		<ul>
 			<li>
-				<code>results/latest.json</code>, the latest published timed run, when it is committed:
+				<code>results/latest.json</code>, the latest published timed run, when it exists:
 				<code>npm run results:publish</code> copies a run there once it passes the test below. It
 				carries its own bundle sizes, install footprints, retained heaps, token counts, and output
 				sizes, so every number on a page is from one file.
@@ -233,94 +247,43 @@
 		<p>Beyond the shape of each section, parsing checks that the sections agree:</p>
 		<ul>
 			<li>
-				every library, language, set, and cell id is unique and refers to a listed entry, except the
-				library a home input came from, which may be outside the run
+				every id is unique and refers to a listed entry, except the library a home input came from,
+				which may be outside the run
 			</li>
 			<li>
-				no two cells measure the same input in the same mode, and no cell covers an untimed language
-			</li>
-			<li>
-				every cell names a listed input, describes it as that entry does, and is named after its
-				file and mode
+				every cell names a listed input and describes it as that entry does, no two cells measure
+				the same input in the same mode, and no cell covers an untimed language
 			</li>
 			<li>
 				an input written for the benchmark has no provenance, a verbatim copy has the hash its one
-				pin records, and a derived stress input names its derivation, and one built from several
+				pin records, a derived stress input names its derivation, and an input built from several
 				files is marked synthetic
 			</li>
 			<li>
-				a run with timed numbers records its anchor, when it started, and its machine, Node version,
-				and commit, and how its numbers were measured
+				a run with timed numbers records its anchor, when it started, its machine, Node version, and
+				commit, and how its numbers were measured
+			</li>
+			<li>a run's filters describe the file, and a run with no filters has no gap, as above</li>
+			<li>
+				a library has no numbers for a language it doesn't claim, and one excluded from a cell or a
+				cold-start scenario claims its languages and has no numbers there
 			</li>
 			<li>
-				token counts are on <code>tokenize</code> cells only and output sizes on <code>html</code>
-				cells only, and a library with a timed value in a cell has that cell's deterministic number
-			</li>
-			<li>
-				a value's 10th percentile is at most its 90th, and an anchor is stable exactly when its
-				drift is under the threshold
-			</li>
-			<li>
-				a run's filters describe the file: every cell and cold-start entry is inside them, the
-				libraries listed are exactly the ones filtered to, and no id repeats
-			</li>
-			<li>a smoke run carries no noise floor, allows no retries, and is one segment</li>
-			<li>no value has more attempts than the run's retries allow</li>
-			<li>
-				a value has a pass median for each of the run's passes, and the process noise is there
-				exactly when a cell has a value and the run measured more than one pass, counting every pair
-				of passes of every value, with its median at most its 95th percentile and that at most its
-				largest
-			</li>
-			<li>a run with no filters has no gap, as above</li>
-			<li>
-				each startup entry carries the fields its scenario needs and no others, for languages the
-				library claims, and appears once, as a number or as an exclusion and never both
-			</li>
-			<li>
-				a <code>lang</code> or <code>first_highlight</code> entry names a timed language. A
-				<code>set</code> entry names a feature set, which may hold an untimed one
-			</li>
-			<li>
-				every startup entry keeps the samples the run says, its median lies between its 10th and
-				90th percentile, and a calibration has none
-			</li>
-			<li>
-				how cold start was sampled is recorded exactly when the run measured any, and is null for a
-				calibration and for a run whose metrics filter leaves it out
-			</li>
-			<li>a library has no numbers for a language its coverage doesn't claim</li>
-			<li>
-				a library listed as excluded from a cell claims that cell's language and has no numbers
-				there
+				each deterministic number sits on the cell whose call returns it, and a library with a timed
+				value in a cell has that cell's deterministic number
 			</li>
 			<li>
 				a bundle entry holds sizes only when the library claims every language of the set, and
 				otherwise names exactly the languages it lacks
 			</li>
 			<li>
-				bundle sizes cover every library over every set or are absent altogether, and what they were
-				built with is recorded exactly when they are present
+				the bundle sizes, install footprints, retained heaps, and the HTML's compressed sizes are
+				present together, for every library, or absent together
 			</li>
 			<li>
-				the install footprints and the HTML's compressed sizes come with the bundle sizes: every
-				library of the roster has a footprint, and every library with an output on an
-				<code>html</code> cell has its compressed sizes, exactly when the bundle sizes are present.
-				A footprint has at least a file for each package
-			</li>
-			<li>
-				the retained heaps come with the bundle sizes too, for every timed language each library
-				claims and no other
-			</li>
-			<li>
-				a compressed size is no larger than the raw one plus a compression format's own overhead,
-				the HTML's included, and the theme CSS sizes are null exactly for a library that writes its
-				styles inline
-			</li>
-			<li>
-				a file with no timed numbers is complete: in every cell each library that claims the
-				language has the number the cell states or is listed as excluded, and every listed input has
-				a cell in each mode
+				every number is internally consistent: percentiles in order, as many pass medians and
+				cold-start samples as the run says, no more attempts than its retries allow, and no
+				compressed size larger than the raw one plus the format's own overhead
 			</li>
 		</ul>
 		<p>

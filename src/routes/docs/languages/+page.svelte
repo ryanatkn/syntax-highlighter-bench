@@ -39,7 +39,8 @@
 		</p>
 		<p>
 			The languages measured are fuz_code's built-in set, so the list favors it. Prism and Shiki
-			each support hundreds of languages, and none of that shows here.
+			each support hundreds of languages, and none of that shows here. An id is added when a feature
+			set or a second library needs it.
 		</p>
 	</section>
 	<TomeSection>
@@ -71,14 +72,9 @@
 			comparison is never missing a library by design.
 		</p>
 		<p>
-			A language that is an id but is not timed is one the roster doesn't share: XML is the case
-			today, since Twinkleplop has no XML language. It appears in the coverage matrix and in feature
-			sets. A cold-start scenario that loads one language loads a timed one, so it never names an
-			untimed id.
-		</p>
-		<p>
-			The measured libraries support many more languages than these. An id is added when a feature
-			set or a second library needs it.
+			An untimed id is a language the roster doesn't share: XML is the case today, since Twinkleplop
+			has no XML language. It appears in the coverage matrix and in feature sets. A cold-start
+			scenario that loads one language loads a timed one, so it never names an untimed id.
 		</p>
 	</TomeSection>
 	<TomeSection>

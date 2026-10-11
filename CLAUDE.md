@@ -93,7 +93,7 @@ src/lib/                     the site's modules and components: see Site
 src/routes/                  the static SvelteKit site
   +layout.server.ts          tells every page where the rendered results came from
   (site)/                    the landing page and `results/`, under one header
-  docs/                      tomes (overview, adapters, corpus, languages, method, deterministic, results, design, library) + API docs
+  docs/                      tomes (overview, adapters, corpus, languages, method, deterministic, results, library) + API docs
 src/test/                    vitest tests; `bench/` mirrors the harness
   fixtures/results/          a fixture results file with invented numbers
 static/                      the mark: `logo.svg`, `favicon.png`, and `src/lib/logo.ts` are one drawing

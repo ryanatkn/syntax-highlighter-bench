@@ -176,9 +176,10 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 		<TomeSectionHeader text="The manifest" />
 		<p>
 			<code>bench/corpus/manifest.json</code> holds one <DeclarationLink name="BenchInput" /> for
-			each input: its path, source, language, tier, size in bytes and lines, SHA-256, whether it is
-			synthetic, and its provenance. A results file carries the same entries for the inputs it
-			measured, described in <TomeLink slug="results" />.
+			each input: its path, source (with the library, for a home input), language, tier, size in
+			bytes and lines, SHA-256, whether it is synthetic, its provenance, and for a derived stress
+			input its derivation. A results file carries the same entries for the inputs it measured,
+			described in <TomeLink slug="results" />.
 		</p>
 		<p>
 			Provenance is a list of <DeclarationLink name="BenchProvenance" /> pins, each a repository, a

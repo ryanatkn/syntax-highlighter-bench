@@ -80,9 +80,10 @@ node bench/run.ts --help`;
 			pools the rounds of all its passes.
 		</p>
 		<p>
-			Node runs with its default flags, which is what a consumer gets. In a timed run one process
-			runs at a time, and the parent does nothing while it measures: it blocks on the child and
-			reads its output after it exits.
+			Node runs with its default flags, which is what a consumer gets, apart from
+			<code>--expose-gc</code>, which the forced minor collection below needs. In a timed run one
+			process runs at a time, and the parent does nothing while it measures: it blocks on the child
+			and reads its output after it exits.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -100,9 +101,8 @@ node bench/run.ts --help`;
 			</li>
 			<li>
 				<strong>Iterations calibrated for the library.</strong> Speeds differ by orders of
-				magnitude, so a batch makes the number of calls that fills the target duration. A batch
-				makes at least a few calls while they fit a cap, as many as fit when fewer do, and one when
-				two no longer fit.
+				magnitude, so a batch makes the number of calls that fills the target duration: at least a
+				few while they fit under a cap, as many as fit when fewer do, and one when two don't.
 			</li>
 			<li>
 				<strong>A rewarm and a minor collection before every timed batch.</strong> The library runs
@@ -130,10 +130,6 @@ node bench/run.ts --help`;
 				is nothing to force.
 			</li>
 		</ul>
-		<p>
-			The forced minor collection needs the process started with <code>--expose-gc</code>, which
-			<code>bench/run.ts</code> passes to each process.
-		</p>
 		<p>
 			A full run measures each library in 3 processes per cell, each timing 4 rounds of 20ms
 			batches, after a 100ms warmup, with a 300ms rewarm before each batch. A library whose one call
@@ -790,11 +786,9 @@ node bench/run.ts --help`;
 				minified code, deep nesting, very long lines, constructs that never close. They say little
 				about typical code, so they are summarized on their own and left out of the default view and
 				the headline figures. A slow call there can be far slower than anywhere else, and a run
-				shows it as measured. Shiki is called with its per-line time limit out of reach, as
-				everywhere in this benchmark, so a stress number is the cost of highlighting every line in
-				full. With Shiki's default limit (500ms per line), a line that takes longer comes back with
-				its rest as one plain token: a consumer with default options gets a fallback on that line,
-				not this number.
+				shows it as measured. Shiki's stress numbers are the cost of highlighting every line in
+				full: with its default per-line time limit (500ms), a consumer gets the rest of a slower
+				line as one plain token instead, as <TomeLink slug="adapters" /> describes.
 			</li>
 			<li>
 				<strong>One bundler's sizes.</strong> A bundle size is what a page ships when Vite, with the

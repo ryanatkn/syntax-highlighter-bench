@@ -6,7 +6,6 @@ import LanguagesPage from './languages/+page.svelte';
 import MethodPage from './method/+page.svelte';
 import DeterministicPage from './deterministic/+page.svelte';
 import ResultsPage from './results/+page.svelte';
-import DesignPage from './design/+page.svelte';
 import ApiPage from './api/+page.svelte';
 import LibraryPage from './library/+page.svelte';
 
@@ -15,15 +14,7 @@ export const tomes: Array<Tome> = [
 		slug: 'overview',
 		category: 'guide',
 		Component: OverviewPage,
-		related_tomes: [
-			'adapters',
-			'corpus',
-			'languages',
-			'method',
-			'deterministic',
-			'results',
-			'design'
-		],
+		related_tomes: ['adapters', 'corpus', 'languages', 'method', 'deterministic', 'results'],
 		related_modules: [],
 		related_declarations: []
 	},
@@ -56,7 +47,7 @@ export const tomes: Array<Tome> = [
 		slug: 'method',
 		category: 'guide',
 		Component: MethodPage,
-		related_tomes: ['adapters', 'corpus', 'deterministic', 'results', 'design'],
+		related_tomes: ['adapters', 'corpus', 'deterministic', 'results'],
 		related_modules: [],
 		related_declarations: [
 			'BenchCellValue',
@@ -87,7 +78,7 @@ export const tomes: Array<Tome> = [
 		title: 'results file',
 		category: 'guide',
 		Component: ResultsPage,
-		related_tomes: ['languages', 'corpus', 'method', 'deterministic', 'design'],
+		related_tomes: ['languages', 'corpus', 'method', 'deterministic'],
 		related_modules: ['results_schema.ts', 'site_results.ts'],
 		related_declarations: [
 			'BenchResults',
@@ -97,14 +88,6 @@ export const tomes: Array<Tome> = [
 			'bench_results_is_publishable',
 			'resolve_site_results'
 		]
-	},
-	{
-		slug: 'design',
-		category: 'guide',
-		Component: DesignPage,
-		related_tomes: ['overview', 'method', 'deterministic', 'results'],
-		related_modules: [],
-		related_declarations: []
 	},
 	{
 		slug: 'api',

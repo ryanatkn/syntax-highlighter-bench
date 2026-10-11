@@ -160,8 +160,8 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			</li>
 		</ul>
 		<p>
-			A bundle that doesn't import or exports nothing fails too. The check doesn't prove a bundle is
-			the smallest that works.
+			A bundle that fails to import, or exports nothing, fails too. The check doesn't prove a bundle
+			is the smallest that works.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -336,13 +336,13 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			reading. The generated module holds nothing of the harness, as a cold-start process doesn't.
 		</p>
 		<p>
-			It runs with three flags, for this reading only. The timed cells run with
-			<code>--expose-gc</code> alone, for their minor collections, and cold start with none.
-			<code>--expose-gc</code> gives it the collections. <code>--max-semi-space-size=16</code> pins
-			the young generation, which V8 otherwise sizes from the machine's memory, and a small one
-			leaves some libraries holding a different amount. <code>--single-threaded</code> keeps the
-			engine from finishing compilation on another thread between the collections and the reading,
-			which otherwise moves Shiki's figures by kilobytes from one process to the next.
+			It runs with three flags, for this reading only: the timed cells run with
+			<code>--expose-gc</code> alone, and cold start with none. <code>--expose-gc</code> gives it
+			the collections. <code>--max-semi-space-size=16</code> pins the young generation, which V8
+			otherwise sizes from the machine's memory, and a small one leaves some libraries holding a
+			different amount. <code>--single-threaded</code> keeps the engine from finishing compilation
+			on another thread between the collections and the reading, which otherwise moves Shiki's
+			figures by kilobytes from one process to the next.
 		</p>
 		<p>
 			A theme in a stylesheet is held by the page, not the library, so a library that writes its
@@ -378,23 +378,21 @@ npm run bench:deterministic -- --check  # regenerate in memory, and fail if the 
 			</li>
 		</ul>
 		<p>
-			Two dependencies are not recorded by version. The gzip and brotli sizes, of bundles and of
-			HTML alike, come from the zlib and brotli inside Node, and a Node with another version of
-			either can compress to a few bytes more or less. The file is generated on the Node version the
-			checks run on. And the retained heaps follow V8's object layout: they are for the Node version
-			the checks run on, on x64, without pointer compression, as official Node builds are. The
-			install footprints follow the versions the lockfile installs, which a dependency update moves
-			without moving a library's own version; the closure hash records them. A failed check says
-			which of these it looks like.
+			Node itself is not recorded, and two of its parts shape the numbers. The gzip and brotli
+			sizes, of bundles and of HTML alike, come from the zlib and brotli inside Node, and another
+			version of either can compress to a few bytes more or less. The retained heaps follow V8's
+			object layout: they are for x64 without pointer compression, as official Node builds are. So
+			the file is generated on the Node version the checks run on. The install footprints follow the
+			versions the lockfile installs, which a dependency update moves without moving a library's own
+			version; the closure hash records them. A failed check says which of these it looks like.
 		</p>
 		<p>
-			A heap reading can also differ from the last by a little between two processes on the same
-			machine. Two readings agree to well under a kibibyte, and the check still compares them within
+			Two heap readings on the same machine agree to well under a kibibyte, but the check allows
 			{format_bytes(HEAP_TOLERANCE_KB * 1024)} or {HEAP_TOLERANCE_RATIO * 100}% of the larger,
-			whichever is larger, and every other number exactly. Regenerating keeps a committed reading
-			that agrees, so an unchanged tree regenerates an unchanged file, and a change smaller than the
-			tolerance isn't recorded until it, with later ones, exceeds it. The site reads two numbers
-			within the tolerance as level, marked <code>≈</code>.
+			whichever is larger, and compares every other number exactly. Regenerating keeps a committed
+			reading that agrees, so an unchanged tree regenerates an unchanged file, and a change smaller
+			than the tolerance isn't recorded until it, with later ones, exceeds it. The site reads two
+			numbers within the tolerance as level, marked <code>≈</code>.
 		</p>
 	</TomeSection>
 	<TomeSection>

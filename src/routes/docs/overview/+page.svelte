@@ -76,7 +76,7 @@
 			<li>
 				the landing page and the results page, which render one validated results file, in
 				<code>src/routes/</code> and <code>src/lib/</code> — see <TomeLink slug="results" /> for
-				which file, and <TomeLink slug="design" /> for what is still to come
+				which file
 			</li>
 		</ul>
 	</TomeSection>
