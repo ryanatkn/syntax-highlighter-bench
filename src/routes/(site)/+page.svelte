@@ -8,7 +8,6 @@
 	import LibrariesTable from '#lib/LibrariesTable.svelte';
 	import MatrixTable from '#lib/MatrixTable.svelte';
 	import Provenance from '#lib/Provenance.svelte';
-	import RatioLegend from '#lib/RatioLegend.svelte';
 	import type { PageProps } from './$types.js';
 
 	const { data }: PageProps = $props();
@@ -55,7 +54,6 @@
 		the heap check's tolerance for retained memory. Hover a bar to compare the others against it
 		instead.
 	</p>
-	<RatioLegend />
 	<div class="charts">
 		{#each data.charts as chart (chart.row.key)}
 			<BarChart

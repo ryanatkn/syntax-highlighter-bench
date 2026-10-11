@@ -171,7 +171,6 @@
 		and <em>excluded</em> when it claims it and its output failed the check that runs before
 		measuring. Neither is a zero, and neither enters a mean.
 	</p>
-	<RatioLegend />
 	{#if shown_metrics.length > 0 && libraries.length > 0}
 		<nav aria-label="Sections">
 			<ul class="sections unstyled">
@@ -286,6 +285,7 @@
 				{#if throughput_groups.length === 0}
 					<p>No cell matches the selection.</p>
 				{:else}
+					<RatioLegend />
 					<MatrixTable
 						{libraries}
 						groups={throughput_groups}

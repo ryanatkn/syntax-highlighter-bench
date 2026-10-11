@@ -6,7 +6,7 @@
 
 <!-- the key to the one color scale the tables tint their cells with -->
 <figure>
-	<figcaption><small>How many times the baseline a tint means:</small></figcaption>
+	<figcaption><small>Cell tint, by ratio to the baseline:</small></figcaption>
 	<ul class="unstyled">
 		{#each legend as entry (entry.label)}
 			<li style:--ratio_color={entry.color}>
