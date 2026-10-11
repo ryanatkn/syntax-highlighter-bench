@@ -16,8 +16,9 @@
 <div class="table-scroll" tabindex="0" role="region" aria-label="Coverage: languages by library">
 	<table>
 		<caption>
-			Which languages each library is measured on. A library is never measured on a language its
-			adapter doesn't claim.
+			Which languages each library is measured on. They are fuz_code's built-in set, so the list
+			favors it: a language fuz_code doesn't have is never measured. Prism and Shiki each support
+			hundreds of languages, and none of that shows here.
 		</caption>
 		<thead>
 			<tr>

@@ -147,15 +147,9 @@
 	<h2>Coverage</h2>
 	<CoverageTable results={data} />
 	<p>
-		The languages measured here are fuz_code's built-in set, so the list favors it: a language
-		fuz_code doesn't have is never measured. Prism and Shiki each support hundreds of languages, and
-		none of that shows here.
-	</p>
-	<p>
-		Unsupported means the library's adapter doesn't claim the language. That is different from
-		excluded, where a library claims a language and its output failed the check that runs before
-		measuring. Neither is ever shown as a zero or counted in a mean.
-		<a href={resolve('/docs/languages')}>Languages and sets</a> has the details.
+		Unsupported means the library's adapter doesn't claim the language, and is never shown as a zero
+		or counted in a mean. <a href={resolve('/docs/languages')}>Languages and sets</a> has the
+		details.
 	</p>
 </section>
 <section>
