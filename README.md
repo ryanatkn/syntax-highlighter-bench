@@ -171,6 +171,11 @@ stable anchor, a noise floor, and a clean commit. [results/README.md](results/RE
 has the whole procedure: the files in `results/`, the publishing machine,
 quieting it, the commands in order, and the checks to read before committing.
 
+`npm run results:compare -- <before> <after>` compares two results files, such
+as the published run and one measured after an upgrade: what changed between
+them, every timed number with its change, and the deterministic numbers that
+differ.
+
 ## Method in brief
 
 [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
@@ -362,6 +367,8 @@ build, `bench:deterministic -- --check`, and the smoke run on every push to
     one sample
   - `bench/journal.ts` — the journal a timed run keeps, so it can be resumed
   - `bench/publish.ts` — makes a publishable run `results/latest.json`
+  - `bench/compare.ts` — compares two results files: what changed, and every
+    number side by side
   - `bench/deterministic.ts` — the deterministic results file, from
     `bench/sizes.ts` (bundle size), `bench/install.ts` (install footprint),
     `bench/heap.ts` (retained heap), and `bench/outputs.ts` (token counts and

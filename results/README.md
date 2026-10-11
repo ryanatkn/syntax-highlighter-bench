@@ -191,7 +191,16 @@ Everything below runs on the publishing machine, from the root of the checkout.
    or as `.changed` (a measured package changed on disk during the run), delete
    it and start over.
 10. **Check the run**, with the list below. A run that fails a check is
-    measured again, not published with a note.
+    measured again, not published with a note. To see what moved since the
+    published run, before step 11 replaces it:
+    ```bash
+    npm run results:compare -- results/latest.json results/<UTC date>_<name>.json
+    ```
+    It lists what changed between the two files (versions, closures, corpus,
+    bundler, machine, parameters), every timed number with its change, and the
+    deterministic numbers that differ. It judges no change: the noise floor and
+    the process noise are printed beside them. `--library <id>` narrows it to
+    one library, and `--markdown` writes the tables to paste.
 11. **Make it the published run.**
     ```bash
     npm run results:publish -- results/<UTC date>_<name>.json

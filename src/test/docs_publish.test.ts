@@ -5,6 +5,7 @@ import { BENCH_ANCHOR_STABLE_BELOW } from '#lib/results_schema.ts';
 import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
 import { SITE_DETERMINISTIC_PATH, SITE_LATEST_PATH } from '#lib/server/site_results_load.ts';
 import { LOAD_BUSY_ABOVE, RUN_FLAGS } from '../../bench/run_options.ts';
+import { COMPARE_FLAGS } from '../../bench/compare.ts';
 
 // the page states by hand what the harness and `package.json` define
 const page = readFileSync(new URL('../../results/README.md', import.meta.url), 'utf8');
@@ -23,6 +24,7 @@ test('every npm script the publishing page quotes exists', () => {
 test('every flag the publishing page quotes is one a command takes', () => {
 	const known = new Set([
 		...RUN_FLAGS.map(({ flag }) => flag),
+		...COMPARE_FLAGS,
 		// of `bench/deterministic.ts`, `git status`, `node`, and `gro build`
 		'--check',
 		'--short',

@@ -32,6 +32,7 @@ node bench/run.ts --metrics startup --libraries prism --langs json --startup-sam
 npm run bench:deterministic             # regenerate results/deterministic.json
 npm run bench:deterministic -- --check  # fail if the committed file differs from what regenerates
 npm run results:publish -- results/<file>.json  # copy a publishable run to results/latest.json
+npm run results:compare -- <before> <after>     # what changed between two results files, every number side by side
 BENCH_RESULTS_FIXTURE=1 gro build       # build the site over the fixture run (invented numbers, marked on every page)
 ```
 
@@ -71,6 +72,7 @@ bench/                       the Node harness; never imported by the site
   node_child.ts              runs a harness script in a Node process and reads the JSON it prints
   run.ts                     CLI: a timed run — spawns the processes, assembles and writes the results file
   publish.ts                 CLI: copies a publishable run to `results/latest.json`
+  compare.ts                 CLI: compares two results files — what changed, timed changes, deterministic differences
   run_options.ts             a run's flags, parameters, cell and process plan, and output path (pure)
   cell.ts                    one library on one cell, in a process of its own: setup, output check, measurement
   coldstart.ts               cold start: the scenarios, the generated process of one sample, its check, the stats
@@ -122,9 +124,10 @@ no flags. Every module there must hold to:
   never SvelteKit's `$app/*` or a Vite alias
 - `import type` (or inline `type`) for types
 
-The site never imports from `bench/`. The harness may import
-`src/lib/bench_constants.ts`, which imports nothing, and
-`src/lib/results_schema.ts`, which depends only on zod and that module.
+The site never imports from `bench/`. The harness may import the `src/lib/`
+modules that import nothing (`bench_constants.ts`, `bench_format.ts`,
+`ratio.ts`) and `src/lib/results_schema.ts`, which depends only on zod and
+`bench_constants.ts`.
 
 `gro check` typechecks and lints `bench/`, but `gro format` sweeps only `src/`
 and the root config files. `src/test/bench/format.test.ts` fails when a harness

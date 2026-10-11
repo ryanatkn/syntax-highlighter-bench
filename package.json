@@ -19,6 +19,7 @@
     "bench:calibrate": "node bench/run.ts --calibrate",
     "bench:deterministic": "node bench/deterministic.ts",
     "results:publish": "node bench/publish.ts",
+    "results:compare": "node bench/compare.ts",
     "corpus:manifest": "node bench/corpus_manifest.ts",
     "corpus:check": "node bench/corpus_manifest.ts --check",
     "corpus:fetch": "node bench/corpus_fetch.ts",
