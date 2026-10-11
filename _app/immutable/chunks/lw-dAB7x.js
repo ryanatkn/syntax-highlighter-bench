@@ -1,0 +1,1 @@
+var e={name:`@ryanatkn/syntax-highlighter-bench`,version:`0.0.1`,private:!0,description:`benchmark suite and results site for JS syntax highlighters`,license:`MIT`,homepage:`https://syntax-highlighter-bench.ryanatkn.com/`,repository:`https://github.com/ryanatkn/syntax-highlighter-bench`};export{e as t};
