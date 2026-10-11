@@ -102,7 +102,7 @@ export const to_combined_sets = (
 	sets: ReadonlyArray<BenchSet>,
 	langs: ReadonlyArray<BenchLang>
 ): Array<CombinedSet> => {
-	const combined: Map<string, CombinedSet> = new Map();
+	const combined: Map<string, CombinedSet & { labels: Array<string> }> = new Map();
 	// a set of every timed language but one is there for what that language adds, not to be shown
 	const leave_one_out: Set<BenchSet> = new Set();
 	for (const lang of langs) {
@@ -115,18 +115,22 @@ export const to_combined_sets = (
 		const existing = combined.get(key);
 		if (existing) {
 			existing.ids.push(set.id);
-			existing.label += ` = ${set.label}`;
+			existing.labels.push(set.label);
 			existing.footnote ??= set.footnote;
 		} else {
 			combined.set(key, {
 				ids: [set.id],
 				label: set.label,
+				labels: [set.label],
 				langs: [...set.langs],
 				footnote: set.footnote
 			});
 		}
 	}
-	return [...combined.values()];
+	return [...combined.values()].map(({ labels, ...set }) => ({
+		...set,
+		label: labels.length > 1 ? `${labels[0]} (same as ${labels.slice(1).join(', ')})` : set.label
+	}));
 };
 
 /** A combined set's languages, its footnote, and that it stands for several sets, when it does. */
@@ -386,7 +390,7 @@ export const to_bundle_cost_groups = (
 		groups.push({
 			key: 'marginal',
 			label: 'One more language',
-			note: 'every timed language, less all of them but this one: minified, never compressed, since compressing a whole bundle does not separate one part of it',
+			note: 'every timed language, less all of them but this one, in minified bytes: near zero when the others already bring it in, as HTML and Svelte bring their script and style languages',
 			rows: marginal_langs.map((lang) =>
 				to_bundle_row(results, { key: `marginal:${lang.id}`, label: lang.label }, (library) =>
 					to_bundle_marginal_entry(results, library, lang.id)

@@ -21,16 +21,19 @@
 
 <fieldset>
 	<legend>{legend}</legend>
-	{#each options as option (option.id)}
-		<label class="row">
-			<input
-				type="checkbox"
-				checked={selected.includes(option.id)}
-				onchange={(e) => toggle(option.id, e.currentTarget.checked)}
-			/>
-			<span>{option.label}</span>
-		</label>
-	{/each}
+	<!-- a long list takes two columns, so it is no taller than its neighbors -->
+	<div class={{ split: options.length > 6 }}>
+		{#each options as option (option.id)}
+			<label class="row">
+				<input
+					type="checkbox"
+					checked={selected.includes(option.id)}
+					onchange={(e) => toggle(option.id, e.currentTarget.checked)}
+				/>
+				<span>{option.label}</span>
+			</label>
+		{/each}
+	</div>
 	<div class="row gap_xs">
 		<button
 			type="button"
@@ -44,3 +47,13 @@
 		</button>
 	</div>
 </fieldset>
+
+<style>
+	.split {
+		columns: 2;
+		column-gap: var(--space_lg);
+	}
+	.split label {
+		break-inside: avoid;
+	}
+</style>

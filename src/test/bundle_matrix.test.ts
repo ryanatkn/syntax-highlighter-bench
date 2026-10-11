@@ -58,7 +58,7 @@ describe('finding the sets', () => {
 		// the sets that leave one timed language out are not shown
 		assert.deepStrictEqual(ids, [['docs'], ['web_rust', 'all'], ['timed']]);
 		const merged = combined[1]!;
-		assert.strictEqual(merged.label, 'web + rust = all');
+		assert.strictEqual(merged.label, 'web + rust (same as all)');
 		assert.strictEqual(merged.footnote, results.sets.find((s) => s.id === 'web_rust')!.footnote);
 		// the order of the languages doesn't make two sets different
 		const reordered = to_combined_sets(
@@ -201,7 +201,7 @@ describe('to_bundle_cost_groups', () => {
 			set: 'web_rust',
 			compression: 'gzip'
 		})[3]!;
-		assert.include(group.label, 'web + rust = all');
+		assert.include(group.label, 'web + rust (same as all)');
 		assert.include(group.note, 'home turf');
 		assert.deepStrictEqual(matrix_row_entry(group.rows[1]!, PARTIAL), {
 			kind: 'unsupported',
@@ -271,7 +271,7 @@ describe('to_bundle_total_groups', () => {
 			['core', 'set:docs', 'set:web_rust', 'set:timed']
 		);
 		const merged = sets!.rows[2]!;
-		assert.strictEqual(merged.label, 'web + rust = all');
+		assert.strictEqual(merged.label, 'web + rust (same as all)');
 		assert.include(merged.note, 'the same languages');
 		assert.strictEqual(matrix_row_value(merged, FULL), sizes(FULL, 'web_rust').brotli);
 		assert.strictEqual(matrix_row_value(merged, FULL), sizes(FULL, 'all').brotli);

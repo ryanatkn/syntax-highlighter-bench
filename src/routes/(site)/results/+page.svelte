@@ -15,11 +15,12 @@
 	import { format_source_key } from '#lib/cell_groups.ts';
 	import FilterGroup from '#lib/FilterGroup.svelte';
 	import FilterSelect from '#lib/FilterSelect.svelte';
-	import { results_have_heap, to_heap_groups } from '#lib/heap_matrix.ts';
+	import { HEAP_MEASURES, results_have_heap, to_heap_groups } from '#lib/heap_matrix.ts';
 	import MatrixTable from '#lib/MatrixTable.svelte';
 	import { format_library_tag } from '#lib/library_labels.ts';
 	import { OUTPUT_MEASURES, to_output_groups } from '#lib/output_matrix.ts';
 	import Provenance from '#lib/Provenance.svelte';
+	import RatioLegend from '#lib/RatioLegend.svelte';
 	import {
 		RESULTS_METRICS,
 		decode_results_filters,
@@ -68,6 +69,29 @@
 	};
 
 	const shows = (metric: ResultsMetric): boolean => filters.metrics.includes(metric);
+
+	const shown_metrics = $derived(RESULTS_METRICS.filter((metric) => shows(metric.id)));
+
+	// the filters folded under "More filters", with how a changed one is named
+	const MORE_FILTERS = [
+		['metrics', 'sections'],
+		['engines', 'engine kind'],
+		['outputs', 'HTML output'],
+		['sizes', 'input sizes'],
+		['modes', 'modes']
+	] as const;
+	const more_changed = $derived(
+		MORE_FILTERS.filter(([key]) => filters[key].join() !== defaults[key].join()).map(
+			([, name]) => name
+		)
+	);
+
+	// opened when a folded filter is changed, as a link may arrive with one, and never
+	// closed for the reader, who may be setting it back
+	let more_open = $state(false);
+	$effect(() => {
+		if (more_changed.length > 0) more_open = true;
+	});
 
 	const libraries = $derived(to_selected_libraries(results.meta.libraries, filters));
 	const library_ids = $derived(libraries.map((library) => library.id));
@@ -141,11 +165,23 @@
 	<p>
 		Each row is one thing measured, with a column for each library. Beside a number is its ratio to
 		the best in the row, or to a reference library you choose: <code>1.00×</code> is the baseline
-		and <code>2.00×</code> is twice as slow or twice as large. A library with no number in a row
-		says why: <em>unsupported</em> when its adapter doesn't claim the language, and
-		<em>excluded</em> when it claims it and its output failed the check that runs before measuring.
-		Neither is a zero, and neither enters a mean.
+		and <code>2.00×</code> is twice as slow or twice as large. In the tables whose ratios aren't
+		colored, where a smaller number isn't a better one, the baseline is the smallest. A library with
+		no number in a row says why: <em>unsupported</em> when its adapter doesn't claim the language,
+		and <em>excluded</em> when it claims it and its output failed the check that runs before
+		measuring. Neither is a zero, and neither enters a mean.
 	</p>
+	<RatioLegend />
+	{#if shown_metrics.length > 0 && libraries.length > 0}
+		<nav aria-label="Sections">
+			<ul class="sections unstyled">
+				{#each shown_metrics as metric (metric.id)}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<li><a href="#{metric.id}">{metric.label}</a></li>
+				{/each}
+			</ul>
+		</nav>
+	{/if}
 </section>
 
 <section>
@@ -153,46 +189,16 @@
 	<p><small>The selection is kept in the address, so a comparison is a link.</small></p>
 	<form class="filters">
 		<FilterGroup
-			legend="Sections"
-			options={RESULTS_METRICS}
-			selected={filters.metrics}
-			onchange={(metrics) => update({ metrics })}
-		/>
-		<FilterGroup
 			legend="Libraries"
 			options={library_choices}
 			selected={filters.libraries}
 			onchange={(selected) => update({ libraries: selected })}
 		/>
 		<FilterGroup
-			legend="Engine kind"
-			options={options.engines.map((id) => ({ id, label: format_library_tag(id) }))}
-			selected={filters.engines}
-			onchange={(engines) => update({ engines })}
-		/>
-		<FilterGroup
-			legend="HTML output"
-			options={options.outputs.map((id) => ({ id, label: format_library_tag(id) }))}
-			selected={filters.outputs}
-			onchange={(outputs) => update({ outputs })}
-		/>
-		<FilterGroup
 			legend="Languages"
 			options={lang_choices}
 			selected={filters.langs}
 			onchange={(langs) => update({ langs })}
-		/>
-		<FilterGroup
-			legend="Input sizes"
-			options={to_choices(options.sizes)}
-			selected={filters.sizes}
-			onchange={(sizes) => update({ sizes })}
-		/>
-		<FilterGroup
-			legend="Modes"
-			options={to_choices(options.modes)}
-			selected={filters.modes}
-			onchange={(modes) => update({ modes })}
 		/>
 		<FilterGroup
 			legend="Input sources"
@@ -210,11 +216,49 @@
 	<p>
 		<small>
 			A <code>home</code> source is a library's own samples: home turf for that library, and always
-			labeled with its name. The libraries contributed very different amounts, so home inputs are
-			grouped and summarized by owner and never pooled.
+			labeled with its name. Home inputs are summarized by owner and never pooled.
 			<a href={resolve('/docs/corpus')}>The corpus docs</a> list every input.
 		</small>
 	</p>
+	<details bind:open={more_open}>
+		<summary>
+			More filters{#if more_changed.length > 0}
+				<small>: {more_changed.join(', ')} changed</small>
+			{/if}
+		</summary>
+		<form class="filters">
+			<FilterGroup
+				legend="Sections"
+				options={RESULTS_METRICS}
+				selected={filters.metrics}
+				onchange={(metrics) => update({ metrics })}
+			/>
+			<FilterGroup
+				legend="Engine kind"
+				options={options.engines.map((id) => ({ id, label: format_library_tag(id) }))}
+				selected={filters.engines}
+				onchange={(engines) => update({ engines })}
+			/>
+			<FilterGroup
+				legend="HTML output"
+				options={options.outputs.map((id) => ({ id, label: format_library_tag(id) }))}
+				selected={filters.outputs}
+				onchange={(outputs) => update({ outputs })}
+			/>
+			<FilterGroup
+				legend="Input sizes"
+				options={to_choices(options.sizes)}
+				selected={filters.sizes}
+				onchange={(sizes) => update({ sizes })}
+			/>
+			<FilterGroup
+				legend="Modes"
+				options={to_choices(options.modes)}
+				selected={filters.modes}
+				onchange={(modes) => update({ modes })}
+			/>
+		</form>
+	</details>
 </section>
 
 {#if filters.metrics.length === 0}
@@ -231,12 +275,14 @@
 					each input and renders it as HTML.
 				</p>
 			{:else}
-				<FilterSelect
-					label="Shown as"
-					options={THROUGHPUT_UNITS}
-					value={filters.unit}
-					onchange={(unit) => update({ unit })}
-				/>
+				<form class="filters">
+					<FilterSelect
+						label="Shown as"
+						options={THROUGHPUT_UNITS}
+						value={filters.unit}
+						onchange={(unit) => update({ unit })}
+					/>
+				</form>
 				{#if throughput_groups.length === 0}
 					<p>No cell matches the selection.</p>
 				{:else}
@@ -246,13 +292,20 @@
 						heading="input"
 						label="Throughput by input and library"
 						{reference}
+						collapsible="inputs"
 					>
-						A warm library on one input, in one mode. MB/s compares across inputs of different
-						sizes, and time per call does not: inputs in one size tier can differ several times over
-						in bytes. A geometric mean covers only the rows where every selected library has a
-						number, and says how many. A <em>disturbed</em> mark is a value whose rounds disagreed,
-						and <em>retried</em> one that was measured again. A ratio marked <code>≈</code> is
-						inside the machine's noise floor.
+						A warm library on one input, in one mode. Each language shows a geometric mean per mode;
+						open it for the inputs the mean is over.
+						{#snippet more()}
+							<p>
+								MB/s compares across inputs of different sizes, and time per call does not: inputs
+								in one size tier can differ several times over in bytes. A geometric mean covers
+								only the rows where every selected library has a number, and says how many. A
+								<em>disturbed</em> mark is a value whose rounds disagreed, and <em>retried</em> one
+								that was measured again. A ratio marked <code>≈</code> is inside the machine's noise
+								floor.
+							</p>
+						{/snippet}
 					</MatrixTable>
 				{/if}
 			{/if}
@@ -285,19 +338,26 @@
 						heading="loaded"
 						label="Cold start by scenario and library"
 						{reference}
+						collapsible="languages"
 					>
-						What each library adds to a fresh Node process: the scenario's median time less the bare
-						Node baseline's, which every sample includes. The details of a row give the whole time
-						and the process's peak memory. Bundled is the one chunk whose size is reported below,
-						and unbundled imports the same entry with its imports resolved from
-						<code>node_modules</code>. A ratio between small additions is large even when the
-						processes take nearly the same time. An addition smaller than bare Node's own band, from
-						its 10th to its 90th percentile, is marked <em>in the noise</em>: it can't be told from
-						adding nothing, and has no ratio. In a row with such an addition the others are compared
-						with that band instead of with the best, and marked <code>≥</code>: at least so many
-						times the band, and so at least so many times the best, which is inside it. Such a row
-						is left out of the mean. A reference library is used only in the rows where its own
-						addition is outside the noise.
+						What each library adds to a fresh Node process: the scenario's median time less bare
+						Node's. A row's details give the whole time and the process's peak memory.
+						{#snippet more()}
+							<p>
+								Bundled is the one chunk whose size is reported below, and unbundled imports the
+								same entry with its imports resolved from <code>node_modules</code>. A ratio between
+								small additions is large even when the processes take nearly the same time.
+							</p>
+							<p>
+								An addition smaller than bare Node's own band, from its 10th to its 90th percentile,
+								is marked <em>in the noise</em>: it can't be told from adding nothing, and has no
+								ratio. In a row with such an addition the others are compared with that band instead
+								of with the best, and marked <code>≥</code>: at least so many times the band, and so
+								at least so many times the best, which is inside it. Such a row is left out of the
+								mean. A reference library is used only in the rows where its own addition is outside
+								the noise.
+							</p>
+						{/snippet}
 					</MatrixTable>
 				{/if}
 			{/if}
@@ -338,21 +398,33 @@
 					{reference}
 				>
 					{#if filters.bundle === 'totals'}
-						The minified JS of each library over each feature set, measured as one bundle. Sets that
-						hold the same languages are one bundle, so they share a row. A set holding a language a
-						library doesn't claim is unsupported for it, and names the language. "Everything loaded"
-						adds the wasm binary and the theme stylesheet to the JS, each compressed on its own, so
-						a library whose engine ships as wasm is not compared on its JS alone.
+						The minified JS of each library over each feature set, measured as one bundle, and
+						everything a page loads with it.
 					{:else}
-						What each language costs in a library's minified JS. The first language is the bundle
-						with that language alone, less the bundle with none. One more language is what it adds
-						to a bundle of every other timed language, always in minified bytes, whatever the Bytes
-						selector says. The floor plus each language alone is not a bundle, so it has no ratio:
-						it exceeds the set's measured size when a library shares code between languages, or when
-						one language brings another with it, as HTML brings the script and style languages.
+						What each language costs in a library's minified JS: the floor with no language, the
+						first language, and one more beside the others.
 					{/if}
-					The wasm binary and the theme stylesheet are loaded beside the JS, and each has a row of
-					its own.
+					{#snippet more()}
+						<p>
+							{#if filters.bundle === 'totals'}
+								Sets that hold the same languages are one bundle, so they share a row. A set holding
+								a language a library doesn't claim is unsupported for it, and names the language.
+								"Everything loaded" adds the wasm binary and the theme stylesheet to the JS, each
+								compressed on its own, so a library whose engine ships as wasm is not compared on
+								its JS alone.
+							{:else}
+								The first language is the bundle with that language alone, less the bundle with
+								none. One more language is what it adds to a bundle of every other timed language,
+								always in minified bytes, whatever the Bytes selector says: compressing a whole
+								bundle doesn't separate one part of it. The floor plus each language alone is not a
+								bundle, so it has no ratio: it exceeds the set's measured size when a library shares
+								code between languages, or when one language brings another with it, as HTML brings
+								the script and style languages.
+							{/if}
+							The wasm binary and the theme stylesheet are loaded beside the JS, and each has a row
+							of its own.
+						</p>
+					{/snippet}
 				</MatrixTable>
 			{/if}
 			{#if install_group !== null}
@@ -367,9 +439,14 @@
 				>
 					What <code>npm install</code> of each library adds to a project: its packages and their
 					runtime dependencies, each package once, with the files they hold and those files' bytes.
-					It is everything the packages ship, every language, theme, and type declaration included,
-					and not what a page loads, which the tables above show. The ratios are not colored: a
-					library that ships more languages installs more, and installs it once.
+					{#snippet more()}
+						<p>
+							It is everything the packages ship, every language, theme, and type declaration
+							included, and not what a page loads, which the tables above show. The ratios are to
+							the smallest and are not colored: a library that ships more languages installs more,
+							and installs it once.
+						</p>
+					{/snippet}
 				</MatrixTable>
 			{/if}
 		</section>
@@ -380,33 +457,55 @@
 			<h2>Retained heap</h2>
 			{#if !results_have_heap(results)}
 				<p>These results hold no retained heap.</p>
-			{:else if heap_groups.length === 0}
-				<p>No language matches the selection.</p>
 			{:else}
-				<MatrixTable
-					{libraries}
-					groups={heap_groups}
-					heading="language"
-					label="Retained heap by language and library"
-					{reference}
-				>
-					What a page or a server holds once a library has loaded one language and highlighted once:
-					a Node process imports the library's bundle of that language alone, the one whose size is
-					reported above, highlights the language's snippet, lets go of the HTML, and collects
-					garbage until the heap settles. Each number is what that process holds over a bare one,
-					after one highlight of a small snippet; larger inputs leave more, most of all for regexp
-					and wasm engines. Machine code holds the regular expressions the engine compiled as well
-					as optimized functions, and is the processor's: these figures are x64's. External memory
-					is where a WebAssembly engine keeps its linear memory, counted at the size it has grown
-					to, which it never gives back; the OS backs only the pages it has touched, so resident
-					memory can be lower. All three are summed first and ranked: a smaller figure is less
-					memory for the same highlight. A ratio within the heap check's tolerance is marked
-					<code>≈</code>. A theme in a stylesheet is held by the page, not the library, so a library
-					that writes its styles inline holds its theme here and one with classes doesn't. The
-					figures are for one Node version;
-					<a href={resolve('/docs/deterministic')}>the deterministic metrics docs</a> say which, and
-					what moves them.
-				</MatrixTable>
+				<form class="filters">
+					<FilterGroup
+						legend="Parts"
+						options={HEAP_MEASURES}
+						selected={filters.parts}
+						onchange={(parts) => update({ parts })}
+					/>
+				</form>
+				{#if heap_groups.length === 0}
+					<p>Nothing matches the selection.</p>
+				{:else}
+					<MatrixTable
+						{libraries}
+						groups={heap_groups}
+						heading="language"
+						label="Retained heap by language and library"
+						{reference}
+					>
+						What a process holds once a library has loaded one language and highlighted a small
+						snippet once, over a bare process: a smaller figure is less memory for the same
+						highlight.
+						{#snippet more()}
+							<p>
+								A Node process imports the library's bundle of that language alone, the one whose
+								size is reported above, highlights the language's snippet, lets go of the HTML, and
+								collects garbage until the heap settles. Larger inputs leave more, most of all for
+								regexp and wasm engines.
+							</p>
+							<p>
+								Machine code holds the regular expressions the engine compiled as well as optimized
+								functions, and is the processor's: these figures are x64's. External memory is where
+								a WebAssembly engine keeps its linear memory, counted at the size it has grown to,
+								which it never gives back; the OS backs only the pages it has touched, so resident
+								memory can be lower. The sum of the three is shown first and ranked, so neither a
+								regexp engine nor a wasm engine is compared without what it holds; the Parts filter
+								shows each on its own. A ratio within the heap check's tolerance is marked
+								<code>≈</code>.
+							</p>
+							<p>
+								A theme in a stylesheet is held by the page, not the library, so a library that
+								writes its styles inline holds its theme here and one with classes doesn't. The
+								figures are for one Node version;
+								<a href={resolve('/docs/deterministic')}>the deterministic metrics docs</a> say
+								which, and what moves them.
+							</p>
+						{/snippet}
+					</MatrixTable>
+				{/if}
 			{/if}
 		</section>
 	{/if}
@@ -438,14 +537,21 @@
 					label="Tokens and output by input and library"
 					{reference}
 					colored={false}
+					collapsible="rows"
+					fold_unsummarized
 				>
 					How many tokens each library finds in an input, and how large its HTML is: in elements,
-					and in bytes, raw or compressed as a server would send it. The ratios are not colored,
-					because smaller is not better here: libraries split the same source differently and wrap
-					their HTML differently, so fewer tokens is a coarser split, not a better one, and HTML
-					with inline styles carries its theme where HTML with classes leaves it to a stylesheet.
-					<a href={resolve('/docs/deterministic')}>The deterministic metrics docs</a> say what each
-					counts.
+					and in bytes, raw or compressed as a server would send it. Open a language for its inputs.
+					{#snippet more()}
+						<p>
+							The ratios are to the smallest in each row and are not colored, because smaller is not
+							better here: libraries split the same source differently and wrap their HTML
+							differently, so fewer tokens is a coarser split, not a better one, and HTML with
+							inline styles carries its theme where HTML with classes leaves it to a stylesheet.
+							<a href={resolve('/docs/deterministic')}>The deterministic metrics docs</a> say what
+							each counts.
+						</p>
+					{/snippet}
 				</MatrixTable>
 			{/if}
 		</section>
@@ -458,5 +564,10 @@
 		flex-wrap: wrap;
 		align-items: flex-start;
 		gap: var(--space_lg);
+	}
+	.sections {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space_xs) var(--space_lg);
 	}
 </style>

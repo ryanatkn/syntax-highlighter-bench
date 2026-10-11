@@ -297,7 +297,7 @@ export const to_geomean_row = (
 		note:
 			complete.length === rows.length || complete.length === 0
 				? `over ${covers}`
-				: `over ${covers}: the rest lack a number that can be compared exactly for a selected library, and are left out`,
+				: `over ${covers}: the others lack an exact number for a library and are left out`,
 		unit: first.unit,
 		direction: first.direction,
 		entries,

@@ -1,6 +1,6 @@
 /**
- * The throughput tables: the timed cells of a results file as rows, each group
- * closed by a geometric mean for each mode.
+ * The throughput tables: the timed cells of a results file as rows, in groups
+ * of one language and source, each mode's cells led by their geometric mean.
  *
  * @module
  */
@@ -90,9 +90,12 @@ export const to_throughput_details = (value: BenchCellValue): Array<string> => [
 	`peak RSS ${format_bytes(value.rss_peak_bytes)}`
 ];
 
-/** A cell's size, mode, and bytes, as the note beside its file name. */
+/**
+ * A cell's size and bytes, as the note beside its file name. The mode is left
+ * out: the cell sits under the mean of its mode, which names it.
+ */
 const to_cell_note = (cell: BenchCell): string =>
-	`${cell.size} · ${cell.mode} · ${format_bytes(cell.bytes)}${cell.synthetic ? ' · synthetic' : ''}`;
+	`${cell.size} · ${format_bytes(cell.bytes)}${cell.synthetic ? ' · synthetic' : ''}`;
 
 /** A geometric mean over cell rows, read against the noise floor of a mean. */
 const to_throughput_mean = (
@@ -133,8 +136,9 @@ const to_throughput_row = (
 };
 
 /**
- * The selected cells as groups of one language and one source, each closed by
- * a geometric mean for every selected mode.
+ * The selected cells as groups of one language and one source. Within a group
+ * each selected mode's cells follow a geometric mean over them, so the means
+ * read as the group's summary and the cells as what they summarize.
  *
  * @param libraries - the selected library ids, which decide which cells are
  * complete and so enter a mean
@@ -145,29 +149,24 @@ export const to_throughput_groups = (
 	libraries: ReadonlyArray<string>
 ): Array<MatrixGroup> => {
 	const excluded = to_excluded_reasons(results);
-	return group_cells(results, selection).map((group) => {
-		const rows = group.cells.map((cell) =>
-			to_throughput_row(results, excluded, cell, selection.unit)
-		);
-		const means = selection.modes.flatMap((mode) => {
-			const of_mode = rows.filter((_, i) => group.cells[i]!.mode === mode);
-			return (
-				to_throughput_mean(
-					results,
-					of_mode,
-					libraries,
-					`${group.key}:${mode}:geomean`,
-					`geomean · ${mode}`
-				) ?? []
+	return group_cells(results, selection).map((group) => ({
+		key: group.key,
+		label: format_cell_group_label(group),
+		note: format_source_note(group.source_key),
+		rows: selection.modes.flatMap((mode) => {
+			const rows = group.cells
+				.filter((cell) => cell.mode === mode)
+				.map((cell) => to_throughput_row(results, excluded, cell, selection.unit));
+			const mean = to_throughput_mean(
+				results,
+				rows,
+				libraries,
+				`${group.key}:${mode}:geomean`,
+				`geomean · ${mode}`
 			);
-		});
-		return {
-			key: group.key,
-			label: format_cell_group_label(group),
-			note: format_source_note(group.source_key),
-			rows: [...rows, ...means]
-		};
-	});
+			return mean ? [mean, ...rows] : [];
+		})
+	}));
 };
 
 /**

@@ -60,6 +60,8 @@ describe('to_startup_groups', () => {
 	test('a language scenario has a row for each selected timed language, never an untimed one', () => {
 		const group = groups.find((g) => g.key === 'bundled:lang')!;
 		const timed = fixture.langs.filter((lang) => lang.timed);
+		// the mean leads the group, so it can stand for the rows when they are folded
+		assert.strictEqual(group.rows[0]!.kind, 'summary');
 		assert.deepStrictEqual(
 			group.rows.filter((row) => row.kind === 'cell').map((row) => row.label),
 			timed.map((lang) => lang.label)
@@ -85,7 +87,7 @@ describe('to_startup_groups', () => {
 		const complete = cells.filter((row) => matrix_row_is_complete(row, libraries));
 		assert.notInclude(complete, rust);
 		assert.ok(complete.length > 0, 'the fixture has no complete first highlight');
-		const mean = group.rows.at(-1)!;
+		const mean = group.rows[0]!;
 		assert.strictEqual(mean.kind, 'summary');
 		assert.include(mean.note, `${complete.length} of ${cells.length} rows`);
 		assert.include(mean.note, 'left out');
@@ -107,7 +109,9 @@ describe('to_startup_groups', () => {
 		const set = matrix_row_entry(without.find((g) => g.key === 'bundled:set')!.rows[0]!, 'prism');
 		assert.ok(set.kind === 'unsupported');
 		assert.deepStrictEqual(set.langs, fixture.sets.find((s) => s.id === 'docs')!.langs);
-		const lang = without.find((g) => g.key === 'bundled:lang')!.rows[0]!;
+		const lang = without
+			.find((g) => g.key === 'bundled:lang')!
+			.rows.find((row) => row.kind === 'cell')!;
 		assert.deepStrictEqual(matrix_row_entry(lang, 'prism'), { kind: 'unsupported', langs: ['ts'] });
 		// and a library that claims the language with no entry is unmeasured, which is neither
 		const unmeasured = to_startup_groups(

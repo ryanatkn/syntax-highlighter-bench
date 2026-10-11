@@ -1,8 +1,11 @@
 /* global stylesheet imported by `src/routes/+layout.svelte` */
 
-/* a wide table scrolls in its own container, so the page never scrolls sideways */
+/* a wide table scrolls in its own container, so the page never scrolls sideways; a
+   long one scrolls inside it too, which is what lets its header and first column stay
+   in view, since a sticky cell sticks to the nearest scrolling container */
 .table-scroll {
-	overflow-x: auto;
+	overflow: auto;
+	max-height: 85svh;
 	margin-bottom: var(--space_lg);
 }
 .table-scroll > table {
@@ -28,10 +31,31 @@
 	text-align: left;
 }
 
+/* the column headers stay in view while the rows scroll, and the row headers while
+   the columns do; both are opaque, so what scrolls under them doesn't show through */
+.table-scroll thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background-color: var(--shade_00);
+}
+.table-scroll thead th:first-child {
+	left: 0;
+	z-index: 3;
+}
 /* a long label breaks anywhere, so the first column doesn't take a small screen */
 .table-scroll tbody th[scope='row'] {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	background-color: var(--shade_00);
 	overflow-wrap: anywhere;
 	min-width: 16rem;
+}
+@media (max-width: 600px) {
+	.table-scroll tbody th[scope='row'] {
+		min-width: 14rem;
+	}
 }
 
 /* a right-aligned numeric table cell */

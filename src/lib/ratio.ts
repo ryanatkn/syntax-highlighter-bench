@@ -50,6 +50,30 @@ export const RATIO_LEVEL_COLORS: ReadonlyArray<string> = [
 	'var(--palette_d_50)'
 ];
 
+/** One level of the color scale as a key shows it: its color and the ratios it covers. */
+export interface RatioLegendEntry {
+	color: string;
+	label: string;
+	/** What the level means, beyond its ratios, or null. */
+	note: string | null;
+}
+
+/**
+ * The color scale as a key, level by level, from the limits it is drawn from,
+ * so the key can't disagree with the cells.
+ */
+export const to_ratio_legend = (): Array<RatioLegendEntry> =>
+	RATIO_LEVEL_COLORS.map((color, level) => {
+		const low = level === 0 ? null : RATIO_LEVEL_LIMITS[level - 1]!;
+		const high = level < RATIO_LEVEL_LIMITS.length ? RATIO_LEVEL_LIMITS[level]! : null;
+		return {
+			color,
+			label:
+				low === null ? `under ${high}×` : high === null ? `${low}× or more` : `${low}–${high}×`,
+			note: level === 0 ? 'better than the reference' : level === 1 ? 'level' : null
+		};
+	});
+
 /**
  * The level of the color scale a ratio falls in, from 0 (better than the
  * reference) to the last index of `RATIO_LEVEL_COLORS`. It never decreases as

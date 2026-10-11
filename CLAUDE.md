@@ -1186,11 +1186,11 @@ and `logo.ts`:
 | `matrix.ts` | the table model: `MatrixEntry` (value, unsupported, excluded, none, unmeasured), `MatrixRow`, `MatrixGroup`; baseline, ratios, completeness, `to_geomean_row` |
 | `ratio.ts` | `to_ratio`, the shared color scale (`to_ratio_level`, `to_ratio_color`), `ratio_is_within_floor`, `to_geomean` |
 | `cell_groups.ts` | cells grouped by language and source; source keys (`home:<library>`); why a library has no number in a cell |
-| `throughput_matrix.ts` | timed cells as rows, a geomean per mode closing each group, the per-source summary, the disturbed and retried marks |
+| `throughput_matrix.ts` | timed cells as rows, each mode's cells led by their geomean, the per-source summary, the disturbed and retried marks |
 | `startup_matrix.ts` | cold-start scenarios as rows: what a library added over the bare baseline, and whether that is inside the baseline's own noise |
 | `bundle_matrix.ts` | the incremental-cost view, the set totals, everything a page loads, sets with the same languages merged, the wasm and stylesheet rows, the install footprint |
 | `output_matrix.ts` | token counts and output sizes as rows, the HTML's raw or compressed, by a selector of its own that starts raw |
-| `heap_matrix.ts` | the retained heap as rows by language: everything summed, the V8 heap, the machine code, and the external memory, as four groups, with the tolerance as a floor |
+| `heap_matrix.ts` | the retained heap as rows by language: everything summed, the V8 heap, the machine code, and the external memory, as four groups selected by the `parts` filter (the sum alone by default), with the tolerance as a floor |
 | `results_filters.ts` | the selection on `/results` and its URL query form |
 | `headline.ts` | the landing page's headline figures, each drawn as bars, the HTML rate worked out for familiar sizes, and the table of what each language costs in a bundle |
 | `bar_chart.ts` | a row as bars: lengths, and the table's own ratios against the best or a hovered library |
@@ -1204,11 +1204,20 @@ and `logo.ts`:
 
 Components: `MatrixTable.svelte` and `MatrixCell.svelte` render every results
 table (with `bars`, a bar under each number on one scale per group, which the
-landing page's language table uses), `BarChart.svelte` the landing page's
+landing page's language table uses; with `collapsible`, a group holding summary
+rows shows only them until opened, so a summary row leads the rows it covers,
+and with `fold_unsummarized` a group without one folds to its header; a lone
+group that could fold is shown open;
+a `more` snippet folds how to read the table under the caption's lead; the
+header row and first column stay in view, since `.table-scroll` scrolls both
+ways within a bounded height), `BarChart.svelte` the landing page's
 charts (a headline row as bars, re-baselined on the bar the pointer is over),
 `FilterGroup.svelte` and `FilterSelect.svelte` are the controls,
-`Provenance.svelte` the provenance line with the anchor's drift, the noise
-floor, and what has moved since the run, and `CoverageTable.svelte`,
+`RatioLegend.svelte` the key to the color scale (`to_ratio_legend`, built from
+the scale's own limits),
+`Provenance.svelte` the provenance line (machine, date, commit, noise floor,
+with the machine's state, the anchor's drift, and the process noise folded
+under it) and what has moved since the run, and `CoverageTable.svelte`,
 `LibrariesTable.svelte`, `InputsTable.svelte`, `LibraryLabel.svelte` (the
 maintainer's-library mark), and `FixtureBanner.svelte` the rest.
 
@@ -1292,7 +1301,11 @@ defaults and reads `page.url.searchParams` only after it has mounted, since
 reading it while prerendering throws. A control calls `goto` with
 `replace`, and the selection is derived back from the URL.
 `decode_results_filters` never throws: unknown keys are ignored, unknown ids
-dropped, and a parameter with nothing valid falls back to its default.
+dropped, and a parameter with nothing valid falls back to its default. The
+sections, engine kinds, output shapes, sizes, and modes are folded under "More
+filters", which opens itself when any of them differs from its default, so a
+link never narrows the view out of sight. Which groups are opened is view
+state, not selection, and stays out of the URL.
 
 **The docs read the same file.** The languages and sets tables and the inputs
 table are rendered from `docs_data_context`, not written by hand. `/docs`

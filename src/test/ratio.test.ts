@@ -8,6 +8,7 @@ import {
 	to_geomean,
 	to_ratio,
 	to_ratio_color,
+	to_ratio_legend,
 	to_ratio_level
 } from '#lib/ratio.ts';
 
@@ -112,5 +113,27 @@ describe('to_geomean', () => {
 		const b = [6, 25, 7000];
 		const ratios = a.map((value, i) => b[i]! / value);
 		assert.closeTo(to_geomean(b)! / to_geomean(a)!, to_geomean(ratios)!, 1e-9);
+	});
+});
+
+describe('to_ratio_legend', () => {
+	test('a key entry for each level, in the color a ratio inside it gets', () => {
+		const legend = to_ratio_legend();
+		assert.strictEqual(legend.length, RATIO_LEVEL_COLORS.length);
+		assert.deepStrictEqual(
+			legend.map((entry) => entry.label),
+			['under 0.9×', '0.9–1.1×', '1.1–2×', '2–5×', '5–10×', '10–100×', '100× or more']
+		);
+		for (const [ratio, level] of [
+			[0.5, 0],
+			[1, 1],
+			[1.5, 2],
+			[3, 3],
+			[7, 4],
+			[50, 5],
+			[500, 6]
+		] as const) {
+			assert.strictEqual(legend[level]!.color, to_ratio_color(ratio), String(ratio));
+		}
 	});
 });

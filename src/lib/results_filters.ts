@@ -14,6 +14,7 @@ import { BUNDLE_COMPRESSIONS, BUNDLE_VIEWS, to_combined_sets } from './bundle_ma
 import { BENCH_MODES, BENCH_SIZES } from './bench_constants.ts';
 import { to_source_keys } from './cell_groups.ts';
 import type { MatrixResults } from './matrix.ts';
+import { DEFAULT_HEAP_MEASURE, HEAP_MEASURES } from './heap_matrix.ts';
 import { OUTPUT_MEASURES } from './output_matrix.ts';
 import { STARTUP_FORMS } from './startup_matrix.ts';
 import { THROUGHPUT_UNITS } from './throughput_matrix.ts';
@@ -41,7 +42,8 @@ export const RESULTS_LIST_KEYS = [
 	'modes',
 	'sources',
 	'forms',
-	'measures'
+	'measures',
+	'parts'
 ] as const;
 
 /** The filters that hold one id. */
@@ -100,6 +102,7 @@ export const to_results_filter_options = (results: MatrixResults): ResultsFilter
 		sources: to_source_keys(results.cells),
 		forms: [...STARTUP_FORMS],
 		measures: OUTPUT_MEASURES.map((measure) => measure.id),
+		parts: HEAP_MEASURES.map((measure) => measure.id),
 		unit: THROUGHPUT_UNITS.map((unit) => unit.id),
 		bundle: BUNDLE_VIEWS.map((view) => view.id),
 		compression: [...BUNDLE_COMPRESSIONS],
@@ -113,8 +116,9 @@ export const to_results_filter_options = (results: MatrixResults): ResultsFilter
 
 /**
  * The selection a reader starts from: everything, except the sources, where
- * only the neutral inputs are selected, and the forms of a cold start, where
- * only the bundled one is. Bundle sizes start gzipped and HTML sizes raw.
+ * only the neutral inputs are selected, the forms of a cold start, where only
+ * the bundled one is, and the parts of a retained heap, where only the sum is.
+ * Bundle sizes start gzipped and HTML sizes raw.
  */
 export const to_default_results_filters = (options: ResultsFilterOptions): ResultsFilters => ({
 	metrics: [...options.metrics],
@@ -127,6 +131,7 @@ export const to_default_results_filters = (options: ResultsFilterOptions): Resul
 	sources: options.sources.includes(DEFAULT_SOURCE) ? [DEFAULT_SOURCE] : [...options.sources],
 	forms: options.forms.includes(DEFAULT_FORM) ? [DEFAULT_FORM] : [...options.forms],
 	measures: [...options.measures],
+	parts: options.parts.includes(DEFAULT_HEAP_MEASURE) ? [DEFAULT_HEAP_MEASURE] : [...options.parts],
 	unit: options.unit[0]!,
 	bundle: options.bundle[0]!,
 	compression: options.compression[0]!,

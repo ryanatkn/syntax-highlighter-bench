@@ -59,6 +59,9 @@ export const HEAP_MEASURES: ReadonlyArray<{
 	}
 ];
 
+/** The measure shown by default: the sum, which is what is ranked. */
+export const DEFAULT_HEAP_MEASURE: HeapMeasure = 'total';
+
 /** A measure of one entry, in bytes: the file records kibibytes. */
 const to_heap_bytes = (entry: BenchHeap, measure: HeapMeasure): number =>
 	1024 *
@@ -89,7 +92,8 @@ export const results_have_heap = (results: Pick<MatrixResults, 'heap'>): boolean
 	Object.keys(results.heap).length > 0;
 
 /**
- * The selected languages as rows, in the file's order, once for each measure.
+ * The selected languages as rows, in the file's order, once for each selected
+ * measure.
  * A library that doesn't claim a language is unsupported there, and one that
  * claims it with no reading, as in a run filtered to other libraries, is
  * unmeasured.
@@ -98,7 +102,7 @@ export const results_have_heap = (results: Pick<MatrixResults, 'heap'>): boolean
  */
 export const to_heap_groups = (
 	results: MatrixResults,
-	selection: { langs: ReadonlyArray<string> }
+	selection: { langs: ReadonlyArray<string>; parts: ReadonlyArray<string> }
 ): Array<MatrixGroup> => {
 	if (!results_have_heap(results)) return [];
 	const langs = results.langs.filter((lang) => lang.timed && selection.langs.includes(lang.id));
@@ -115,7 +119,7 @@ export const to_heap_groups = (
 			]
 		});
 	};
-	return HEAP_MEASURES.map((measure) => ({
+	return HEAP_MEASURES.filter((measure) => selection.parts.includes(measure.id)).map((measure) => ({
 		key: `heap:${measure.id}`,
 		label: measure.label,
 		note: measure.note,

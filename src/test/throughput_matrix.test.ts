@@ -68,7 +68,7 @@ describe('to_throughput_groups', () => {
 		assert.strictEqual(matrix_row_entry(row, 'fuz_code').kind, 'value');
 	});
 
-	test('a group closes with a geometric mean for each mode, over its complete cells only', () => {
+	test('each mode leads with a geometric mean, over its complete cells only', () => {
 		const group = groups.find((g) => g.key === 'rust/shiki')!;
 		const means = group.rows.filter((row) => row.kind === 'summary');
 		assert.deepStrictEqual(
@@ -91,6 +91,23 @@ describe('to_throughput_groups', () => {
 		const cell = fixture.cells.find((c) => c.id === 'shiki/rust/rust.sample:tokenize')!;
 		assert.closeTo(matrix_row_value(mean, 'fuz_code')!, cell.values.fuz_code!.mb_per_sec, 1e-9);
 		assert.strictEqual(matrix_row_value(mean, 'prism'), null);
+	});
+
+	test('each mode is a block: its mean, then its cells, which leave the mode out of their note', () => {
+		for (const group of groups) {
+			const cells = fixture.cells.filter((c) => group.rows.some((r) => r.key === c.id));
+			let mode: string | null = null;
+			for (const row of group.rows) {
+				if (row.kind === 'summary') {
+					mode = row.label.replace('geomean · ', '');
+					continue;
+				}
+				assert.ok(mode !== null, `${row.key} comes before any mean`);
+				const cell = cells.find((c) => c.id === row.key)!;
+				assert.strictEqual(cell.mode, mode, row.key);
+				assert.notInclude(row.note, cell.mode);
+			}
+		}
 	});
 
 	test('a retried value is marked, and its details hold every number it records', () => {

@@ -49,8 +49,8 @@
 
 {#if meta.machine && meta.generated_at && meta.commit}
 	<p>
-		Timed on <strong>{meta.machine.name}</strong>: {machine_parts.join(', ')}, Node {meta.node}. Run
-		of {format_date(meta.generated_at)} at commit
+		Timed on <strong>{meta.machine.name}</strong> ({meta.machine.cpu}, Node {meta.node}) on
+		{format_date(meta.generated_at)} at commit
 		{#if site.repo_url}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a href="{site.repo_url}/commit/{clean_commit}" rel="external">
@@ -58,10 +58,7 @@
 			</a>
 		{:else}
 			<code>{format_hash(meta.commit)}</code>
-		{/if}, corpus <code title={meta.corpus_hash}>{format_hash(meta.corpus_hash)}</code>.
-		{#if meta.anchor}
-			Its anchor was stable, with a drift of {format_percent(Math.abs(meta.anchor.drift))}.
-		{/if}
+		{/if}.
 		{#if meta.noise_floor}
 			The machine's noise floor is {format_percent(meta.noise_floor.per_cell)} for one cell and
 			{format_percent(meta.noise_floor.geomean)} for a geometric mean: a smaller difference is not a
@@ -70,19 +67,29 @@
 			The machine has no calibrated noise floor for this run, so small differences can't be told
 			from noise.
 		{/if}
-		{#if meta.process_noise}
-			Two processes measuring the same library on the same cell in this run were
-			{format_percent(meta.process_noise.p95)} apart at the 95th percentile and
-			{format_percent(meta.process_noise.median)} at the median{process_floor_note}.
-		{/if}
 		{@render children?.()}
 	</p>
+	<details>
+		<summary>The machine and the run</summary>
+		<p>
+			{meta.machine.name}: {machine_parts.join(', ')}. Corpus
+			<code title={meta.corpus_hash}>{format_hash(meta.corpus_hash)}</code>.
+			{#if meta.anchor}
+				The anchor, a fixed workload read before and after measuring, drifted
+				{format_percent(Math.abs(meta.anchor.drift))}: stable.
+			{/if}
+			{#if meta.process_noise}
+				Two processes measuring the same library on the same cell in this run were
+				{format_percent(meta.process_noise.p95)} apart at the 95th percentile and
+				{format_percent(meta.process_noise.median)} at the median{process_floor_note}.
+			{/if}
+		</p>
+	</details>
 	{#if moved.length > 0}
-		<!-- TODO re-enable later -->
-		<!-- <p>
+		<p>
 			These numbers are the run's own, a snapshot of what it measured. Since then:
 			{moved.join('; ')}.
-		</p> -->
+		</p>
 	{/if}
 {:else}
 	<p>

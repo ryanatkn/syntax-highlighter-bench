@@ -11,7 +11,8 @@
 		bound = false,
 		colored = true,
 		open = false,
-		bar = null
+		bar = null,
+		reference = false
 	}: {
 		entry: MatrixEntry;
 		unit: MatrixUnit;
@@ -27,6 +28,8 @@
 		open?: boolean;
 		/** The length of a bar beneath the number, as a fraction of the table's largest, or null for none. */
 		bar?: number | null;
+		/** Whether this is the reference library's column, which every ratio is taken against. */
+		reference?: boolean;
 	} = $props();
 
 	// the baseline itself is exactly 1, and is not a difference to qualify
@@ -41,7 +44,7 @@
 
 {#if entry.kind === 'value'}
 	<td
-		class={['num', { tinted: colored && ratio !== undefined }]}
+		class={['num', { tinted: colored && ratio !== undefined, reference }]}
 		style:--ratio_color={colored && ratio !== undefined
 			? to_ratio_display_color(ratio, bound)
 			: undefined}
@@ -91,25 +94,31 @@
 		{/if}
 	</td>
 {:else if entry.kind === 'unsupported'}
-	<td class="num text_70">
+	<td class={['num text_70', { reference }]}>
 		— <small>unsupported: no {entry.langs.join(', ')}</small>
 	</td>
 {:else if entry.kind === 'excluded'}
-	<td class="num">
+	<td class={['num', { reference }]}>
 		<abbr title={entry.reason}>excluded</abbr>
 		{#if open}
 			<div><small>{entry.reason}</small></div>
 		{/if}
 	</td>
 {:else if entry.kind === 'none'}
-	<td class="num"><small>{entry.text}</small></td>
+	<td class={['num', { reference }]}><small>{entry.text}</small></td>
 {:else}
-	<td class="num text_70"><small>not measured</small></td>
+	<td class={['num text_70', { reference }]}><small>not measured</small></td>
 {/if}
 
 <style>
 	.tinted {
 		background-color: color-mix(in hsl, var(--ratio_color) 24%, transparent);
+	}
+	/* the column every ratio is taken against, edged like its header */
+	.reference {
+		box-shadow:
+			inset var(--border_width_2) 0 0 var(--accent_50),
+			inset calc(-1 * var(--border_width_2)) 0 0 var(--accent_50);
 	}
 	ul {
 		white-space: normal;

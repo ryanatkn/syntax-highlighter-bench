@@ -60,6 +60,8 @@ describe('the options and the defaults', () => {
 		assert.strictEqual(defaults.reference, null);
 		assert.deepStrictEqual(defaults.libraries, options.libraries);
 		assert.deepStrictEqual(defaults.metrics, options.metrics);
+		// the retained heap starts at the sum, which is what is ranked
+		assert.deepStrictEqual(defaults.parts, ['total']);
 	});
 
 	test('every default is one of its options', () => {
@@ -98,6 +100,7 @@ describe('encoding', () => {
 			{ libraries: ['fuz_code', 'prism'], engines: ['scanner'], outputs: ['classes'] },
 			{ metrics: ['bundle'], bundle: 'totals', compression: 'raw', set: 'web_rust' },
 			{ unit: 'ns_per_op', forms: ['bundled', 'unbundled'], measures: ['spans'] },
+			{ parts: ['total', 'external'] },
 			// nothing selected is a selection too, and differs from the default
 			{ libraries: [], langs: [], sources: [] }
 		];

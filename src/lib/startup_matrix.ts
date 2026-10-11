@@ -121,7 +121,7 @@ const to_startup_entry = (
 
 /**
  * The cold-start scenarios as groups of one form and one scenario. A group of
- * several languages closes with a geometric mean. Every number is the scenario's
+ * several languages leads with a geometric mean over them. Every number is the scenario's
  * median less the bare baseline's: what the library added to a Node process.
  * In a row holding an addition inside the baseline's own noise, the others are
  * compared with that noise, as lower bounds, and the row is left out of the
@@ -180,7 +180,7 @@ export const to_startup_groups = (
 				key,
 				label: `${form} · ${label}`,
 				note: null,
-				rows: mean ? [...rows, mean] : rows
+				rows: mean ? [mean, ...rows] : rows
 			});
 		}
 	}

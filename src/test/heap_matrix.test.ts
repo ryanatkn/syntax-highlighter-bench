@@ -12,6 +12,7 @@ import { load_deterministic, to_library_ids } from './site_test_helpers.ts';
 
 const results = load_deterministic();
 const libraries = to_library_ids(results);
+const ALL_PARTS = HEAP_MEASURES.map((measure) => measure.id);
 
 describe('to_heap_floor', () => {
 	test('is the tolerance against the smallest number, absolute or relative, whichever is larger', () => {
@@ -22,7 +23,7 @@ describe('to_heap_floor', () => {
 	});
 
 	test('a compared row carries it, so readings within the tolerance print as level', () => {
-		for (const group of to_heap_groups(results, { langs: ['ts'] })) {
+		for (const group of to_heap_groups(results, { langs: ['ts'], parts: ALL_PARTS })) {
 			const row = group.rows[0]!;
 			if (row.compared) assert.ok(row.floor !== null && row.floor >= HEAP_TOLERANCE_RATIO);
 			else assert.strictEqual(row.floor, null);
@@ -31,8 +32,16 @@ describe('to_heap_floor', () => {
 });
 
 describe('to_heap_groups', () => {
+	test('only the selected parts have a group', () => {
+		assert.deepStrictEqual(
+			to_heap_groups(results, { langs: ['ts'], parts: ['code', 'total'] }).map((g) => g.key),
+			['heap:total', 'heap:code']
+		);
+		assert.deepStrictEqual(to_heap_groups(results, { langs: ['ts'], parts: [] }), []);
+	});
+
 	test('a group for each measure, a row for each selected timed language, in bytes', () => {
-		const groups = to_heap_groups(results, { langs: ['ts', 'xml', 'json'] });
+		const groups = to_heap_groups(results, { langs: ['ts', 'xml', 'json'], parts: ALL_PARTS });
 		assert.deepStrictEqual(
 			groups.map((group) => group.key),
 			HEAP_MEASURES.map((measure) => `heap:${measure.id}`)
@@ -58,7 +67,7 @@ describe('to_heap_groups', () => {
 	});
 
 	test('ranks the sum, the V8 heap, and the machine code, and not the external memory', () => {
-		const groups = to_heap_groups(results, { langs: ['ts'] });
+		const groups = to_heap_groups(results, { langs: ['ts'], parts: ALL_PARTS });
 		assert.deepStrictEqual(
 			groups.map((group) => group.rows[0]!.compared),
 			[true, true, true, false]
@@ -70,7 +79,7 @@ describe('to_heap_groups', () => {
 		const changed = structuredClone(results);
 		delete changed.coverage.prism!.rust;
 		delete changed.heap.shiki_js!.rust;
-		const [total] = to_heap_groups(changed, { langs: ['rust'] });
+		const [total] = to_heap_groups(changed, { langs: ['rust'], parts: ALL_PARTS });
 		assert.deepStrictEqual(matrix_row_entry(total!.rows[0]!, 'prism'), {
 			kind: 'unsupported',
 			langs: ['rust']
@@ -80,7 +89,10 @@ describe('to_heap_groups', () => {
 
 	test('nothing for a file without readings, or a selection without a timed language', () => {
 		assert.ok(results_have_heap(results));
-		assert.deepStrictEqual(to_heap_groups({ ...results, heap: {} }, { langs: ['ts'] }), []);
-		assert.deepStrictEqual(to_heap_groups(results, { langs: ['xml'] }), []);
+		assert.deepStrictEqual(
+			to_heap_groups({ ...results, heap: {} }, { langs: ['ts'], parts: ALL_PARTS }),
+			[]
+		);
+		assert.deepStrictEqual(to_heap_groups(results, { langs: ['xml'], parts: ALL_PARTS }), []);
 	});
 });

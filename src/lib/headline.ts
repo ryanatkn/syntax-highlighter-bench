@@ -12,7 +12,7 @@ import {
 	to_bundle_loaded_entry,
 	to_bundle_size_entry
 } from './bundle_matrix.ts';
-import { to_heap_floor, to_heap_groups } from './heap_matrix.ts';
+import { DEFAULT_HEAP_MEASURE, to_heap_floor, to_heap_groups } from './heap_matrix.ts';
 import {
 	matrix_row_value,
 	to_geomean_row,
@@ -39,7 +39,9 @@ const to_memory_row = (
 	langs: ReadonlyArray<string>,
 	libraries: ReadonlyArray<string>
 ): MatrixRow => {
-	const total = to_heap_groups(results, { langs }).find((group) => group.key === 'heap:total');
+	const total = to_heap_groups(results, { langs, parts: [DEFAULT_HEAP_MEASURE] }).find(
+		(group) => group.key === 'heap:total'
+	);
 	const row = total && to_geomean_row(total.rows, libraries, 'memory', 'everything held');
 	if (!row) {
 		return to_matrix_row({
