@@ -149,6 +149,7 @@
 	--palette_d_40: oklch(var(--palette_lightness_40) calc(var(--palette_chroma_40) * var(--chroma_scale, 1) * var(--palette_d_chroma_scale, 1)) var(--hue_d));
 	--palette_d_50: oklch(var(--palette_lightness_50) calc(var(--palette_chroma_50) * var(--chroma_scale, 1) * var(--palette_d_chroma_scale, 1)) var(--hue_d));
 	--palette_d_60: oklch(var(--palette_lightness_60) calc(var(--palette_chroma_60) * var(--chroma_scale, 1) * var(--palette_d_chroma_scale, 1)) var(--hue_d));
+	--palette_d_70: oklch(var(--palette_lightness_70) calc(var(--palette_chroma_70) * var(--chroma_scale, 1) * var(--palette_d_chroma_scale, 1)) var(--hue_d));
 	--palette_d_chroma_scale: 1;
 	--palette_e_10: oklch(var(--palette_lightness_10) calc(var(--palette_chroma_10) * var(--chroma_scale, 1) * var(--palette_e_chroma_scale, 1)) var(--hue_e));
 	--palette_e_40: oklch(var(--palette_lightness_40) calc(var(--palette_chroma_40) * var(--chroma_scale, 1) * var(--palette_e_chroma_scale, 1)) var(--hue_e));
