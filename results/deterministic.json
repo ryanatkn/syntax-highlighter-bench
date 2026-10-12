@@ -26,22 +26,22 @@
 				"id": "twinkleplop",
 				"label": "Twinkleplop",
 				"package": "@twinkleplop/core",
-				"version": "0.2.2",
+				"version": "0.3.1",
 				"output": "classes",
 				"engine": "grammar_vm",
 				"by_maintainer": false,
 				"note": "The full pipeline: the grammar plus the language's reclassifier stack, as shipped.",
 				"extra_packages": {
-					"@twinkleplop/bash": "0.1.5",
-					"@twinkleplop/css": "0.1.5",
-					"@twinkleplop/html": "0.1.5",
-					"@twinkleplop/javascript": "0.1.5",
-					"@twinkleplop/json": "0.1.5",
-					"@twinkleplop/markdown": "0.1.5",
-					"@twinkleplop/rust": "0.1.5",
-					"@twinkleplop/svelte": "0.1.5",
-					"@twinkleplop/typescript": "0.1.5",
-					"@twinkleplop/theme-github": "0.2.2"
+					"@twinkleplop/bash": "0.1.7",
+					"@twinkleplop/css": "0.1.7",
+					"@twinkleplop/html": "0.1.7",
+					"@twinkleplop/javascript": "0.1.7",
+					"@twinkleplop/json": "0.1.7",
+					"@twinkleplop/markdown": "0.2.1",
+					"@twinkleplop/rust": "0.1.7",
+					"@twinkleplop/svelte": "0.1.7",
+					"@twinkleplop/typescript": "0.1.7",
+					"@twinkleplop/theme-github": "0.2.4"
 				},
 				"theme_schemes": [
 					"light",
@@ -68,7 +68,7 @@
 				"id": "shiki_js",
 				"label": "Shiki (JS engine)",
 				"package": "shiki",
-				"version": "4.4.3",
+				"version": "4.5.0",
 				"output": "inline_styles",
 				"engine": "textmate",
 				"by_maintainer": false,
@@ -81,7 +81,7 @@
 				"id": "shiki_wasm",
 				"label": "Shiki (wasm)",
 				"package": "shiki",
-				"version": "4.4.3",
+				"version": "4.5.0",
 				"output": "inline_styles",
 				"engine": "textmate",
 				"by_maintainer": false,
@@ -3358,7 +3358,7 @@
 					"spans": 98
 				},
 				"twinkleplop": {
-					"html_bytes": 4966,
+					"html_bytes": 4960,
 					"spans": 134
 				},
 				"prism": {
@@ -3380,8 +3380,8 @@
 					"brotli": 572
 				},
 				"twinkleplop": {
-					"gzip": 653,
-					"brotli": 552
+					"gzip": 652,
+					"brotli": 553
 				},
 				"prism": {
 					"gzip": 642,
@@ -3576,7 +3576,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 230,
-				"twinkleplop": 168,
+				"twinkleplop": 162,
 				"prism": 233,
 				"shiki_js": 184,
 				"shiki_wasm": 184
@@ -3604,8 +3604,8 @@
 					"spans": 230
 				},
 				"twinkleplop": {
-					"html_bytes": 8061,
-					"spans": 211
+					"html_bytes": 7854,
+					"spans": 205
 				},
 				"prism": {
 					"html_bytes": 9546,
@@ -3626,8 +3626,8 @@
 					"brotli": 722
 				},
 				"twinkleplop": {
-					"gzip": 797,
-					"brotli": 704
+					"gzip": 779,
+					"brotli": 673
 				},
 				"prism": {
 					"gzip": 826,
@@ -3822,7 +3822,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 588,
-				"twinkleplop": 708,
+				"twinkleplop": 709,
 				"prism": 646,
 				"shiki_js": 770,
 				"shiki_wasm": 770
@@ -3850,8 +3850,8 @@
 					"spans": 588
 				},
 				"twinkleplop": {
-					"html_bytes": 30799,
-					"spans": 816
+					"html_bytes": 30835,
+					"spans": 817
 				},
 				"prism": {
 					"html_bytes": 27695,
@@ -3872,8 +3872,8 @@
 					"brotli": 2058
 				},
 				"twinkleplop": {
-					"gzip": 2405,
-					"brotli": 2163
+					"gzip": 2408,
+					"brotli": 2165
 				},
 				"prism": {
 					"gzip": 2285,
@@ -3906,8 +3906,8 @@
 				"fuz_code": 680,
 				"twinkleplop": 630,
 				"prism": 619,
-				"shiki_js": 642,
-				"shiki_wasm": 642
+				"shiki_js": 640,
+				"shiki_wasm": 640
 			},
 			"output": {},
 			"compressed": {}
@@ -3940,12 +3940,12 @@
 					"spans": 619
 				},
 				"shiki_js": {
-					"html_bytes": 25302,
-					"spans": 683
+					"html_bytes": 25232,
+					"spans": 681
 				},
 				"shiki_wasm": {
-					"html_bytes": 25302,
-					"spans": 683
+					"html_bytes": 25232,
+					"spans": 681
 				}
 			},
 			"compressed": {
@@ -3954,20 +3954,20 @@
 					"brotli": 2086
 				},
 				"twinkleplop": {
-					"gzip": 2266,
-					"brotli": 2022
+					"gzip": 2261,
+					"brotli": 2021
 				},
 				"prism": {
 					"gzip": 2192,
 					"brotli": 1951
 				},
 				"shiki_js": {
-					"gzip": 2143,
-					"brotli": 1919
+					"gzip": 2141,
+					"brotli": 1913
 				},
 				"shiki_wasm": {
-					"gzip": 2143,
-					"brotli": 1919
+					"gzip": 2141,
+					"brotli": 1913
 				}
 			}
 		},
@@ -4068,7 +4068,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 11275,
-				"twinkleplop": 22658,
+				"twinkleplop": 22912,
 				"prism": 13511,
 				"shiki_js": 10270,
 				"shiki_wasm": 10270
@@ -4096,8 +4096,8 @@
 					"spans": 11275
 				},
 				"twinkleplop": {
-					"html_bytes": 1030098,
-					"spans": 27950
+					"html_bytes": 1029801,
+					"spans": 27941
 				},
 				"prism": {
 					"html_bytes": 612003,
@@ -4118,8 +4118,8 @@
 					"brotli": 5754
 				},
 				"twinkleplop": {
-					"gzip": 64410,
-					"brotli": 6577
+					"gzip": 64373,
+					"brotli": 6564
 				},
 				"prism": {
 					"gzip": 58436,
@@ -4150,7 +4150,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 1248,
-				"twinkleplop": 2509,
+				"twinkleplop": 2537,
 				"prism": 1494,
 				"shiki_js": 1211,
 				"shiki_wasm": 1211
@@ -4178,8 +4178,8 @@
 					"spans": 1248
 				},
 				"twinkleplop": {
-					"html_bytes": 114083,
-					"spans": 3096
+					"html_bytes": 114050,
+					"spans": 3095
 				},
 				"prism": {
 					"html_bytes": 67680,
@@ -4200,8 +4200,8 @@
 					"brotli": 5620
 				},
 				"twinkleplop": {
-					"gzip": 7464,
-					"brotli": 6422
+					"gzip": 7460,
+					"brotli": 6408
 				},
 				"prism": {
 					"gzip": 6877,
@@ -4232,7 +4232,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 129,
-				"twinkleplop": 231,
+				"twinkleplop": 237,
 				"prism": 195,
 				"shiki_js": 258,
 				"shiki_wasm": 258
@@ -4314,7 +4314,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 583,
-				"twinkleplop": 1351,
+				"twinkleplop": 1354,
 				"prism": 578,
 				"shiki_js": 1260,
 				"shiki_wasm": 1260
@@ -4396,10 +4396,10 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 12485,
-				"twinkleplop": 18132,
+				"twinkleplop": 18116,
 				"prism": 13208,
-				"shiki_js": 21547,
-				"shiki_wasm": 21547
+				"shiki_js": 21562,
+				"shiki_wasm": 21562
 			},
 			"output": {},
 			"compressed": {}
@@ -4424,20 +4424,20 @@
 					"spans": 12485
 				},
 				"twinkleplop": {
-					"html_bytes": 850847,
-					"spans": 22804
+					"html_bytes": 850319,
+					"spans": 22788
 				},
 				"prism": {
 					"html_bytes": 597677,
 					"spans": 13208
 				},
 				"shiki_js": {
-					"html_bytes": 846476,
-					"spans": 22626
+					"html_bytes": 846266,
+					"spans": 22620
 				},
 				"shiki_wasm": {
-					"html_bytes": 846476,
-					"spans": 22626
+					"html_bytes": 846266,
+					"spans": 22620
 				}
 			},
 			"compressed": {
@@ -4446,20 +4446,20 @@
 					"brotli": 11066
 				},
 				"twinkleplop": {
-					"gzip": 33718,
-					"brotli": 11972
+					"gzip": 33682,
+					"brotli": 11973
 				},
 				"prism": {
 					"gzip": 29778,
 					"brotli": 11125
 				},
 				"shiki_js": {
-					"gzip": 33294,
-					"brotli": 11988
+					"gzip": 33253,
+					"brotli": 11964
 				},
 				"shiki_wasm": {
-					"gzip": 33294,
-					"brotli": 11988
+					"gzip": 33253,
+					"brotli": 11964
 				}
 			}
 		},
@@ -4480,8 +4480,8 @@
 				"fuz_code": 1566,
 				"twinkleplop": 2124,
 				"prism": 1624,
-				"shiki_js": 2358,
-				"shiki_wasm": 2358
+				"shiki_js": 2368,
+				"shiki_wasm": 2368
 			},
 			"output": {},
 			"compressed": {}
@@ -4514,12 +4514,12 @@
 					"spans": 1624
 				},
 				"shiki_js": {
-					"html_bytes": 99036,
-					"spans": 2699
+					"html_bytes": 98896,
+					"spans": 2695
 				},
 				"shiki_wasm": {
-					"html_bytes": 99036,
-					"spans": 2699
+					"html_bytes": 98896,
+					"spans": 2695
 				}
 			},
 			"compressed": {
@@ -4536,12 +4536,12 @@
 					"brotli": 2202
 				},
 				"shiki_js": {
-					"gzip": 5202,
-					"brotli": 2434
+					"gzip": 5179,
+					"brotli": 2429
 				},
 				"shiki_wasm": {
-					"gzip": 5202,
-					"brotli": 2434
+					"gzip": 5179,
+					"brotli": 2429
 				}
 			}
 		},
@@ -4642,7 +4642,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 5067,
-				"twinkleplop": 7471,
+				"twinkleplop": 7463,
 				"prism": 5385,
 				"shiki_js": 9004,
 				"shiki_wasm": 9004
@@ -4670,8 +4670,8 @@
 					"spans": 5067
 				},
 				"twinkleplop": {
-					"html_bytes": 352124,
-					"spans": 9368
+					"html_bytes": 351860,
+					"spans": 9360
 				},
 				"prism": {
 					"html_bytes": 245003,
@@ -4692,8 +4692,8 @@
 					"brotli": 9267
 				},
 				"twinkleplop": {
-					"gzip": 13215,
-					"brotli": 10057
+					"gzip": 13198,
+					"brotli": 10008
 				},
 				"prism": {
 					"gzip": 11517,
@@ -5052,7 +5052,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 4034,
-				"twinkleplop": 5140,
+				"twinkleplop": 5141,
 				"prism": 4512,
 				"shiki_js": 5415,
 				"shiki_wasm": 5415
@@ -5080,8 +5080,8 @@
 					"spans": 4034
 				},
 				"twinkleplop": {
-					"html_bytes": 235383,
-					"spans": 6245
+					"html_bytes": 235417,
+					"spans": 6246
 				},
 				"prism": {
 					"html_bytes": 196853,
@@ -5102,8 +5102,8 @@
 					"brotli": 6594
 				},
 				"twinkleplop": {
-					"gzip": 9108,
-					"brotli": 6906
+					"gzip": 9111,
+					"brotli": 6905
 				},
 				"prism": {
 					"gzip": 8575,
@@ -5134,7 +5134,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 15918,
-				"twinkleplop": 19495,
+				"twinkleplop": 19497,
 				"prism": 17780,
 				"shiki_js": 19774,
 				"shiki_wasm": 19774
@@ -5162,8 +5162,8 @@
 					"spans": 15918
 				},
 				"twinkleplop": {
-					"html_bytes": 906538,
-					"spans": 24349
+					"html_bytes": 906603,
+					"spans": 24351
 				},
 				"prism": {
 					"html_bytes": 785636,
@@ -5184,8 +5184,8 @@
 					"brotli": 14589
 				},
 				"twinkleplop": {
-					"gzip": 48146,
-					"brotli": 15333
+					"gzip": 48124,
+					"brotli": 15327
 				},
 				"prism": {
 					"gzip": 45864,
@@ -6118,7 +6118,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 1668,
-				"twinkleplop": 1949,
+				"twinkleplop": 1957,
 				"prism": 1743,
 				"shiki_js": 2106,
 				"shiki_wasm": 2106
@@ -6146,8 +6146,8 @@
 					"spans": 1668
 				},
 				"twinkleplop": {
-					"html_bytes": 85149,
-					"spans": 2246
+					"html_bytes": 85437,
+					"spans": 2254
 				},
 				"prism": {
 					"html_bytes": 76208,
@@ -6168,8 +6168,8 @@
 					"brotli": 4051
 				},
 				"twinkleplop": {
-					"gzip": 4817,
-					"brotli": 4183
+					"gzip": 4825,
+					"brotli": 4193
 				},
 				"prism": {
 					"gzip": 4622,
@@ -6200,10 +6200,10 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 18816,
-				"twinkleplop": 23144,
+				"twinkleplop": 23296,
 				"prism": 19576,
-				"shiki_js": 24488,
-				"shiki_wasm": 24488
+				"shiki_js": 24480,
+				"shiki_wasm": 24480
 			},
 			"output": {},
 			"compressed": {}
@@ -6228,8 +6228,8 @@
 					"spans": 18816
 				},
 				"twinkleplop": {
-					"html_bytes": 1025105,
-					"spans": 27473
+					"html_bytes": 1030577,
+					"spans": 27625
 				},
 				"prism": {
 					"html_bytes": 856765,
@@ -6250,20 +6250,20 @@
 					"brotli": 5959
 				},
 				"twinkleplop": {
-					"gzip": 53758,
-					"brotli": 6237
+					"gzip": 53843,
+					"brotli": 6247
 				},
 				"prism": {
 					"gzip": 50678,
 					"brotli": 5921
 				},
 				"shiki_js": {
-					"gzip": 51689,
-					"brotli": 6100
+					"gzip": 51724,
+					"brotli": 6099
 				},
 				"shiki_wasm": {
-					"gzip": 51689,
-					"brotli": 6100
+					"gzip": 51724,
+					"brotli": 6099
 				}
 			}
 		},
@@ -6282,10 +6282,10 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 2352,
-				"twinkleplop": 2893,
+				"twinkleplop": 2912,
 				"prism": 2447,
-				"shiki_js": 3061,
-				"shiki_wasm": 3061
+				"shiki_js": 3060,
+				"shiki_wasm": 3060
 			},
 			"output": {},
 			"compressed": {}
@@ -6310,8 +6310,8 @@
 					"spans": 2352
 				},
 				"twinkleplop": {
-					"html_bytes": 128152,
-					"spans": 3435
+					"html_bytes": 128836,
+					"spans": 3454
 				},
 				"prism": {
 					"html_bytes": 107092,
@@ -6332,20 +6332,20 @@
 					"brotli": 5835
 				},
 				"twinkleplop": {
-					"gzip": 7112,
-					"brotli": 6096
+					"gzip": 7122,
+					"brotli": 6098
 				},
 				"prism": {
 					"gzip": 6707,
 					"brotli": 5803
 				},
 				"shiki_js": {
-					"gzip": 6836,
-					"brotli": 5986
+					"gzip": 6839,
+					"brotli": 5996
 				},
 				"shiki_wasm": {
-					"gzip": 6836,
-					"brotli": 5986
+					"gzip": 6839,
+					"brotli": 5996
 				}
 			}
 		},
@@ -6364,7 +6364,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 282,
-				"twinkleplop": 332,
+				"twinkleplop": 336,
 				"prism": 290,
 				"shiki_js": 364,
 				"shiki_wasm": 364
@@ -6392,8 +6392,8 @@
 					"spans": 282
 				},
 				"twinkleplop": {
-					"html_bytes": 14460,
-					"spans": 391
+					"html_bytes": 14604,
+					"spans": 395
 				},
 				"prism": {
 					"html_bytes": 12480,
@@ -6414,8 +6414,8 @@
 					"brotli": 653
 				},
 				"twinkleplop": {
-					"gzip": 865,
-					"brotli": 729
+					"gzip": 867,
+					"brotli": 731
 				},
 				"prism": {
 					"gzip": 783,
@@ -6446,7 +6446,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 704,
-				"twinkleplop": 865,
+				"twinkleplop": 864,
 				"prism": 753,
 				"shiki_js": 903,
 				"shiki_wasm": 903
@@ -6474,8 +6474,8 @@
 					"spans": 704
 				},
 				"twinkleplop": {
-					"html_bytes": 39776,
-					"spans": 1049
+					"html_bytes": 39743,
+					"spans": 1048
 				},
 				"prism": {
 					"html_bytes": 33244,
@@ -6496,8 +6496,8 @@
 					"brotli": 2483
 				},
 				"twinkleplop": {
-					"gzip": 2904,
-					"brotli": 2494
+					"gzip": 2900,
+					"brotli": 2483
 				},
 				"prism": {
 					"gzip": 2818,
@@ -6612,8 +6612,8 @@
 				"fuz_code": 23984,
 				"twinkleplop": 23789,
 				"prism": 23069,
-				"shiki_js": 22630,
-				"shiki_wasm": 22630
+				"shiki_js": 22620,
+				"shiki_wasm": 22620
 			},
 			"output": {},
 			"compressed": {}
@@ -6638,20 +6638,20 @@
 					"spans": 23984
 				},
 				"twinkleplop": {
-					"html_bytes": 1043434,
-					"spans": 27741
+					"html_bytes": 1042979,
+					"spans": 27726
 				},
 				"prism": {
 					"html_bytes": 973411,
 					"spans": 23069
 				},
 				"shiki_js": {
-					"html_bytes": 893229,
-					"spans": 23618
+					"html_bytes": 892879,
+					"spans": 23608
 				},
 				"shiki_wasm": {
-					"html_bytes": 893229,
-					"spans": 23618
+					"html_bytes": 892879,
+					"spans": 23608
 				}
 			},
 			"compressed": {
@@ -6660,20 +6660,20 @@
 					"brotli": 8824
 				},
 				"twinkleplop": {
-					"gzip": 55815,
-					"brotli": 8751
+					"gzip": 55793,
+					"brotli": 8731
 				},
 				"prism": {
 					"gzip": 54752,
 					"brotli": 8557
 				},
 				"shiki_js": {
-					"gzip": 51358,
-					"brotli": 8418
+					"gzip": 51323,
+					"brotli": 8419
 				},
 				"shiki_wasm": {
-					"gzip": 51358,
-					"brotli": 8418
+					"gzip": 51323,
+					"brotli": 8419
 				}
 			}
 		},
@@ -6692,7 +6692,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 1945,
-				"twinkleplop": 2116,
+				"twinkleplop": 2115,
 				"prism": 1992,
 				"shiki_js": 2257,
 				"shiki_wasm": 2257
@@ -6720,8 +6720,8 @@
 					"spans": 1945
 				},
 				"twinkleplop": {
-					"html_bytes": 95676,
-					"spans": 2540
+					"html_bytes": 95643,
+					"spans": 2539
 				},
 				"prism": {
 					"html_bytes": 85488,
@@ -6742,8 +6742,8 @@
 					"brotli": 4170
 				},
 				"twinkleplop": {
-					"gzip": 5833,
-					"brotli": 4166
+					"gzip": 5829,
+					"brotli": 4158
 				},
 				"prism": {
 					"gzip": 5716,
@@ -6856,7 +6856,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 6432,
-				"twinkleplop": 8359,
+				"twinkleplop": 8335,
 				"prism": 6842,
 				"shiki_js": 8044,
 				"shiki_wasm": 8044
@@ -6884,8 +6884,8 @@
 					"spans": 6432
 				},
 				"twinkleplop": {
-					"html_bytes": 388964,
-					"spans": 9894
+					"html_bytes": 388071,
+					"spans": 9870
 				},
 				"prism": {
 					"html_bytes": 316087,
@@ -6906,8 +6906,8 @@
 					"brotli": 15791
 				},
 				"twinkleplop": {
-					"gzip": 22046,
-					"brotli": 16425
+					"gzip": 21977,
+					"brotli": 16358
 				},
 				"prism": {
 					"gzip": 20855,
@@ -6938,7 +6938,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 6252,
-				"twinkleplop": 8157,
+				"twinkleplop": 8154,
 				"prism": 6604,
 				"shiki_js": 7832,
 				"shiki_wasm": 7832
@@ -6966,8 +6966,8 @@
 					"spans": 6252
 				},
 				"twinkleplop": {
-					"html_bytes": 403202,
-					"spans": 10043
+					"html_bytes": 403043,
+					"spans": 10040
 				},
 				"prism": {
 					"html_bytes": 319617,
@@ -6988,8 +6988,8 @@
 					"brotli": 15189
 				},
 				"twinkleplop": {
-					"gzip": 22809,
-					"brotli": 15722
+					"gzip": 22784,
+					"brotli": 15707
 				},
 				"prism": {
 					"gzip": 20941,
@@ -7020,7 +7020,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 3221,
-				"twinkleplop": 3985,
+				"twinkleplop": 3948,
 				"prism": 3410,
 				"shiki_js": 5418,
 				"shiki_wasm": 5418
@@ -7048,8 +7048,8 @@
 					"spans": 3221
 				},
 				"twinkleplop": {
-					"html_bytes": 227205,
-					"spans": 5355
+					"html_bytes": 226021,
+					"spans": 5319
 				},
 				"prism": {
 					"html_bytes": 182795,
@@ -7070,8 +7070,8 @@
 					"brotli": 18930
 				},
 				"twinkleplop": {
-					"gzip": 23345,
-					"brotli": 19547
+					"gzip": 23292,
+					"brotli": 19513
 				},
 				"prism": {
 					"gzip": 22430,
@@ -7102,7 +7102,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 11102,
-				"twinkleplop": 13918,
+				"twinkleplop": 13857,
 				"prism": 11718,
 				"shiki_js": 15424,
 				"shiki_wasm": 15424
@@ -7130,8 +7130,8 @@
 					"spans": 11102
 				},
 				"twinkleplop": {
-					"html_bytes": 686225,
-					"spans": 17179
+					"html_bytes": 684148,
+					"spans": 17119
 				},
 				"prism": {
 					"html_bytes": 560736,
@@ -7152,8 +7152,8 @@
 					"brotli": 37570
 				},
 				"twinkleplop": {
-					"gzip": 49258,
-					"brotli": 38703
+					"gzip": 49138,
+					"brotli": 38577
 				},
 				"prism": {
 					"gzip": 47115,
@@ -7348,7 +7348,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 774,
-				"twinkleplop": 1919,
+				"twinkleplop": 1933,
 				"prism": 1001,
 				"shiki_js": 1641,
 				"shiki_wasm": 1641
@@ -7430,7 +7430,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 13817,
-				"twinkleplop": 12751,
+				"twinkleplop": 12763,
 				"prism": 13579,
 				"shiki_js": 27267,
 				"shiki_wasm": 27267
@@ -7458,8 +7458,8 @@
 					"spans": 13817
 				},
 				"twinkleplop": {
-					"html_bytes": 869195,
-					"spans": 20931
+					"html_bytes": 868873,
+					"spans": 20921
 				},
 				"prism": {
 					"html_bytes": 693616,
@@ -7480,8 +7480,8 @@
 					"brotli": 39949
 				},
 				"twinkleplop": {
-					"gzip": 55398,
-					"brotli": 42852
+					"gzip": 55375,
+					"brotli": 42818
 				},
 				"prism": {
 					"gzip": 56633,
@@ -7512,7 +7512,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 28,
-				"twinkleplop": 50,
+				"twinkleplop": 51,
 				"prism": 34,
 				"shiki_js": 46,
 				"shiki_wasm": 46
@@ -7596,8 +7596,8 @@
 				"fuz_code": 88274,
 				"twinkleplop": 124407,
 				"prism": 102203,
-				"shiki_js": 128372,
-				"shiki_wasm": 128372
+				"shiki_js": 128376,
+				"shiki_wasm": 128376
 			},
 			"output": {},
 			"compressed": {}
@@ -7630,12 +7630,12 @@
 					"spans": 102203
 				},
 				"shiki_js": {
-					"html_bytes": 5312971,
-					"spans": 135517
+					"html_bytes": 5313041,
+					"spans": 135519
 				},
 				"shiki_wasm": {
-					"html_bytes": 5312971,
-					"spans": 135517
+					"html_bytes": 5313041,
+					"spans": 135519
 				}
 			},
 			"compressed": {
@@ -7652,12 +7652,12 @@
 					"brotli": 49732
 				},
 				"shiki_js": {
-					"gzip": 106077,
-					"brotli": 53892
+					"gzip": 106081,
+					"brotli": 54032
 				},
 				"shiki_wasm": {
-					"gzip": 106077,
-					"brotli": 53892
+					"gzip": 106081,
+					"brotli": 54032
 				}
 			}
 		},
@@ -7760,8 +7760,8 @@
 				"fuz_code": 103,
 				"twinkleplop": 162,
 				"prism": 108,
-				"shiki_js": 194,
-				"shiki_wasm": 194
+				"shiki_js": 197,
+				"shiki_wasm": 197
 			},
 			"output": {},
 			"compressed": {}
@@ -7794,12 +7794,12 @@
 					"spans": 108
 				},
 				"shiki_js": {
-					"html_bytes": 7722,
-					"spans": 207
+					"html_bytes": 7792,
+					"spans": 209
 				},
 				"shiki_wasm": {
-					"html_bytes": 7722,
-					"spans": 207
+					"html_bytes": 7792,
+					"spans": 209
 				}
 			},
 			"compressed": {
@@ -7816,12 +7816,12 @@
 					"brotli": 504
 				},
 				"shiki_js": {
-					"gzip": 770,
-					"brotli": 655
+					"gzip": 771,
+					"brotli": 656
 				},
 				"shiki_wasm": {
-					"gzip": 770,
-					"brotli": 655
+					"gzip": 771,
+					"brotli": 656
 				}
 			}
 		},
@@ -7840,7 +7840,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 14835,
-				"twinkleplop": 10476,
+				"twinkleplop": 10475,
 				"prism": 14851,
 				"shiki_js": 10910,
 				"shiki_wasm": 10910
@@ -7868,8 +7868,8 @@
 					"spans": 14835
 				},
 				"twinkleplop": {
-					"html_bytes": 564224,
-					"spans": 13033
+					"html_bytes": 564191,
+					"spans": 13032
 				},
 				"prism": {
 					"html_bytes": 661992,
@@ -7890,8 +7890,8 @@
 					"brotli": 29872
 				},
 				"twinkleplop": {
-					"gzip": 38561,
-					"brotli": 29835
+					"gzip": 38552,
+					"brotli": 29839
 				},
 				"prism": {
 					"gzip": 39035,
@@ -8086,7 +8086,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 1108,
-				"twinkleplop": 1482,
+				"twinkleplop": 1484,
 				"prism": 1256,
 				"shiki_js": 1244,
 				"shiki_wasm": 1244
@@ -8114,8 +8114,8 @@
 					"spans": 1108
 				},
 				"twinkleplop": {
-					"html_bytes": 72410,
-					"spans": 1873
+					"html_bytes": 72478,
+					"spans": 1875
 				},
 				"prism": {
 					"html_bytes": 57307,
@@ -8136,8 +8136,8 @@
 					"brotli": 3158
 				},
 				"twinkleplop": {
-					"gzip": 3974,
-					"brotli": 3349
+					"gzip": 3976,
+					"brotli": 3351
 				},
 				"prism": {
 					"gzip": 3721,
@@ -8168,7 +8168,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 8529,
-				"twinkleplop": 14520,
+				"twinkleplop": 14522,
 				"prism": 9932,
 				"shiki_js": 11117,
 				"shiki_wasm": 11117
@@ -8196,8 +8196,8 @@
 					"spans": 8529
 				},
 				"twinkleplop": {
-					"html_bytes": 673977,
-					"spans": 17576
+					"html_bytes": 674217,
+					"spans": 17573
 				},
 				"prism": {
 					"html_bytes": 470203,
@@ -8218,8 +8218,8 @@
 					"brotli": 28742
 				},
 				"twinkleplop": {
-					"gzip": 44406,
-					"brotli": 31224
+					"gzip": 44195,
+					"brotli": 31062
 				},
 				"prism": {
 					"gzip": 40182,
@@ -8988,7 +8988,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 8031,
-				"twinkleplop": 8870,
+				"twinkleplop": 8865,
 				"prism": 8323,
 				"shiki_js": 11068,
 				"shiki_wasm": 11068
@@ -9016,8 +9016,8 @@
 					"spans": 8031
 				},
 				"twinkleplop": {
-					"html_bytes": 487099,
-					"spans": 11868
+					"html_bytes": 486958,
+					"spans": 11863
 				},
 				"prism": {
 					"html_bytes": 418060,
@@ -9038,8 +9038,8 @@
 					"brotli": 14335
 				},
 				"twinkleplop": {
-					"gzip": 21378,
-					"brotli": 14641
+					"gzip": 21367,
+					"brotli": 14603
 				},
 				"prism": {
 					"gzip": 20006,
@@ -9234,10 +9234,10 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 14254,
-				"twinkleplop": 15608,
+				"twinkleplop": 15605,
 				"prism": 14457,
-				"shiki_js": 14860,
-				"shiki_wasm": 14860
+				"shiki_js": 14888,
+				"shiki_wasm": 14888
 			},
 			"output": {},
 			"compressed": {}
@@ -9262,20 +9262,20 @@
 					"spans": 14254
 				},
 				"twinkleplop": {
-					"html_bytes": 738740,
-					"spans": 18663
+					"html_bytes": 738630,
+					"spans": 18660
 				},
 				"prism": {
 					"html_bytes": 658617,
 					"spans": 14457
 				},
 				"shiki_js": {
-					"html_bytes": 598088,
-					"spans": 14793
+					"html_bytes": 598543,
+					"spans": 14806
 				},
 				"shiki_wasm": {
-					"html_bytes": 598088,
-					"spans": 14793
+					"html_bytes": 598543,
+					"spans": 14806
 				}
 			},
 			"compressed": {
@@ -9284,20 +9284,20 @@
 					"brotli": 28251
 				},
 				"twinkleplop": {
-					"gzip": 37538,
-					"brotli": 28319
+					"gzip": 37524,
+					"brotli": 28324
 				},
 				"prism": {
 					"gzip": 36474,
 					"brotli": 27814
 				},
 				"shiki_js": {
-					"gzip": 35428,
-					"brotli": 27814
+					"gzip": 35430,
+					"brotli": 27816
 				},
 				"shiki_wasm": {
-					"gzip": 35428,
-					"brotli": 27814
+					"gzip": 35430,
+					"brotli": 27816
 				}
 			}
 		},
@@ -9316,7 +9316,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 13403,
-				"twinkleplop": 16351,
+				"twinkleplop": 16357,
 				"prism": 14220,
 				"shiki_js": 17700,
 				"shiki_wasm": 17700
@@ -9344,8 +9344,8 @@
 					"spans": 13403
 				},
 				"twinkleplop": {
-					"html_bytes": 712095,
-					"spans": 18587
+					"html_bytes": 712233,
+					"spans": 18593
 				},
 				"prism": {
 					"html_bytes": 627339,
@@ -9366,8 +9366,8 @@
 					"brotli": 21645
 				},
 				"twinkleplop": {
-					"gzip": 29490,
-					"brotli": 22239
+					"gzip": 29359,
+					"brotli": 22149
 				},
 				"prism": {
 					"gzip": 28043,
@@ -9426,7 +9426,7 @@
 					"spans": 987
 				},
 				"twinkleplop": {
-					"html_bytes": 58217,
+					"html_bytes": 58221,
 					"spans": 1431
 				},
 				"prism": {
@@ -9449,7 +9449,7 @@
 				},
 				"twinkleplop": {
 					"gzip": 4103,
-					"brotli": 3500
+					"brotli": 3502
 				},
 				"prism": {
 					"gzip": 3896,
@@ -9508,7 +9508,7 @@
 					"spans": 104
 				},
 				"twinkleplop": {
-					"html_bytes": 6848,
+					"html_bytes": 6842,
 					"spans": 172
 				},
 				"prism": {
@@ -9562,7 +9562,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 39,
-				"twinkleplop": 73,
+				"twinkleplop": 75,
 				"prism": 51,
 				"shiki_js": 81,
 				"shiki_wasm": 81
@@ -10300,7 +10300,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 348,
-				"twinkleplop": 616,
+				"twinkleplop": 618,
 				"prism": 322,
 				"shiki_js": 586,
 				"shiki_wasm": 586
@@ -10466,8 +10466,8 @@
 				"fuz_code": 489,
 				"twinkleplop": 6873,
 				"prism": 554,
-				"shiki_js": 8288,
-				"shiki_wasm": 8288
+				"shiki_js": 8536,
+				"shiki_wasm": 8536
 			},
 			"output": {},
 			"compressed": {}
@@ -10500,12 +10500,12 @@
 					"spans": 554
 				},
 				"shiki_js": {
-					"html_bytes": 285010,
-					"spans": 7335
+					"html_bytes": 290435,
+					"spans": 7490
 				},
 				"shiki_wasm": {
-					"html_bytes": 285010,
-					"spans": 7335
+					"html_bytes": 290435,
+					"spans": 7490
 				}
 			},
 			"compressed": {
@@ -10522,12 +10522,12 @@
 					"brotli": 2147
 				},
 				"shiki_js": {
-					"gzip": 5759,
-					"brotli": 2590
+					"gzip": 5733,
+					"brotli": 2562
 				},
 				"shiki_wasm": {
-					"gzip": 5759,
-					"brotli": 2590
+					"gzip": 5733,
+					"brotli": 2562
 				}
 			}
 		},
@@ -10546,7 +10546,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 24,
-				"twinkleplop": 5846,
+				"twinkleplop": 5566,
 				"prism": 5507,
 				"shiki_js": 6135,
 				"shiki_wasm": 6135
@@ -10574,8 +10574,8 @@
 					"spans": 24
 				},
 				"twinkleplop": {
-					"html_bytes": 233273,
-					"spans": 5930
+					"html_bytes": 223193,
+					"spans": 5650
 				},
 				"prism": {
 					"html_bytes": 236048,
@@ -10596,8 +10596,8 @@
 					"brotli": 1457
 				},
 				"twinkleplop": {
-					"gzip": 4048,
-					"brotli": 2002
+					"gzip": 3981,
+					"brotli": 1803
 				},
 				"prism": {
 					"gzip": 4160,
@@ -10628,7 +10628,7 @@
 			"values": {},
 			"tokens": {
 				"fuz_code": 7576,
-				"twinkleplop": 10198,
+				"twinkleplop": 10205,
 				"prism": 9327,
 				"shiki_js": 6717,
 				"shiki_wasm": 6717
@@ -10656,8 +10656,8 @@
 					"spans": 7576
 				},
 				"twinkleplop": {
-					"html_bytes": 394013,
-					"spans": 10218
+					"html_bytes": 394247,
+					"spans": 10225
 				},
 				"prism": {
 					"html_bytes": 387773,
@@ -10678,8 +10678,8 @@
 					"brotli": 14873
 				},
 				"twinkleplop": {
-					"gzip": 19854,
-					"brotli": 15243
+					"gzip": 19847,
+					"brotli": 15233
 				},
 				"prism": {
 					"gzip": 20000,
@@ -11394,7 +11394,7 @@
 					"spans": 3018
 				},
 				"twinkleplop": {
-					"html_bytes": 131967,
+					"html_bytes": 131727,
 					"spans": 3452
 				},
 				"prism": {
@@ -11416,8 +11416,8 @@
 					"brotli": 2316
 				},
 				"twinkleplop": {
-					"gzip": 3510,
-					"brotli": 2257
+					"gzip": 3499,
+					"brotli": 2272
 				},
 				"prism": {
 					"gzip": 3514,
@@ -11704,9 +11704,9 @@
 		},
 		"twinkleplop": {
 			"core": {
-				"raw": 45626,
-				"gzip": 16450,
-				"brotli": 14627,
+				"raw": 52235,
+				"gzip": 18735,
+				"brotli": 16716,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11715,9 +11715,9 @@
 				}
 			},
 			"single:ts": {
-				"raw": 139781,
-				"gzip": 44151,
-				"brotli": 38762,
+				"raw": 149893,
+				"gzip": 47490,
+				"brotli": 41787,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11726,9 +11726,9 @@
 				}
 			},
 			"single:js": {
-				"raw": 128800,
-				"gzip": 41361,
-				"brotli": 36402,
+				"raw": 137902,
+				"gzip": 44513,
+				"brotli": 39157,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11737,9 +11737,9 @@
 				}
 			},
 			"single:css": {
-				"raw": 81511,
-				"gzip": 27460,
-				"brotli": 24353,
+				"raw": 88121,
+				"gzip": 29773,
+				"brotli": 26439,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11748,9 +11748,9 @@
 				}
 			},
 			"single:html": {
-				"raw": 128788,
-				"gzip": 41347,
-				"brotli": 36356,
+				"raw": 137890,
+				"gzip": 44520,
+				"brotli": 39217,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11764,9 +11764,9 @@
 				]
 			},
 			"single:json": {
-				"raw": 47271,
-				"gzip": 17056,
-				"brotli": 15219,
+				"raw": 53880,
+				"gzip": 19341,
+				"brotli": 17305,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11775,9 +11775,9 @@
 				}
 			},
 			"single:svelte": {
-				"raw": 133512,
-				"gzip": 42347,
-				"brotli": 37235,
+				"raw": 142808,
+				"gzip": 45571,
+				"brotli": 40060,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11786,9 +11786,9 @@
 				}
 			},
 			"single:md": {
-				"raw": 53047,
-				"gzip": 18760,
-				"brotli": 16754,
+				"raw": 63462,
+				"gzip": 22408,
+				"brotli": 19938,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11797,9 +11797,9 @@
 				}
 			},
 			"single:bash": {
-				"raw": 85213,
-				"gzip": 29208,
-				"brotli": 25819,
+				"raw": 91829,
+				"gzip": 31553,
+				"brotli": 27905,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11808,9 +11808,9 @@
 				}
 			},
 			"single:rust": {
-				"raw": 90031,
-				"gzip": 30143,
-				"brotli": 26709,
+				"raw": 95235,
+				"gzip": 31975,
+				"brotli": 28308,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11819,9 +11819,9 @@
 				}
 			},
 			"docs": {
-				"raw": 155565,
-				"gzip": 49093,
-				"brotli": 42670,
+				"raw": 167323,
+				"gzip": 52965,
+				"brotli": 46171,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11840,9 +11840,9 @@
 				]
 			},
 			"timed": {
-				"raw": 171010,
-				"gzip": 52924,
-				"brotli": 45754,
+				"raw": 181568,
+				"gzip": 56406,
+				"brotli": 48807,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11851,9 +11851,9 @@
 				}
 			},
 			"without:ts": {
-				"raw": 159924,
-				"gzip": 49831,
-				"brotli": 43375,
+				"raw": 169472,
+				"gzip": 53118,
+				"brotli": 46300,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11862,9 +11862,9 @@
 				}
 			},
 			"without:js": {
-				"raw": 170901,
-				"gzip": 52904,
-				"brotli": 45711,
+				"raw": 181459,
+				"gzip": 56395,
+				"brotli": 48847,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11873,9 +11873,9 @@
 				}
 			},
 			"without:css": {
-				"raw": 170915,
-				"gzip": 52901,
-				"brotli": 45741,
+				"raw": 181473,
+				"gzip": 56397,
+				"brotli": 48810,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11884,9 +11884,9 @@
 				}
 			},
 			"without:html": {
-				"raw": 170913,
-				"gzip": 52910,
-				"brotli": 45716,
+				"raw": 181471,
+				"gzip": 56374,
+				"brotli": 48830,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11895,9 +11895,9 @@
 				}
 			},
 			"without:json": {
-				"raw": 169984,
-				"gzip": 52856,
-				"brotli": 45529,
+				"raw": 180532,
+				"gzip": 56307,
+				"brotli": 48722,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11906,9 +11906,9 @@
 				}
 			},
 			"without:svelte": {
-				"raw": 166197,
-				"gzip": 51568,
-				"brotli": 44915,
+				"raw": 176561,
+				"gzip": 55033,
+				"brotli": 47910,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11917,9 +11917,9 @@
 				}
 			},
 			"without:md": {
-				"raw": 164279,
-				"gzip": 50976,
-				"brotli": 44154,
+				"raw": 173213,
+				"gzip": 53843,
+				"brotli": 46750,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11928,9 +11928,9 @@
 				}
 			},
 			"without:bash": {
-				"raw": 163335,
-				"gzip": 50431,
-				"brotli": 43567,
+				"raw": 173861,
+				"gzip": 53908,
+				"brotli": 46814,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -11939,9 +11939,9 @@
 				}
 			},
 			"without:rust": {
-				"raw": 160379,
-				"gzip": 50315,
-				"brotli": 43581,
+				"raw": 172330,
+				"gzip": 54282,
+				"brotli": 47049,
 				"wasm": null,
 				"css": {
 					"raw": 11426,
@@ -12218,179 +12218,179 @@
 		},
 		"shiki_js": {
 			"core": {
-				"raw": 176225,
-				"gzip": 56391,
-				"brotli": 50172,
+				"raw": 176729,
+				"gzip": 56592,
+				"brotli": 50305,
 				"wasm": null,
 				"css": null
 			},
 			"single:ts": {
-				"raw": 357282,
-				"gzip": 72034,
-				"brotli": 61635,
+				"raw": 357786,
+				"gzip": 72250,
+				"brotli": 61690,
 				"wasm": null,
 				"css": null
 			},
 			"single:js": {
-				"raw": 351029,
-				"gzip": 72473,
-				"brotli": 61955,
+				"raw": 351533,
+				"gzip": 72715,
+				"brotli": 62231,
 				"wasm": null,
 				"css": null
 			},
 			"single:css": {
-				"raw": 225243,
-				"gzip": 68159,
-				"brotli": 60711,
+				"raw": 230071,
+				"gzip": 68941,
+				"brotli": 61283,
 				"wasm": null,
 				"css": null
 			},
 			"single:html": {
-				"raw": 457596,
-				"gzip": 95127,
-				"brotli": 81480,
+				"raw": 462424,
+				"gzip": 95942,
+				"brotli": 82324,
 				"wasm": null,
 				"css": null
 			},
 			"single:xml": {
-				"raw": 208747,
-				"gzip": 61330,
-				"brotli": 54604,
+				"raw": 209251,
+				"gzip": 61537,
+				"brotli": 54872,
 				"wasm": null,
 				"css": null
 			},
 			"single:json": {
-				"raw": 179026,
-				"gzip": 57001,
-				"brotli": 50686,
+				"raw": 179530,
+				"gzip": 57203,
+				"brotli": 50910,
 				"wasm": null,
 				"css": null
 			},
 			"single:svelte": {
-				"raw": 605545,
-				"gzip": 102971,
-				"brotli": 77026,
+				"raw": 610381,
+				"gzip": 103808,
+				"brotli": 77610,
 				"wasm": null,
 				"css": null
 			},
 			"single:md": {
-				"raw": 235537,
-				"gzip": 61940,
-				"brotli": 54690,
+				"raw": 236041,
+				"gzip": 62148,
+				"brotli": 54926,
 				"wasm": null,
 				"css": null
 			},
 			"single:bash": {
-				"raw": 217681,
-				"gzip": 62292,
-				"brotli": 55447,
+				"raw": 218185,
+				"gzip": 62497,
+				"brotli": 55628,
 				"wasm": null,
 				"css": null
 			},
 			"single:rust": {
-				"raw": 191271,
-				"gzip": 58945,
-				"brotli": 52537,
+				"raw": 191874,
+				"gzip": 59159,
+				"brotli": 52720,
 				"wasm": null,
 				"css": null
 			},
 			"docs": {
-				"raw": 742208,
-				"gzip": 121936,
-				"brotli": 92548,
+				"raw": 747036,
+				"gzip": 122731,
+				"brotli": 93273,
 				"wasm": null,
 				"css": null
 			},
 			"web_rust": {
-				"raw": 814226,
-				"gzip": 133112,
-				"brotli": 101427,
+				"raw": 819161,
+				"gzip": 133906,
+				"brotli": 102117,
 				"wasm": null,
 				"css": null
 			},
 			"all": {
-				"raw": 814226,
-				"gzip": 133112,
-				"brotli": 101427,
+				"raw": 819161,
+				"gzip": 133906,
+				"brotli": 102117,
 				"wasm": null,
 				"css": null
 			},
 			"timed": {
-				"raw": 781709,
-				"gzip": 128354,
-				"brotli": 97571,
+				"raw": 786644,
+				"gzip": 129135,
+				"brotli": 98164,
 				"wasm": null,
 				"css": null
 			},
 			"without:ts": {
-				"raw": 781706,
-				"gzip": 128807,
-				"brotli": 97591,
+				"raw": 786641,
+				"gzip": 129622,
+				"brotli": 98427,
 				"wasm": null,
 				"css": null
 			},
 			"without:js": {
-				"raw": 781706,
-				"gzip": 129060,
-				"brotli": 97793,
+				"raw": 786641,
+				"gzip": 129877,
+				"brotli": 98476,
 				"wasm": null,
 				"css": null
 			},
 			"without:css": {
-				"raw": 781706,
-				"gzip": 128357,
-				"brotli": 97558,
+				"raw": 786641,
+				"gzip": 129135,
+				"brotli": 98247,
 				"wasm": null,
 				"css": null
 			},
 			"without:html": {
-				"raw": 724149,
-				"gzip": 116867,
-				"brotli": 88339,
+				"raw": 729084,
+				"gzip": 117666,
+				"brotli": 88993,
 				"wasm": null,
 				"css": null
 			},
 			"without:json": {
-				"raw": 778913,
-				"gzip": 127901,
-				"brotli": 97212,
+				"raw": 783848,
+				"gzip": 128682,
+				"brotli": 97862,
 				"wasm": null,
 				"css": null
 			},
 			"without:svelte": {
-				"raw": 757249,
-				"gzip": 124309,
-				"brotli": 94564,
+				"raw": 762176,
+				"gzip": 125097,
+				"brotli": 95178,
 				"wasm": null,
 				"css": null
 			},
 			"without:md": {
-				"raw": 722402,
-				"gzip": 122878,
-				"brotli": 93435,
+				"raw": 727337,
+				"gzip": 123680,
+				"brotli": 94159,
 				"wasm": null,
 				"css": null
 			},
 			"without:bash": {
-				"raw": 740258,
-				"gzip": 122746,
-				"brotli": 92953,
+				"raw": 745193,
+				"gzip": 123533,
+				"brotli": 93563,
 				"wasm": null,
 				"css": null
 			},
 			"without:rust": {
-				"raw": 766668,
-				"gzip": 126017,
-				"brotli": 95677,
+				"raw": 771504,
+				"gzip": 126789,
+				"brotli": 96373,
 				"wasm": null,
 				"css": null
 			}
 		},
 		"shiki_wasm": {
 			"core": {
-				"raw": 124527,
-				"gzip": 38848,
-				"brotli": 34256,
+				"raw": 124633,
+				"gzip": 38869,
+				"brotli": 34300,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12399,9 +12399,9 @@
 				"css": null
 			},
 			"single:ts": {
-				"raw": 305584,
-				"gzip": 54527,
-				"brotli": 45699,
+				"raw": 305690,
+				"gzip": 54550,
+				"brotli": 45701,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12410,9 +12410,9 @@
 				"css": null
 			},
 			"single:js": {
-				"raw": 299331,
-				"gzip": 54963,
-				"brotli": 46165,
+				"raw": 299437,
+				"gzip": 54986,
+				"brotli": 46170,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12421,9 +12421,9 @@
 				"css": null
 			},
 			"single:css": {
-				"raw": 173545,
-				"gzip": 50648,
-				"brotli": 44793,
+				"raw": 177975,
+				"gzip": 51232,
+				"brotli": 45324,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12432,9 +12432,9 @@
 				"css": null
 			},
 			"single:html": {
-				"raw": 405898,
-				"gzip": 77842,
-				"brotli": 65834,
+				"raw": 410328,
+				"gzip": 78428,
+				"brotli": 66249,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12443,9 +12443,9 @@
 				"css": null
 			},
 			"single:xml": {
-				"raw": 157049,
-				"gzip": 43822,
-				"brotli": 38824,
+				"raw": 157155,
+				"gzip": 43844,
+				"brotli": 38735,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12454,9 +12454,9 @@
 				"css": null
 			},
 			"single:json": {
-				"raw": 127328,
-				"gzip": 39463,
-				"brotli": 34862,
+				"raw": 127434,
+				"gzip": 39482,
+				"brotli": 34892,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12465,9 +12465,9 @@
 				"css": null
 			},
 			"single:svelte": {
-				"raw": 553847,
-				"gzip": 85395,
-				"brotli": 61106,
+				"raw": 558285,
+				"gzip": 86006,
+				"brotli": 61551,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12476,9 +12476,9 @@
 				"css": null
 			},
 			"single:md": {
-				"raw": 183839,
-				"gzip": 44422,
-				"brotli": 38853,
+				"raw": 183945,
+				"gzip": 44443,
+				"brotli": 38882,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12487,9 +12487,9 @@
 				"css": null
 			},
 			"single:bash": {
-				"raw": 165983,
-				"gzip": 44781,
-				"brotli": 39483,
+				"raw": 166089,
+				"gzip": 44802,
+				"brotli": 39574,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12498,9 +12498,9 @@
 				"css": null
 			},
 			"single:rust": {
-				"raw": 139573,
-				"gzip": 41412,
-				"brotli": 36597,
+				"raw": 139778,
+				"gzip": 41446,
+				"brotli": 36699,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12509,9 +12509,9 @@
 				"css": null
 			},
 			"docs": {
-				"raw": 690507,
-				"gzip": 104308,
-				"brotli": 76713,
+				"raw": 694937,
+				"gzip": 104890,
+				"brotli": 77127,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12520,9 +12520,9 @@
 				"css": null
 			},
 			"web_rust": {
-				"raw": 762528,
-				"gzip": 115462,
-				"brotli": 85464,
+				"raw": 767065,
+				"gzip": 116057,
+				"brotli": 86100,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12531,9 +12531,9 @@
 				"css": null
 			},
 			"all": {
-				"raw": 762528,
-				"gzip": 115462,
-				"brotli": 85464,
+				"raw": 767065,
+				"gzip": 116057,
+				"brotli": 86100,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12542,9 +12542,9 @@
 				"css": null
 			},
 			"timed": {
-				"raw": 730011,
-				"gzip": 110720,
-				"brotli": 81683,
+				"raw": 734548,
+				"gzip": 111322,
+				"brotli": 82219,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12553,9 +12553,9 @@
 				"css": null
 			},
 			"without:ts": {
-				"raw": 730008,
-				"gzip": 111595,
-				"brotli": 81858,
+				"raw": 734545,
+				"gzip": 112206,
+				"brotli": 82286,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12564,9 +12564,9 @@
 				"css": null
 			},
 			"without:js": {
-				"raw": 730008,
-				"gzip": 111638,
-				"brotli": 81860,
+				"raw": 734545,
+				"gzip": 112252,
+				"brotli": 82392,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12575,9 +12575,9 @@
 				"css": null
 			},
 			"without:css": {
-				"raw": 730008,
-				"gzip": 110721,
-				"brotli": 81771,
+				"raw": 734545,
+				"gzip": 111324,
+				"brotli": 82311,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12586,9 +12586,9 @@
 				"css": null
 			},
 			"without:html": {
-				"raw": 672448,
-				"gzip": 99333,
-				"brotli": 72603,
+				"raw": 676985,
+				"gzip": 99928,
+				"brotli": 73031,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12597,9 +12597,9 @@
 				"css": null
 			},
 			"without:json": {
-				"raw": 727215,
-				"gzip": 110249,
-				"brotli": 81446,
+				"raw": 731752,
+				"gzip": 110861,
+				"brotli": 81891,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12608,9 +12608,9 @@
 				"css": null
 			},
 			"without:svelte": {
-				"raw": 705548,
-				"gzip": 106629,
-				"brotli": 78609,
+				"raw": 710077,
+				"gzip": 107216,
+				"brotli": 79227,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12619,9 +12619,9 @@
 				"css": null
 			},
 			"without:md": {
-				"raw": 670704,
-				"gzip": 105243,
-				"brotli": 77550,
+				"raw": 675241,
+				"gzip": 105815,
+				"brotli": 77970,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12630,9 +12630,9 @@
 				"css": null
 			},
 			"without:bash": {
-				"raw": 688560,
-				"gzip": 105155,
-				"brotli": 77021,
+				"raw": 693097,
+				"gzip": 105743,
+				"brotli": 77478,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12641,9 +12641,9 @@
 				"css": null
 			},
 			"without:rust": {
-				"raw": 714970,
-				"gzip": 108404,
-				"brotli": 79785,
+				"raw": 719408,
+				"gzip": 108986,
+				"brotli": 80337,
 				"wasm": {
 					"raw": 466610,
 					"gzip": 158592,
@@ -12663,8 +12663,8 @@
 		"twinkleplop": {
 			"packages": 11,
 			"files": 57,
-			"bytes": 672124,
-			"closure": "e9b980b8943b0f3341aff50dc37679a99f81428b99d6e51349bb8ee751635d50"
+			"bytes": 711262,
+			"closure": "ba78891bfdda69047e8f83219876dbf5d322c2bb9bf7bc2c00de436faf97eb55"
 		},
 		"prism": {
 			"packages": 2,
@@ -12675,14 +12675,14 @@
 		"shiki_js": {
 			"packages": 45,
 			"files": 2422,
-			"bytes": 14952092,
-			"closure": "472f9f021e5ec51ec6f71c018a017a1d4524da5e5367c3d3273ec8613520fcfe"
+			"bytes": 14953958,
+			"closure": "0a96895d8ca2bd6ae086aa62a180a267af47d5c8d93c913f744d593c533f90be"
 		},
 		"shiki_wasm": {
 			"packages": 45,
 			"files": 2422,
-			"bytes": 14952092,
-			"closure": "472f9f021e5ec51ec6f71c018a017a1d4524da5e5367c3d3273ec8613520fcfe"
+			"bytes": 14953958,
+			"closure": "0a96895d8ca2bd6ae086aa62a180a267af47d5c8d93c913f744d593c533f90be"
 		}
 	},
 	"heap": {
@@ -12735,47 +12735,47 @@
 		},
 		"twinkleplop": {
 			"ts": {
-				"retained_kb": 1690,
+				"retained_kb": 1900,
 				"code_kb": 260,
-				"external_kb": 521
+				"external_kb": 541
 			},
 			"js": {
-				"retained_kb": 1255,
+				"retained_kb": 1422,
 				"code_kb": 224,
-				"external_kb": 379
+				"external_kb": 400
 			},
 			"css": {
-				"retained_kb": 550,
+				"retained_kb": 577,
 				"code_kb": 102,
 				"external_kb": 130
 			},
 			"html": {
-				"retained_kb": 1222,
+				"retained_kb": 1394,
 				"code_kb": 199,
 				"external_kb": 360
 			},
 			"json": {
-				"retained_kb": 407,
+				"retained_kb": 427,
 				"code_kb": 104,
 				"external_kb": 64
 			},
 			"svelte": {
-				"retained_kb": 1340,
+				"retained_kb": 1515,
 				"code_kb": 235,
-				"external_kb": 452
+				"external_kb": 475
 			},
 			"md": {
-				"retained_kb": 553,
+				"retained_kb": 591,
 				"code_kb": 101,
 				"external_kb": 101
 			},
 			"bash": {
-				"retained_kb": 859,
+				"retained_kb": 897,
 				"code_kb": 127,
 				"external_kb": 169
 			},
 			"rust": {
-				"retained_kb": 674,
+				"retained_kb": 694,
 				"code_kb": 145,
 				"external_kb": 127
 			}
@@ -12829,22 +12829,22 @@
 		},
 		"shiki_js": {
 			"ts": {
-				"retained_kb": 3027,
-				"code_kb": 4325,
+				"retained_kb": 3623,
+				"code_kb": 3359,
 				"external_kb": 0
 			},
 			"js": {
-				"retained_kb": 2969,
-				"code_kb": 2588,
+				"retained_kb": 3123,
+				"code_kb": 2527,
 				"external_kb": 0
 			},
 			"css": {
-				"retained_kb": 1885,
+				"retained_kb": 2003,
 				"code_kb": 981,
 				"external_kb": 0
 			},
 			"html": {
-				"retained_kb": 4597,
+				"retained_kb": 4686,
 				"code_kb": 2709,
 				"external_kb": 0
 			},
@@ -12854,22 +12854,22 @@
 				"external_kb": 0
 			},
 			"svelte": {
-				"retained_kb": 5932,
-				"code_kb": 3714,
+				"retained_kb": 6333,
+				"code_kb": 3384,
 				"external_kb": 0
 			},
 			"md": {
-				"retained_kb": 2494,
+				"retained_kb": 2517,
 				"code_kb": 801,
 				"external_kb": 0
 			},
 			"bash": {
-				"retained_kb": 1890,
+				"retained_kb": 1943,
 				"code_kb": 648,
 				"external_kb": 0
 			},
 			"rust": {
-				"retained_kb": 1574,
+				"retained_kb": 1614,
 				"code_kb": 512,
 				"external_kb": 0
 			}
@@ -12886,14 +12886,14 @@
 				"external_kb": 28872
 			},
 			"css": {
-				"retained_kb": 2630,
+				"retained_kb": 2675,
 				"code_kb": 285,
-				"external_kb": 16840
+				"external_kb": 20168
 			},
 			"html": {
-				"retained_kb": 4789,
+				"retained_kb": 4840,
 				"code_kb": 331,
-				"external_kb": 16840
+				"external_kb": 20168
 			},
 			"json": {
 				"retained_kb": 2276,
@@ -12901,7 +12901,7 @@
 				"external_kb": 16840
 			},
 			"svelte": {
-				"retained_kb": 5642,
+				"retained_kb": 5694,
 				"code_kb": 356,
 				"external_kb": 49608
 			},

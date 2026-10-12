@@ -414,7 +414,8 @@ The rules, stated in the module's doc comment and enforced by
 `adapter.setup([cell.lang])` exactly once, for every library.** `setup` decides
 more than what is callable: a language that embeds others by name highlights
 them only when they are loaded (Markdown fenced blocks in fuz_code, Prism, and
-Shiki; never in Twinkleplop). Under the rule no library loads another language
+Shiki; in Twinkleplop only for the languages passed to its Markdown factories,
+and the adapter passes none). Under the rule no library loads another language
 for Markdown fences, which matches the `single:<lang>` sets. Structural embeds (`<script>`
 and `<style>` in HTML and Svelte) are always loaded with their language. The
 exceptions come from what loads with Markdown itself: Prism's Markdown depends

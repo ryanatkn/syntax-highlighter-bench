@@ -70,11 +70,18 @@ consumer binds once rather than per highlight.
 
 Twinkleplop has no XML language, so `xml` is unsupported.
 
-Markdown does not highlight the contents of a fenced block: the block is one
-token. The other libraries would highlight it when the fence's language is
-loaded, but a timed process sets up only the language it measures, so Markdown
-is measured without embedded-code highlighting in every library, with the
-exceptions the Prism and fuz_code notes list.
+`@twinkleplop/markdown` depends on no other language. Its factories take the
+languages to highlight fenced blocks with (`languages`) and one for front
+matter (`front_matter`), and the adapter passes neither, so the contents of a
+fenced block are one token. The other libraries would highlight it when the
+fence's language is loaded, but a timed process sets up only the language it
+measures, so Markdown is measured without embedded-code highlighting in every
+library, with the exceptions the Prism and fuz_code notes list.
+
+That holds in a bundle of several languages too: `bundle_entry` exports each
+language's factories and wires none into Markdown, so a Twinkleplop bundle
+holding Markdown and a fence's language still leaves the fence plain, where
+the other libraries highlight it.
 
 ## Theme CSS
 

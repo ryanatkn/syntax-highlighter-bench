@@ -173,10 +173,11 @@
 		<p>
 			That decides how Markdown is measured: without highlighting inside fenced code blocks.
 			fuz_code, Prism, and Shiki highlight a fenced block only when its language is loaded, and
-			Twinkleplop never does, so loading one language puts them on the same footing. Two exceptions
-			come from what loads with Markdown itself: Prism's Markdown depends on its markup grammar, so
-			Prism still highlights a fence tagged <code>html</code>, <code>xml</code>, <code>svg</code>,
-			or <code>markup</code>, and fuz_code and Prism highlight a fence tagged as Markdown.
+			Twinkleplop only for the languages its Markdown is handed, which the adapter never does, so
+			loading one language puts them on the same footing. Two exceptions come from what loads with
+			Markdown itself: Prism's Markdown depends on its markup grammar, so Prism still highlights a
+			fence tagged <code>html</code>, <code>xml</code>, <code>svg</code>, or <code>markup</code>,
+			and fuz_code and Prism highlight a fence tagged as Markdown.
 		</p>
 	</TomeSection>
 	<TomeSection>
