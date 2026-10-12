@@ -13,23 +13,60 @@ project). Adding another syntax highlighter is
 [one adapter](https://syntax-highlighter-bench.ryanatkn.com/docs/adapters).
 The [website](https://syntax-highlighter-bench.ryanatkn.com/) has more.
 
-What is here:
-
-- an adapter for each library, and the corpus they are measured on
-- a check that keeps a plain-text fallback from being measured as highlighting
-- the timing harness, which measures each library warm and from a cold start
-- the deterministic measurements, which are the same on any machine
-- the site, which renders a results file
-
-Two results files are committed and rendered by the site: the deterministic
-numbers in `results/deterministic.json`, and a timed run from one named machine
-in `results/latest.json`.
-
 AI disclosure: this is an LLM-generated repo guided by a person.
+
+## What is measured
+
+Every library is run on the same inputs, each labeled by its source: real code
+that no measured library authored is the primary set, and a library's own
+samples and the stress inputs are summarized apart from it
+([`/docs/corpus`](https://syntax-highlighter-bench.ryanatkn.com/docs/corpus)).
+
+Two classes of number, kept apart in the results file. The site's docs say
+what each is in full.
+
+**Machine-dependent**, published only from one named machine as
+`results/latest.json`, with each library alone in a process of its own:
+
+- **Throughput**, per input in two modes, `tokenize` (tokens out) and `html`
+  (the HTML string a consumer ships), with each process's peak memory beside
+  it (on a small input that says little about what a library holds; the
+  retained heap does): [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
+- **Cold start**: a fresh Node process that imports a library and does one
+  thing, against a bare Node baseline:
+  [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
+
+**Deterministic**, the same anywhere, in the committed
+`results/deterministic.json`, all described at
+[`/docs/deterministic`](https://syntax-highlighter-bench.ryanatkn.com/docs/deterministic):
+
+- **Bundle size** for each feature set, minified, gzip and brotli, with the
+  wasm binary and the theme CSS reported apart from the JS
+- **Token counts**, each library's own
+- **Output sizes**, the HTML raw and compressed
+- **Retained heap** after loading one language and highlighting once: V8's
+  heap, its machine code, and external memory, for the Node version the check
+  workflow pins
+- **Install footprint**: the packages, files, and bytes `npm install` of a
+  library adds
+- **Coverage**: which library claims which language
+  ([`/docs/languages`](https://syntax-highlighter-bench.ryanatkn.com/docs/languages)
+  has the language ids and the feature sets)
+
+A language a library doesn't claim is _unsupported_, and a claimed one whose
+output fails the pre-measurement check is _excluded_. The two are recorded
+differently, and neither is ever a zero.
+
+Not measured: the quality of the highlighting, anything in a browser, a
+library's async path, and what one library offers that another doesn't. The
+numbers compare the work the libraries share, and the
+[caveats](https://syntax-highlighter-bench.ryanatkn.com/docs/method#Caveats) say what
+else to hold against them.
 
 ## Quick start
 
-Prerequisites:
+Visit [the site](https://syntax-highlighter-bench.ryanatkn.com/) for the
+results. To run the bench, the prerequisites:
 
 - **Node >= 24.14.** The check workflow pins Node 24.14, and the committed
   deterministic file is generated on it: its gzip and brotli sizes come from
@@ -77,54 +114,6 @@ of cache under it, at `node_modules/.cache/syntax-highlighter-bench/`: the
 built bundles that are measured and imported, and the generated modules of the
 cold-start and retained-heap processes. Open a bundle there to see exactly what
 was measured.
-
-## What is measured
-
-Every library is run on the same inputs, each labeled by its source: real code
-that no measured library authored is the primary set, and a library's own
-samples and the stress inputs are summarized apart from it
-([`/docs/corpus`](https://syntax-highlighter-bench.ryanatkn.com/docs/corpus)).
-
-Two classes of number, kept apart in the results file. The site's docs say
-what each is in full.
-
-**Machine-dependent**, published only from one named machine, with each library
-alone in a process of its own:
-
-- **Throughput**, per input in two modes, `tokenize` (tokens out) and `html`
-  (the HTML string a consumer ships), with each process's peak memory beside
-  it (on a small input that says little about what a library holds; the
-  retained heap does): [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
-- **Cold start**: a fresh Node process that imports a library and does one
-  thing, against a bare Node baseline:
-  [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
-
-**Deterministic**, the same anywhere, in the committed
-`results/deterministic.json`, all described at
-[`/docs/deterministic`](https://syntax-highlighter-bench.ryanatkn.com/docs/deterministic):
-
-- **Bundle size** for each feature set, minified, gzip and brotli, with the
-  wasm binary and the theme CSS reported apart from the JS
-- **Token counts**, each library's own
-- **Output sizes**, the HTML raw and compressed
-- **Retained heap** after loading one language and highlighting once: V8's
-  heap, its machine code, and external memory, for the Node version the check
-  workflow pins
-- **Install footprint**: the packages, files, and bytes `npm install` of a
-  library adds
-- **Coverage**: which library claims which language
-  ([`/docs/languages`](https://syntax-highlighter-bench.ryanatkn.com/docs/languages)
-  has the language ids and the feature sets)
-
-A language a library doesn't claim is _unsupported_, and a claimed one whose
-output fails the pre-measurement check is _excluded_. The two are recorded
-differently, and neither is ever a zero.
-
-Not measured: the quality of the highlighting, anything in a browser, a
-library's async path, and what one library offers that another doesn't. The
-numbers compare the work the libraries share, and the
-[caveats](https://syntax-highlighter-bench.ryanatkn.com/docs/method#Caveats) say what
-else to hold against them.
 
 ## Running on your machine
 
@@ -485,18 +474,14 @@ see [bench/corpus/README.md](bench/corpus/README.md).
 
 ## Develop
 
-Requires Node >= 24.14.
+[Quick start](#quick-start) has the prerequisites, the install, and the checks.
 
 ```bash
-npm ci      # install exactly the locked versions; never `npm i`, which can rewrite the lockfile
 npm run dev # or `gro dev`
-gro check   # typecheck, test, lint, format check
 gro build   # build the static site
 gro build --no-install # build it without the install `gro build` starts with
 BENCH_RESULTS_FIXTURE=1 gro build # build it over the fixture run: invented numbers, marked on every page
 gro format 'bench/**/*' # format the harness, which `gro format` alone doesn't reach
-npm run bench:smoke     # run every library on every cell and cold-start scenario once
-npm run bench:deterministic -- --check  # the committed deterministic results still regenerate
 ```
 
 Built with [SvelteKit](https://github.com/sveltejs/kit),

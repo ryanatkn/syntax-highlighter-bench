@@ -30,65 +30,6 @@
 		<p>AI disclosure: this is an LLM-generated repo guided by a person.</p>
 	</section>
 	<TomeSection>
-		<TomeSectionHeader text="What exists" />
-		<p>
-			Three parts are built: the harness that times the libraries, warm and from a cold start, the
-			deterministic measurements, and the pages that render a results file. The harness is
-			<code>bench/</code>, which runs on Node directly and is never imported by the site, and the
-			site is <code>src/routes/</code> and <code>src/lib/</code>, built as static pages.
-			{#if docs.source === 'deterministic'}
-				No timed run has been published, so the pages show the deterministic numbers and say so
-				where a timed one would be.
-			{/if}
-		</p>
-		<ul>
-			<li>
-				an adapter for each library, and the check that keeps a plain-text fallback from being
-				measured as highlighting, in <code>bench/libraries/</code> and
-				<code>bench/check_output.ts</code> — see <TomeLink slug="adapters" />
-			</li>
-			<li>
-				the inputs and their manifest, in <code>bench/corpus/</code> — see
-				<TomeLink slug="corpus" />
-			</li>
-			<li>
-				the language ids and the feature sets, in <code>bench/langs.ts</code> and
-				<code>bench/sets.ts</code> — see <TomeLink slug="languages" />
-			</li>
-			<li>
-				the timed harness, which measures each library alone in a process of its own and writes a
-				results file, in <code>bench/run.ts</code> and <code>bench/cell.ts</code> — see
-				<TomeLink slug="method" />
-			</li>
-			<li>
-				cold start, part of the same run, where each sample is a fresh process that imports a
-				library and stops its own clock, in <code>bench/coldstart.ts</code> — see
-				<TomeLink slug="method" />
-			</li>
-			<li>
-				the deterministic measurements, listed below, in <code>bench/deterministic.ts</code>, with
-				their numbers committed as <code>results/deterministic.json</code> — see
-				<TomeLink slug="deterministic" />
-			</li>
-			<li>
-				the runs the harness writes, in <code>results/</code>, where a published timed run goes
-				beside the deterministic file as <code>results/latest.json</code> — see
-				<TomeLink slug="results" />
-			</li>
-			<li>
-				the schema of the results file, which the harness and the site share, in
-				<ModuleLink module_path="results_schema.ts" />, with
-				<ModuleLink module_path="bench_constants.ts" />, the id lists it builds its enums from — see
-				<TomeLink slug="results" />
-			</li>
-			<li>
-				the landing page and the results page, which render one validated results file, in
-				<code>src/routes/</code> and <code>src/lib/</code> — see <TomeLink slug="results" /> for
-				which file
-			</li>
-		</ul>
-	</TomeSection>
-	<TomeSection>
 		<TomeSectionHeader text="What is measured" />
 		<p>
 			Every library is run on the same inputs, each labeled by its source. Real code that no
@@ -152,6 +93,65 @@
 			libraries share, in Node, through each one's synchronous calls. The
 			<TomeLink slug="method" hash="Caveats">caveats</TomeLink> say what else to hold against them.
 		</p>
+	</TomeSection>
+	<TomeSection>
+		<TomeSectionHeader text="What exists" />
+		<p>
+			Three parts are built: the harness that times the libraries, warm and from a cold start, the
+			deterministic measurements, and the pages that render a results file. The harness is
+			<code>bench/</code>, which runs on Node directly and is never imported by the site, and the
+			site is <code>src/routes/</code> and <code>src/lib/</code>, built as static pages.
+			{#if docs.source === 'deterministic'}
+				No timed run has been published, so the pages show the deterministic numbers and say so
+				where a timed one would be.
+			{/if}
+		</p>
+		<ul>
+			<li>
+				an adapter for each library, in <code>bench/libraries/</code>, and the output check each
+				passes before it is measured, in <code>bench/check_output.ts</code> — see
+				<TomeLink slug="adapters" />
+			</li>
+			<li>
+				the inputs and their manifest, in <code>bench/corpus/</code> — see
+				<TomeLink slug="corpus" />
+			</li>
+			<li>
+				the language ids and the feature sets, in <code>bench/langs.ts</code> and
+				<code>bench/sets.ts</code> — see <TomeLink slug="languages" />
+			</li>
+			<li>
+				the timed harness, which measures each library alone in a process of its own and writes a
+				results file, in <code>bench/run.ts</code> and <code>bench/cell.ts</code> — see
+				<TomeLink slug="method" />
+			</li>
+			<li>
+				cold start, part of the same run, where each sample is a fresh process that imports a
+				library and stops its own clock, in <code>bench/coldstart.ts</code> — see
+				<TomeLink slug="method" />
+			</li>
+			<li>
+				the deterministic measurements, listed below, in <code>bench/deterministic.ts</code>, with
+				their numbers committed as <code>results/deterministic.json</code> — see
+				<TomeLink slug="deterministic" />
+			</li>
+			<li>
+				the runs the harness writes, in <code>results/</code>, where a published timed run goes
+				beside the deterministic file as <code>results/latest.json</code> — see
+				<TomeLink slug="results" />
+			</li>
+			<li>
+				the schema of the results file, which the harness and the site share, in
+				<ModuleLink module_path="results_schema.ts" />, with
+				<ModuleLink module_path="bench_constants.ts" />, the id lists it builds its enums from — see
+				<TomeLink slug="results" />
+			</li>
+			<li>
+				the landing page and the results page, which render one validated results file, in
+				<code>src/routes/</code> and <code>src/lib/</code> — see <TomeLink slug="results" /> for
+				which file
+			</li>
+		</ul>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Neutrality" />
