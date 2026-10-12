@@ -419,14 +419,34 @@ fuz_util's, which Twinkleplop's runs don't share). The first adapter rules come
 from the same harness: the same stage, explicit languages with no fallback, and
 token counts recorded rather than equalized. So do Shiki's two engines measured
 as two libraries, Shiki's benchmark samples as an input source, and the `docs`
-feature set, fixed before any numbers. The calibration follows Twinkleplop's
-A/B harness: an A/A run whose 95th-percentile deviation is the floor for one
-cell, with a separate floor for a geometric mean. Changed here: Twinkleplop measures a
-cell's libraries together in one process, alternating within each round, and
-this harness gives each library a process of its own, rotates the order of the
-processes, pools several passes, forces no full collection before a batch
-(Twinkleplop's forces one every round), and reads the HTML inside the timed
-call.
+feature set, fixed before any numbers.
+
+Changed here: Twinkleplop measures a cell's libraries together in one process,
+alternating within each round, and this harness gives each library a process of
+its own, rotates the order of the processes, pools several passes, forces no
+full collection before a batch (Twinkleplop's forces one every round), and
+reads the HTML inside the timed call. Also changed:
+
+- a cell's process loads only the cell's language, where Twinkleplop's loads
+  every language its adapters map
+- the check before measuring also requires several kinds of span on a snippet
+  of the language, and the size of a library's output is checked again after
+  every round
+- drift is the largest change between any two anchor readings, where
+  Twinkleplop compares the first with the last
+- the lock refuses a second run, where Twinkleplop's queues it
+- a cell reports percentiles and a spread, without Twinkleplop's bootstrap
+  interval
+
+The calibration takes its idea from Twinkleplop's A/B harness: in an A/A run
+nothing differs, so every deviation is noise, and the 95th percentile of that
+deviation gives the floor for one cell, with a separate floor for a geometric
+mean. The derivations differ. Twinkleplop pairs two builds of one commit in one
+process, widens the percentile by a margin and holds it above a minimum, and
+gets the geometric mean's floor by resampling the A/A ratios for a group of a
+given size. This harness measures each library as two arms of alternating
+processes, takes the percentile as it is, and takes the geometric mean's floor
+from the library whose own geometric mean deviated most.
 
 Cold start generalizes Twinkleplop's cold-start harness across libraries. Kept
 from it: a fresh process for each sample, scenarios interleaved round by round,
