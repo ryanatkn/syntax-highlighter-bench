@@ -12,14 +12,18 @@ This project aims to comprehensively benchmark
 and other syntax highlighters.
 The [website](https://syntax-highlighter-bench.ryanatkn.com/) has more.
 
-**Status: early.** The adapters, the corpus, the check that guards against a
-plain-text fallback, the harness that times the libraries, warm and from a cold
-start, and writes a results file, the deterministic measurements (bundle size,
-install footprint, retained heap, token counts, output sizes raw and compressed,
-coverage), and the site that renders a results file exist. The deterministic
-numbers are committed as `results/deterministic.json`. A timed run is
-published as `results/latest.json`, measured on one named machine, and the site
-renders it.
+**Status: early.** The pieces are in place:
+
+- an adapter for each library, and the corpus they are measured on
+- a check that keeps a plain-text fallback from being measured as highlighting
+- the timing harness, which measures each library warm and from a cold start
+- the deterministic measurements: bundle size, install footprint, retained
+  heap, token counts, output sizes raw and compressed, and coverage
+- the site, which renders a results file
+
+Two results files are committed and rendered by the site: the deterministic
+numbers in `results/deterministic.json`, and a timed run from one named machine
+in `results/latest.json`.
 
 AI disclosure: this is an LLM-generated repo guided by a person.
 
