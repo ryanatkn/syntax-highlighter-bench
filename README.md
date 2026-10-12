@@ -8,17 +8,17 @@ This project aims to comprehensively benchmark
 [Twinkleplop](https://twinkleplop.pngwn.at/),
 [Prism](https://prismjs.com/),
 [Shiki](https://shiki.style/),
-[fuz_code](https://github.com/fuzdev/fuz_code) (same author as this project),
-and other syntax highlighters.
+and [fuz_code](https://github.com/fuzdev/fuz_code) (same author as this
+project). Adding another syntax highlighter is
+[one adapter](https://syntax-highlighter-bench.ryanatkn.com/docs/adapters).
 The [website](https://syntax-highlighter-bench.ryanatkn.com/) has more.
 
-**Status: early.** The pieces are in place:
+What is here:
 
 - an adapter for each library, and the corpus they are measured on
 - a check that keeps a plain-text fallback from being measured as highlighting
 - the timing harness, which measures each library warm and from a cold start
-- the deterministic measurements: bundle size, install footprint, retained
-  heap, token counts, output sizes raw and compressed, and coverage
+- the deterministic measurements, which are the same on any machine
 - the site, which renders a results file
 
 Two results files are committed and rendered by the site: the deterministic
@@ -80,14 +80,21 @@ was measured.
 
 ## What is measured
 
+Every library is run on the same inputs, each labeled by its source: real code
+that no measured library authored is the primary set, and a library's own
+samples and the stress inputs are summarized apart from it
+([`/docs/corpus`](https://syntax-highlighter-bench.ryanatkn.com/docs/corpus)).
+
 Two classes of number, kept apart in the results file. The site's docs say
 what each is in full.
 
-**Machine-dependent**, published only from one named machine:
+**Machine-dependent**, published only from one named machine, with each library
+alone in a process of its own:
 
 - **Throughput**, per input in two modes, `tokenize` (tokens out) and `html`
   (the HTML string a consumer ships), with each process's peak memory beside
-  it: [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
+  it (on a small input that says little about what a library holds; the
+  retained heap does): [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
 - **Cold start**: a fresh Node process that imports a library and does one
   thing, against a bare Node baseline:
   [`/docs/method`](https://syntax-highlighter-bench.ryanatkn.com/docs/method)
@@ -112,6 +119,12 @@ what each is in full.
 A language a library doesn't claim is _unsupported_, and a claimed one whose
 output fails the pre-measurement check is _excluded_. The two are recorded
 differently, and neither is ever a zero.
+
+Not measured: the quality of the highlighting, anything in a browser, a
+library's async path, and what one library offers that another doesn't. The
+numbers compare the work the libraries share, and the
+[caveats](https://syntax-highlighter-bench.ryanatkn.com/docs/method#Caveats) say what
+else to hold against them.
 
 ## Running on your machine
 
@@ -156,10 +169,11 @@ run stops, by a signal, a failed process, or a crash, the journal stays, and
 `--resume` continues it, skipping what the journal holds. A resume is refused,
 naming the difference, unless it is the same run: the flags, corpus, library
 versions and extra packages, machine and its frequency settings, kernel
-release, Node version, `NODE_OPTIONS`, and commit. A journal already there stops a run that wasn't
-given `--resume`. A run during which a measured package changed on disk sets
-its journal aside as `.changed`, and one that lost the machine lock as
-`.overlapped`; neither can be resumed, so delete it and start over.
+release, Node version, `NODE_OPTIONS`, and commit. A journal already there
+stops a run that wasn't given `--resume`. A run during which a measured package
+changed on disk sets its journal aside as `.changed`, and one that lost the
+machine lock as `.overlapped`; neither can be resumed, so delete it and start
+over.
 
 **The machine lock.** One measurement at a time, machine-wide: a run holds
 `/tmp/fuz_benchmark.lock` while it measures, and a second is refused and told
@@ -422,10 +436,10 @@ as two libraries, Shiki's benchmark samples as an input source, and the `docs`
 feature set, fixed before any numbers.
 
 Changed here: Twinkleplop measures a cell's libraries together in one process,
-alternating within each round, and this harness gives each library a process of
-its own, rotates the order of the processes, pools several passes, forces no
-full collection before a batch (Twinkleplop's forces one every round), and
-reads the HTML inside the timed call. Also changed:
+alternating within each round from a rotating start, and this harness gives
+each library a process of its own, rotating the order of the processes instead,
+pools several passes, forces no full collection before a batch (Twinkleplop's
+forces one every round), and reads the HTML inside the timed call. Also changed:
 
 - a cell's process loads only the cell's language, where Twinkleplop's loads
   every language its adapters map
@@ -459,9 +473,9 @@ where Twinkleplop reads that clock between each step and also reports a wall
 time measured by the parent, spawn included; the process is a generated module
 with no harness code; the library that goes first rotates; every sample is
 checked; and the samples are journaled as part of a run. Its scenarios that are
-about Twinkleplop's own internals (a stubbed compiler, the cost of binding a
-language, shipping a compiled grammar, the compile cache turned on) are not
-here.
+about Twinkleplop's own internals (a stubbed compiler, a second compile, the
+cost of binding a language, shipping a compiled grammar, compiling on first
+use, the compile cache turned on) are not here.
 
 Statistics and formatting come from
 [fuz_util](https://github.com/fuzdev/fuz_util).

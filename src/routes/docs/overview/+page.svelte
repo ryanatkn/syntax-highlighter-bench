@@ -33,7 +33,9 @@
 		<TomeSectionHeader text="What exists" />
 		<p>
 			Three parts are built: the harness that times the libraries, warm and from a cold start, the
-			deterministic measurements, and the pages that render a results file.
+			deterministic measurements, and the pages that render a results file. The harness is
+			<code>bench/</code>, which runs on Node directly and is never imported by the site, and the
+			site is <code>src/routes/</code> and <code>src/lib/</code>, built as static pages.
 			{#if docs.source === 'deterministic'}
 				No timed run has been published, so the pages show the deterministic numbers and say so
 				where a timed one would be.
@@ -64,13 +66,19 @@
 				<TomeLink slug="method" />
 			</li>
 			<li>
-				the deterministic measurements, which are bundle size over each feature set, install
-				footprint, retained heap, token counts, output sizes, and coverage, in
-				<code>bench/deterministic.ts</code>, with their numbers committed as
-				<code>results/deterministic.json</code> — see <TomeLink slug="deterministic" />
+				the deterministic measurements, listed below, in <code>bench/deterministic.ts</code>, with
+				their numbers committed as <code>results/deterministic.json</code> — see
+				<TomeLink slug="deterministic" />
 			</li>
 			<li>
-				the schema of the results file, in <ModuleLink module_path="results_schema.ts" /> — see
+				the runs the harness writes, in <code>results/</code>, where a published timed run goes
+				beside the deterministic file as <code>results/latest.json</code> — see
+				<TomeLink slug="results" />
+			</li>
+			<li>
+				the schema of the results file, which the harness and the site share, in
+				<ModuleLink module_path="results_schema.ts" />, with
+				<ModuleLink module_path="bench_constants.ts" />, the id lists it builds its enums from — see
 				<TomeLink slug="results" />
 			</li>
 			<li>
@@ -82,42 +90,68 @@
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="What is measured" />
+		<p>
+			Every library is run on the same inputs, each labeled by its source. Real code that no
+			measured library authored is the primary set and the only one the headline figures use; a
+			library's own samples and the inputs built to find worst cases are summarized apart from it —
+			see <TomeLink slug="corpus" />. A language is timed only when every library supports it — see
+			<TomeLink slug="languages" />.
+		</p>
+		<p>The numbers are of two classes, kept apart in the results file.</p>
+		<p>
+			<strong>Machine-dependent</strong>, published from one named machine, with each library alone
+			in a process of its own — see <TomeLink slug="method" />:
+		</p>
 		<ul>
 			<li>
-				<strong>Throughput</strong>, on one named machine: how long a warm library takes to tokenize
-				an input, and to render it as HTML, with the peak memory of its process beside it.
+				<strong>Throughput</strong>: how long a warm library takes on each input, in two modes,
+				<code>tokenize</code> (tokens out) and <code>html</code> (the HTML string a consumer ships).
+				The peak memory of its process is recorded beside it, which on a small input follows what
+				the measuring allocated more than what the library holds.
 			</li>
 			<li>
-				<strong>Cold start</strong>, on the same machine: how long a fresh Node process takes to
-				import a library alone, with one language, and with a documentation site's languages, and to
-				produce a first highlight. Each is measured for the bundled chunk and for the library
-				imported unbundled, beside a bare Node baseline to subtract, with the process's peak memory.
-			</li>
-			<li>
-				<strong>Deterministic numbers</strong>, the same anywhere: bundle size over each feature
-				set, install footprint, retained heap, token counts, output sizes, and coverage.
+				<strong>Cold start</strong>: how long a fresh Node process takes to import a library alone,
+				with one language, and with a documentation site's languages, and to produce a first
+				highlight. Each is measured for the bundled chunk and for the library imported unbundled,
+				beside a bare Node baseline to subtract, with the process's peak memory.
 			</li>
 		</ul>
-	</TomeSection>
-	<TomeSection>
-		<TomeSectionHeader text="Layout" />
+		<p>
+			<strong>Deterministic</strong>, the same on any machine, committed as
+			<code>results/deterministic.json</code> — see <TomeLink slug="deterministic" />:
+		</p>
 		<ul>
 			<li>
-				<code>bench/</code> — the harness. It runs on Node directly and is never imported by the
-				site.
+				<strong>Bundle size</strong> for each feature set: minified, gzip, and brotli, with the wasm
+				binary and the theme CSS reported apart from the JS.
 			</li>
 			<li>
-				<code>results/</code> — where the harness writes runs. The deterministic results are
-				committed there, and a published timed run goes beside them as
-				<code>results/latest.json</code>.
+				<strong>Token counts</strong>: each library's own, recorded and never equalised, since
+				libraries split the same source differently.
+			</li>
+			<li><strong>Output sizes</strong>: the HTML of each input, raw and compressed.</li>
+			<li>
+				<strong>Retained heap</strong>: what a library holds after loading one language and
+				highlighting once, as V8's heap, its machine code, and external memory. Unlike the others it
+				is the same only for a Node version and architecture, and within a small tolerance.
 			</li>
 			<li>
-				<code>src/lib/results_schema.ts</code> — the schema the harness and the site share, with
-				<code>src/lib/bench_constants.ts</code>, the id lists it builds its enums from. The rest of
-				<code>src/lib/</code> turns a results file into the tables of the site.
+				<strong>Install footprint</strong>: the packages, files, and bytes that installing a library
+				adds.
 			</li>
-			<li><code>src/routes/</code> — this site, built as static pages.</li>
+			<li><strong>Coverage</strong>: which library claims which language.</li>
 		</ul>
+		<p>
+			A language a library doesn't claim is <em>unsupported</em>, and a claimed one whose output
+			fails the check before measuring is <em>excluded</em>. The two are recorded differently, and
+			neither is ever a zero or part of a mean.
+		</p>
+		<p>
+			What is not measured: the quality of the highlighting, anything in a browser, a library's
+			async path, and what one library offers that another doesn't. The numbers compare the work the
+			libraries share, in Node, through each one's synchronous calls. The
+			<TomeLink slug="method" hash="Caveats">caveats</TomeLink> say what else to hold against them.
+		</p>
 	</TomeSection>
 	<TomeSection>
 		<TomeSectionHeader text="Neutrality" />
