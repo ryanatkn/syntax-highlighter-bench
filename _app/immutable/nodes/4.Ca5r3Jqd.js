@@ -24,17 +24,18 @@ import{B as e,D as t,F as n,G as r,H as i,L as a,M as o,Q as s,V as c,_ as l,_t 
 		passes the tokens through the language's reclassifiers. Prism matches the regular expressions of
 		a grammar. Shiki runs TextMate grammars on a regular-expression engine, Oniguruma compiled to
 		wasm or the JS engine's own, and resolves each token's theme color as it goes. A lexer written
-		for one language does less work for each byte than an engine that interprets a grammar, and
-		gives up the grammar: fuz_code's lexers don't read TextMate grammars or VS Code themes, differ
-		from an editor's highlighting in some edge cases, and a new language is a lexer to write, not a
-		grammar to load.</p> <p class="links svelte-1ewzqr7"><a class="chip">every result, with filters</a> <a class="chip">how it is measured</a> <a class="chip">the inputs</a> <a class="chip">the adapters, and how to add a library</a></p> <p>AI disclosure: this is an LLM-generated repo guided by a person.</p></section> <section><h2>Headline figures</h2> <p>Each bar's ratio is to the best library in the chart, where <code>1.00×</code> is the best and a
+		for one language can do less work for each byte than an engine that runs a grammar, and gives up
+		the grammar: fuz_code's lexers don't read TextMate grammars or VS Code themes, differ from an
+		editor's highlighting in some edge cases, and a new language is a lexer to write, not a grammar
+		to load.</p> <p class="links svelte-1ewzqr7"><a class="chip">every result, with filters</a> <a class="chip">how it is measured</a> <a class="chip">the inputs</a> <a class="chip">the adapters, and how to add a library</a></p> <p>AI disclosure: this is an LLM-generated repo guided by a person.</p></section> <section><h2>Headline figures</h2> <p>Each bar's ratio is to the best library in the chart, where <code>1.00×</code> is the best and a
 		ratio marked <code>≈</code> is inside the row's noise floor: the machine's for throughput, and
 		the heap check's tolerance for retained memory. Hover a bar to compare the others against it
 		instead.</p> <div class="charts svelte-1ewzqr7"></div> <!> <p>These are summaries. <a>The results page</a> has every cell
 		behind them, on inputs from other sources too. <a>The caveats</a> say what the numbers don't.</p></section> <section><h2>What the numbers mean in practice</h2> <p>Whether a ratio matters depends on where the highlighting runs and how often, and so does which
 		figure to read first:</p> <ul><li><strong>At build time</strong>, as a static site or documentation build highlights its pages
-			once: throughput sets the build's time and nothing else. Readers get plain HTML, so the JS and
-			the cold start never reach them, though a theme stylesheet still does.</li> <li><strong>In the browser</strong>: everything a page loads and the cold start to a first
+			once: throughput is the only figure that matters, and only to the build's time. Readers get
+			plain HTML, so the JS and the cold start never reach them, though a theme stylesheet still
+			does.</li> <li><strong>In the browser</strong>: everything a page loads and the cold start to a first
 			highlight come first, then throughput on long pages.</li> <li><strong>In an editor that highlights as you type</strong>: throughput at the size being
 			edited, against the time of one frame.</li> <li><strong>On a server that renders each request</strong>: throughput and retained memory, paid
 			on every request and held by every process.</li> <li><strong>In serverless and edge functions</strong>: the cold start, paid by every fresh
