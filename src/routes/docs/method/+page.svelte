@@ -388,8 +388,10 @@ node bench/run.ts --help`;
 			on one scenario, and the median over many processes sets a slow one aside. Sampling one
 			scenario again later would also take it out of the rounds that make the scenarios comparable.
 			There is no noise floor for cold start either: a calibration measures the timed cells only.
-			Without one, treat a difference between two scenarios that is inside either one's
-			<code>p10_ms</code> to <code>p90_ms</code> band as no difference.
+			Without one, the bare baseline's own <code>p10_ms</code> to <code>p90_ms</code> band is the
+			guide. It is how far two single processes are apart, and a median of many samples is steadier
+			than one, so the results page scales it down to what a difference of two medians can be off
+			by, and marks a smaller addition as in the noise.
 		</p>
 		<p>
 			<strong>Part of the run.</strong> The cold-start processes follow the cells in the same run:
@@ -760,6 +762,13 @@ node bench/run.ts --help`;
 				may be doing less work for each byte, not the same work faster.
 			</li>
 			<li>
+				<strong>fuz_code's tokens are not kept.</strong> fuz_code lexes into one buffer that every
+				call reuses, so its <code>tokenize</code> call allocates no result, where most other
+				libraries return one the caller keeps. A consumer that keeps a result copies it, and the
+				timed call doesn't, as <TomeLink slug="adapters" /> describes. The <code>html</code> mode
+				has no such difference: every library returns a string.
+			</li>
+			<li>
 				<strong>Synchronous paths.</strong> A library with an async API loads in its setup and is
 				timed through its synchronous core.
 			</li>
@@ -786,9 +795,10 @@ node bench/run.ts --help`;
 				minified code, deep nesting, very long lines, constructs that never close. They say little
 				about typical code, so they are summarized on their own and left out of the default view and
 				the headline figures. A slow call there can be far slower than anywhere else, and a run
-				shows it as measured. Shiki's stress numbers are the cost of highlighting every line in
-				full: with its default per-line time limit (500ms), a consumer gets the rest of a slower
-				line as one plain token instead, as <TomeLink slug="adapters" /> describes.
+				shows it as measured. Shiki is timed highlighting every line in full: where one line takes
+				longer than its default per-line time limit (500ms), a consumer gets the rest of that line
+				as one plain token instead, and not the time shown, as <TomeLink slug="adapters" />
+				describes.
 			</li>
 			<li>
 				<strong>One bundler's sizes.</strong> A bundle size is what a page ships when Vite, with the

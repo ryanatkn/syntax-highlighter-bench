@@ -166,8 +166,8 @@ Everything below runs on the publishing machine, from the root of the checkout.
    deterministic results file, which carries the install footprints, the
    retained heaps, and the compressed HTML sizes with them. `commit` must have no `-dirty`. `output` is the
    file the run will write. The estimate assumes calls shorter than a batch, so
-   it misses Shiki's cells on the long-line stress inputs, where a call takes
-   seconds: expect the run to take tens of minutes longer than it says.
+   it misses Shiki's cells on the long-line stress inputs, where a call can take
+   over a second: expect the run to take longer than it says.
 8. **The full run.**
    ```bash
    npm run bench -- --machine <name>

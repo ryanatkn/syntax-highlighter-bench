@@ -1253,7 +1253,8 @@ the ratio scale, as tsv.fuz.dev's charts do.
   ratio to it is at least that. A rankable reference library, when chosen,
   gives exact ratios instead, and a reference that is itself unrankable is
   treated as no reference. A row with no `resolution` has no ratios at all.
-  Only a cold-start row has one: the bare baseline's own p10 to p90 band.
+  Only a cold-start row has one: the bare baseline's own p10 to p90 band scaled
+  to a difference of two medians (`to_startup_noise_ms`).
 - **A geometric mean over no complete row has no number**: the row says so in
   `empty`, across the columns.
 - **Sources are never pooled in a mean.** A home input is keyed by its owner
@@ -1295,10 +1296,12 @@ the ratio scale, as tsv.fuz.dev's charts do.
   has no ratio. A compared heap row's `floor` is the check's tolerance against
   the row's smallest number (`to_heap_floor`), so readings within it print `≈`.
 - **Cold start is shown as time added over `bare`**, and the whole time is in
-  the row's details. An addition smaller than the bare baseline's own p10 to
-  p90 band (`to_startup_noise_ms`) is `unranked` and marked "in the noise", and
-  one at or under zero prints as "≈ bare", never as a negative time. That band
-  is the row's `resolution`.
+  the row's details. An addition smaller than what a difference of two
+  medians can be off by (`to_startup_noise_ms`: the bare baseline's own p10 to
+  p90 band times `sqrt(2 / samples)`, since the band is of single samples and
+  several times too wide for a median) is `unranked` and marked "in the noise",
+  and one at or under zero prints as "≈ bare", never as a negative time. That
+  margin is the row's `resolution`.
 - **A set shown under another id** (`all`, which holds what `web_rust` holds)
   decodes to the id it is shown under (`set_aliases`).
 

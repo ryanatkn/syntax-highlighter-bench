@@ -38,6 +38,20 @@
 		compare the work all of them share, not what one offers that another doesn't, and they time each
 		library's output without scoring its quality.
 	</p>
+	<p>
+		They also lex differently, and the throughput figures reflect it. fuz_code has a hand-written
+		lexer for each language that scans the source once, without regular expressions, and writes its
+		tokens into one typed array that the next call reuses. Twinkleplop compiles a grammar declared
+		for each language and runs it, then passes the tokens through the language's reclassifiers.
+		Prism matches the regular expressions of a grammar. Shiki runs TextMate grammars on a
+		regular-expression engine, Oniguruma compiled to wasm or the JS engine's own, and resolves each
+		token's theme color as it goes. A hand-written lexer does less work for each byte than an engine
+		that interprets a grammar, and gives up the grammar: fuz_code's lexers don't read TextMate
+		grammars or VS Code themes, differ from an editor's highlighting in some edge cases, and a new
+		language is a lexer to write, not a grammar to load. Its reused array also means its tokenizing
+		allocates no result for the caller to keep, where most other libraries return one;
+		<a href={resolve('/docs/method#Caveats')}>the caveats</a> say what that leaves out.
+	</p>
 	<p class="links">
 		<a class="chip" href={resolve('/(site)/results')}>every result, with filters</a>
 		<a class="chip" href={resolve('/docs/method')}>how it is measured</a>

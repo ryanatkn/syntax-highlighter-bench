@@ -64,25 +64,31 @@ const matches = (
 	entry.bundled === target.bundled;
 
 /**
- * The width of the bare baseline's own p10 to p90 band: how far two samples of
- * a process that loads nothing are apart. A library that added less than this
- * can't be told from one that added nothing.
+ * How far an addition over the bare baseline can be off: the baseline's own p10
+ * to p90 band, which is how far two samples of a process that loads nothing are
+ * apart, scaled to a difference of two medians. A median of `samples` samples
+ * moves about `1 / sqrt(samples)` as far as one sample does, and an addition is
+ * one median less another, so `sqrt(2)` times that. The band of single samples
+ * is several times wider, and held against it an addition that repeats from run
+ * to run reads as noise. A library that added less than this can't be told from
+ * one that added nothing.
  */
-export const to_startup_noise_ms = (bare: Pick<BenchStartup, 'p10_ms' | 'p90_ms'>): number =>
-	bare.p90_ms - bare.p10_ms;
+export const to_startup_noise_ms = (
+	bare: Pick<BenchStartup, 'p10_ms' | 'p90_ms' | 'samples'>
+): number => (bare.p90_ms - bare.p10_ms) * Math.sqrt(2 / bare.samples);
 
 /**
  * What a scenario added over the bare baseline, as an entry. An addition smaller
- * than the baseline's own band is `unranked`: it is printed, has no ratio, and
- * takes no part in a mean. One at or under zero is printed as "≈ bare" and not as a
- * negative time, which no process has.
+ * than the baseline's noise (`to_startup_noise_ms`) is `unranked`: it is
+ * printed, has no ratio, and takes no part in a mean. One at or under zero is
+ * printed as "≈ bare" and not as a negative time, which no process has.
  */
 export const to_startup_value = (entry: BenchStartup, bare: BenchStartup): MatrixValue => {
 	const added = entry.median_ms - bare.median_ms;
 	const noise = to_startup_noise_ms(bare);
 	const unranked =
 		added < noise
-			? `${added <= 0 ? "its median is at or under bare Node's" : `it added ${format_ms(added)}`}, inside the ${format_ms(noise)} between the 10th and 90th percentile of bare Node itself, so it can't be told from adding nothing`
+			? `${added <= 0 ? "its median is at or under bare Node's" : `it added ${format_ms(added)}`}, inside the ${format_ms(noise)} that a difference of two medians of ${bare.samples} samples can be off by, from bare Node's own 10th to 90th percentile, so it can't be told from adding nothing`
 			: null;
 	return to_value_entry(added, {
 		text: added <= 0 ? '≈ bare' : null,

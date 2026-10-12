@@ -99,13 +99,13 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 		<ul>
 			<li>
 				<strong>derived</strong> — a neutral input as real code ships: the JS and the CSS minified
-				by esbuild, and the JSON serialized with no whitespace, each one long line. It keeps its
-				source's pins, is marked synthetic, and names how it was made, with the esbuild version,
+				by esbuild, and the JSON serialized with no whitespace: one long line, or a few. It keeps
+				its source's pins, is marked synthetic, and names how it was made, with the esbuild version,
 				since another version may minify to other bytes
 			</li>
 			<li>
 				<strong>written</strong> — a pathological file for each timed language: nesting far deeper
-				than code is written, a line of TypeScript tens of KB long, an unterminated string and block
+				than code is written, a line of TypeScript tens of kB long, an unterminated string and block
 				comment near the top of a file, template literals nested in their substitutions, Markdown
 				delimiters that never close, HTML tags that never close and attributes without quotes, and a
 				selector list on one long line. Each says in its first comment what it stresses
@@ -113,9 +113,9 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 		</ul>
 		<p>
 			Shiki is timed with its per-line time limit out of reach, as on every input, so on a stress
-			input it highlights every line in full. With its default limit a line that slow comes back
-			with its rest as plain text, so a consumer with default options gets that fallback there
-			rather than the stress number.
+			input it highlights every line in full. With its default limit, a line that takes over half a
+			second comes back with its rest as plain text, so where a stress input has such a line a
+			consumer with default options gets that fallback rather than the number shown.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -148,10 +148,10 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 			</tbody>
 		</table>
 		<p>
-			The upper three center on roughly 1KB, 10KB, and 100KB. The micro tier is the docs-site case:
-			a snippet of a few lines, where the fixed cost of a call outweighs the scanning. The large
-			tier has no upper bound, and the neutral large inputs range from about 90KB to several hundred
-			KB, so compare throughput in MB/s across languages, not time per call.
+			The upper three center on roughly 1 kB, 10 kB, and 100 kB. The micro tier is the docs-site
+			case: a snippet of a few lines, where the fixed cost of a call outweighs the scanning. The
+			large tier has no upper bound, and the neutral large inputs range from about 90 kB to several
+			hundred kB, so compare throughput in MB/s across languages, not time per call.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -163,7 +163,7 @@ npm run corpus:stress -- --check   # the stress inputs are what generates`;
 			is marked.
 		</p>
 		<p>
-			One neutral input is synthetic: the large Svelte file. Svelte components of around 100KB are
+			One neutral input is synthetic: the large Svelte file. Svelte components of around 100 kB are
 			rare, so a script builds one from several real components of other projects. It splits each
 			component into its scripts, markup, and style, and writes one of each block holding the bodies
 			in order, unchanged. The result is shaped like one large component and is lexically well

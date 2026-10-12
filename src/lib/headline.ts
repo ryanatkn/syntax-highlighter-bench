@@ -76,11 +76,11 @@ export interface HeadlineChart {
 /**
  * The headline figures, each drawn as bars: geometric-mean throughput over the
  * neutral inputs for each mode, the time to a first highlight from a cold
- * start, the retained memory over the languages, everything a page loads over
- * the documentation set with what it is made of, and that set's JS
- * alone. Only the throughput rows carry the run's noise floor, which was
- * calibrated on the timed cells. A figure the file holds no number for is left
- * out, so a file with no timed run draws only its deterministic figures.
+ * start, the retained memory over the languages, and everything a page loads
+ * over the documentation set with what it is made of. Only the throughput rows
+ * carry the run's noise floor, which was calibrated on the timed cells. A
+ * figure the file holds no number for is left out, so a file with no timed run
+ * draws only its deterministic figures.
  */
 export const to_headline_charts = (results: MatrixResults): Array<HeadlineChart> => {
 	const libraries = results.meta.libraries.map((library) => library.id);
@@ -252,7 +252,9 @@ export const to_practice_group = (results: MatrixResults): MatrixGroup | null =>
 		label: `${PRACTICE_BLOCK_BYTES / 1000} kB blocks in one ${PRACTICE_FRAME_MS} ms frame`,
 		note: 'whole blocks',
 		unit: 'count',
-		direction: 'higher'
+		direction: 'higher',
+		// rounded down to whole blocks, so it has no ratio of its own: the rows beside it carry the rate's
+		compared: false
 	});
 	const build = to_matrix_row({
 		key: 'practice:build',

@@ -139,12 +139,18 @@ describe('an addition inside the noise of the bare baseline', () => {
 	const with_added = (added: number) =>
 		to_startup_value({ ...entry, median_ms: bare.median_ms + added }, bare);
 
-	test('the noise is the width of the bare p10 to p90 band', () => {
-		assert.closeTo(noise, bare.p90_ms - bare.p10_ms, 1e-12);
+	test('the noise is the bare p10 to p90 band, scaled to a difference of two medians', () => {
+		assert.closeTo(noise, (bare.p90_ms - bare.p10_ms) * Math.sqrt(2 / bare.samples), 1e-12);
 		assert.ok(noise > 0);
 	});
 
-	test('an addition of at least the band is ranked', () => {
+	test('more samples narrow the noise, and one sample widens it past the band', () => {
+		const band = bare.p90_ms - bare.p10_ms;
+		assert.ok(to_startup_noise_ms({ ...bare, samples: 80 }) < to_startup_noise_ms(bare));
+		assert.ok(to_startup_noise_ms({ ...bare, samples: 1 }) > band);
+	});
+
+	test('an addition of at least the noise is ranked', () => {
 		const value = with_added(noise * 2);
 		assert.strictEqual(value.unranked, null);
 		assert.strictEqual(value.text, null);

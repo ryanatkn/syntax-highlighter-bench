@@ -114,8 +114,8 @@ differently, and neither is ever a zero.
 A timed run is long: hours. `--plan` estimates a full run from its parameters.
 A calibration measures every cell twice, so it takes about twice the cells'
 time. The estimate assumes calls shorter than a batch, so it misses Shiki on
-the long-line stress inputs, where a call takes seconds: those cells add tens
-of minutes it doesn't show.
+the long-line stress inputs, where a call can take over a second: those cells
+add time it doesn't show.
 
 1. `npm ci`, from a clean tree at the commit to measure.
 2. `npm run bench:deterministic -- --check`. A full run with no filters is

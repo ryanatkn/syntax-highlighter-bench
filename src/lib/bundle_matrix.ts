@@ -37,10 +37,11 @@ const COMPRESSION_NOTES: Record<BundleCompression, string> = {
 
 /**
  * Below this many minified bytes, what one more language adds is shown as
- * already included rather than as a number: a few bytes are a separator or an
- * import, not a grammar.
+ * already included rather than as a number: so few are a separator, an import,
+ * or the line that registers a language another already brought, not a grammar,
+ * and as the smallest in a row they would make every ratio beside them enormous.
  */
-export const MARGINAL_INCLUDED_BELOW = 16;
+export const MARGINAL_INCLUDED_BELOW = 256;
 
 /** Which bundle table to show: what each language costs, or each set's total. */
 export type BundleView = 'incremental' | 'totals';

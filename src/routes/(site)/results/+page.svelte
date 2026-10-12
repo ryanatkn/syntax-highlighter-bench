@@ -303,10 +303,10 @@
 						heading="input"
 						label="Throughput by input and library"
 						{reference}
-						collapsible="inputs"
+						collapsible="rows"
 					>
 						A warm library on one input, in one mode. Each language shows a geometric mean per mode;
-						open it for the inputs the mean is over.
+						open it for the rows the mean is over, one for each input in each mode.
 						{#snippet more()}
 							<p>
 								MB/s compares across inputs of different sizes, and time per call does not: inputs
@@ -361,11 +361,13 @@
 								small additions is large even when the processes take nearly the same time.
 							</p>
 							<p>
-								An addition smaller than bare Node's own band, from its 10th to its 90th percentile,
-								is marked <em>in the noise</em>: it can't be told from adding nothing, and has no
-								ratio. In a row with such an addition the others are compared with that band instead
-								of with the best, and marked <code>≥</code>: at least so many times the band, and so
-								at least so many times the best, which is inside it. Such a row is left out of the
+								An addition is one median less another, so it is held against how far such a
+								difference can be off: bare Node's own band, from its 10th to its 90th percentile,
+								scaled down for medians of many samples. A smaller addition is marked
+								<em>in the noise</em>: it can't be told from adding nothing, and has no ratio. In a
+								row with such an addition the others are compared with that margin instead of with
+								the best, and marked <code>≥</code>: at least so many times the margin, and so at
+								least so many times the best, which is inside it. Such a row is left out of the
 								mean. A reference library is used only in the rows where its own addition is outside
 								the noise.
 							</p>
@@ -429,11 +431,11 @@
 								Each language is the bundle with that language alone, less the bundle with none. One
 								more language is what it adds to a bundle of every other timed language, always in
 								minified bytes, whatever the Bytes selector says: compressing a whole bundle doesn't
-								separate one part of it. An addition of a few bytes or none shows as already
-								included, and a language every library already includes has no row. The floor plus
-								each language alone is not a bundle, so it has no ratio: it exceeds the set's
-								measured size when a library shares code between languages, or when one language
-								brings another with it, as HTML brings the script and style languages.
+								separate one part of it. An addition too small to be a grammar, or none, shows as
+								already included, and a language every library already includes has no row. The
+								floor plus each language alone is not a bundle, so it has no ratio: it exceeds the
+								set's measured size when a library shares code between languages, or when one
+								language brings another with it, as HTML brings the script and style languages.
 							{/if}
 							The wasm binary and the theme stylesheet are loaded beside the JS, and each has a row
 							of its own.
