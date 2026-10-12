@@ -886,13 +886,18 @@ node bench/run.ts --help`;
 					<td>one process per library and pass, in a rotating order</td>
 				</tr>
 				<tr>
+					<td>languages loaded</td>
+					<td>every language each adapter maps, in every process</td>
+					<td>only the cell's language</td>
+				</tr>
+				<tr>
 					<td>rounds</td>
 					<td>one pass of several rounds, a short rewarm, a full collection each round</td>
 					<td>several passes of a few rounds each, a longer rewarm, a minor collection only</td>
 				</tr>
 				<tr>
 					<td>statistics</td>
-					<td>median, minimum, p10 and p90, and a bootstrap interval</td>
+					<td>median, minimum, p10 and p90, spread, and a bootstrap interval</td>
 					<td>median, p10 and p90, spread, each pass's median, and the gap between processes</td>
 				</tr>
 				<tr>
@@ -914,7 +919,7 @@ node bench/run.ts --help`;
 				</tr>
 				<tr>
 					<td>other metrics</td>
-					<td>none in the comparison</td>
+					<td>token counts</td>
 					<td>bundle size, install footprint, retained heap, token counts, output sizes</td>
 				</tr>
 				<tr>

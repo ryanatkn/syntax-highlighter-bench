@@ -32,8 +32,8 @@
 	<TomeSection>
 		<TomeSectionHeader text="What exists" />
 		<p>
-			The harness that times the libraries, warm and from a cold start, the deterministic
-			measurements, and the pages that render a results file are built.
+			Three parts are built: the harness that times the libraries, warm and from a cold start, the
+			deterministic measurements, and the pages that render a results file.
 			{#if docs.source === 'deterministic'}
 				No timed run has been published, so the pages show the deterministic numbers and say so
 				where a timed one would be.
@@ -41,9 +41,9 @@
 		</p>
 		<ul>
 			<li>
-				an adapter for each library, and the check that guards against a plain-text fallback, in
-				<code>bench/libraries/</code> and <code>bench/check_output.ts</code> — see
-				<TomeLink slug="adapters" />
+				an adapter for each library, and the check that keeps a plain-text fallback from being
+				measured as highlighting, in <code>bench/libraries/</code> and
+				<code>bench/check_output.ts</code> — see <TomeLink slug="adapters" />
 			</li>
 			<li>
 				the inputs and their manifest, in <code>bench/corpus/</code> — see

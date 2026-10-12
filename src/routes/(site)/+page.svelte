@@ -43,10 +43,10 @@
 		passes the tokens through the language's reclassifiers. Prism matches the regular expressions of
 		a grammar. Shiki runs TextMate grammars on a regular-expression engine, Oniguruma compiled to
 		wasm or the JS engine's own, and resolves each token's theme color as it goes. A lexer written
-		for one language does less work for each byte than an engine that interprets a grammar, and
-		gives up the grammar: fuz_code's lexers don't read TextMate grammars or VS Code themes, differ
-		from an editor's highlighting in some edge cases, and a new language is a lexer to write, not a
-		grammar to load.
+		for one language can do less work for each byte than an engine that runs a grammar, and gives up
+		the grammar: fuz_code's lexers don't read TextMate grammars or VS Code themes, differ from an
+		editor's highlighting in some edge cases, and a new language is a lexer to write, not a grammar
+		to load.
 	</p>
 	<p class="links">
 		<a class="chip" href={resolve('/(site)/results')}>every result, with filters</a>
@@ -91,8 +91,9 @@
 	<ul>
 		<li>
 			<strong>At build time</strong>, as a static site or documentation build highlights its pages
-			once: throughput sets the build's time and nothing else. Readers get plain HTML, so the JS and
-			the cold start never reach them, though a theme stylesheet still does.
+			once: throughput is the only figure that matters, and only to the build's time. Readers get
+			plain HTML, so the JS and the cold start never reach them, though a theme stylesheet still
+			does.
 		</li>
 		<li>
 			<strong>In the browser</strong>: everything a page loads and the cold start to a first
