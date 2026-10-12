@@ -27,10 +27,11 @@ import{F as e,L as t,_t as n,at as r,ft as i,nt as a,pt as o,rt as s,vt as c}fro
 			structurally, like the script and style languages of HTML and Svelte. A timed process sets up
 			only the language it measures, so every library has the same languages loaded.</p> <p>That decides how Markdown is measured: without highlighting inside fenced code blocks.
 			fuz_code, Prism, and Shiki highlight a fenced block only when its language is loaded, and
-			Twinkleplop never does, so loading one language puts them on the same footing. Two exceptions
-			come from what loads with Markdown itself: Prism's Markdown depends on its markup grammar, so
-			Prism still highlights a fence tagged <code>html</code>, <code>xml</code>, <code>svg</code>,
-			or <code>markup</code>, and fuz_code and Prism highlight a fence tagged as Markdown.</p>`,1),v=t(`<!> <p>Before a library is measured on a language, <code>check_output</code> runs it on the
+			Twinkleplop only for the languages its Markdown is handed, which the adapter never does, so
+			loading one language puts them on the same footing. Two exceptions come from what loads with
+			Markdown itself: Prism's Markdown depends on its markup grammar, so Prism still highlights a
+			fence tagged <code>html</code>, <code>xml</code>, <code>svg</code>, or <code>markup</code>,
+			and fuz_code and Prism highlight a fence tagged as Markdown.</p>`,1),v=t(`<!> <p>Before a library is measured on a language, <code>check_output</code> runs it on the
 			language's harness snippet, a few lines written dense in syntax. The library must produce
 			tokens, and HTML with several kinds of styled span. A plain-text fallback has none, or only
 			structural ones: a wrapper for each line, and in Shiki one span in the default color. A

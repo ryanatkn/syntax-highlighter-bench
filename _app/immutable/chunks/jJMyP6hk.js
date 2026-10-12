@@ -127,7 +127,7 @@ npm run bench:deterministic -- --check  <span class="token_comment"># regenerate
 			never compressed: compression works across a whole bundle, so the difference of two compressed
 			bundles doesn't isolate one language's share, and can come out negative. A language the others
 			already hold, like JS inside TypeScript, adds nothing there: an addition under
-			16 bytes is shown as already included, and a language every library
+			256 bytes is shown as already included, and a language every library
 			already includes has no row.`)),e(t,o)},$$slots:{default:!0}});var R=a(L,2);h(R,{children:(t,n)=>{var r=w(),o=l(r);g(o,{text:`Token counts and output sizes`});var c=a(o,2),d=a(s(c));f(d,{slug:`corpus`}),i(7),u(c),i(12),e(t,r)},$$slots:{default:!0}});var z=a(R,2);h(z,{children:(t,n)=>{var r=T(),o=l(r);g(o,{text:`Install footprint`});var c=a(o,2),d=a(s(c),3);p(d,{name:`BenchInstall`}),i(5),u(c),i(10),e(t,r)},$$slots:{default:!0}});var B=a(z,2);h(B,{children:(t,n)=>{var r=E(),o=l(r);g(o,{text:`Retained heap`});var c=a(o,2),d=a(s(c));p(d,{name:`BenchHeap`}),i(7),u(c),i(8),e(t,r)},$$slots:{default:!0}});var V=a(B,2);h(V,{children:(t,n)=>{var r=D(),o=l(r);g(o,{text:`Coverage`});var c=a(o,2),d=a(s(c),3);p(d,{name:`BenchCoverageEntry`});var m=a(d,2);f(m,{slug:`adapters`}),i(),u(c),e(t,r)},$$slots:{default:!0}});var H=a(V,2);h(H,{children:(t,o)=>{var c=O(),d=l(c);g(d,{text:`What the file records`});var f=a(d,4),m=a(s(f),6),h=a(s(m));p(h,{name:`BenchBundler`}),u(m),u(f);var _=a(f,4),b=s(_);i(2),u(_),r(e=>n(b,`Two heap readings on the same machine agree to well under a kibibyte, but the check allows
 			${e??``} or ${y*100}% of the larger,
 			whichever is larger, and compares every other number exactly. Regenerating keeps a committed

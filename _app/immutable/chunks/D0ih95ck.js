@@ -100,7 +100,10 @@ import{D as e,F as t,G as n,L as r,M as i,Q as a,_t as o,at as s,ft as c,it as l
 			on one scenario, and the median over many processes sets a slow one aside. Sampling one
 			scenario again later would also take it out of the rounds that make the scenarios comparable.
 			There is no noise floor for cold start either: a calibration measures the timed cells only.
-			Without one, treat a difference between two scenarios that is inside either one's <code>p10_ms</code> to <code>p90_ms</code> band as no difference.</p> <p><strong>Part of the run.</strong> The cold-start processes follow the cells in the same run:
+			Without one, the bare baseline's own <code>p10_ms</code> to <code>p90_ms</code> band is the
+			guide. It is how far two single processes are apart, and a median of many samples is steadier
+			than one, so the results page scales it down to what a difference of two medians can be off
+			by, and marks a smaller addition as in the noise.</p> <p><strong>Part of the run.</strong> The cold-start processes follow the cells in the same run:
 			under the same machine lock, between the same anchor readings, in the same journal, and
 			written to the same results file. A smoke run takes one sample of every scenario.</p>`,1),O=r(`<!> <p>A results file says what kind of run produced it, in <!>, with
 			the passes, the rounds, the durations, and any filters:</p> <ul><li><code>full</code> — the real measurement. Only a full run with no filters is publishable,
@@ -223,7 +226,11 @@ import{D as e,F as t,G as n,L as r,M as i,Q as a,_t as o,at as s,ft as c,it as l
 				none of that shows here.</li> <li><strong>Classes and inline styles.</strong> Shiki resolves colors while it tokenizes and
 				writes them inline, and the other libraries emit class names that a stylesheet colors. The <code>html</code> mode measures the HTML each library returns by default, which is not the
 				same work.</li> <li><strong>Token counts differ.</strong> A library that emits fewer tokens for the same source
-				may be doing less work for each byte, not the same work faster.</li> <li><strong>Synchronous paths.</strong> A library with an async API loads in its setup and is
+				may be doing less work for each byte, not the same work faster.</li> <li><strong>fuz_code's tokens are not kept.</strong> fuz_code lexes into one buffer that every
+				call reuses, so its <code>tokenize</code> call allocates no result, where most other
+				libraries return one the caller keeps. A consumer that keeps a result copies it, and the
+				timed call doesn't, as <!> describes. The <code>html</code> mode
+				has no such difference: every library returns a string.</li> <li><strong>Synchronous paths.</strong> A library with an async API loads in its setup and is
 				timed through its synchronous core.</li> <li><strong>The HTML is read.</strong> In <code>html</code> mode the timed call reads one
 				character of the string, so a library that returns a string the engine hasn't joined up pays
 				to flatten it inside the clock. A benchmark that discards the string doesn't charge for
@@ -236,9 +243,9 @@ import{D as e,F as t,G as n,L as r,M as i,Q as a,_t as o,at as s,ft as c,it as l
 				minified code, deep nesting, very long lines, constructs that never close. They say little
 				about typical code, so they are summarized on their own and left out of the default view and
 				the headline figures. A slow call there can be far slower than anywhere else, and a run
-				shows it as measured. Shiki's stress numbers are the cost of highlighting every line in
-				full: with its default per-line time limit (500ms), a consumer gets the rest of a slower
-				line as one plain token instead, as <!> describes.</li> <li><strong>One bundler's sizes.</strong> A bundle size is what a page ships when Vite, with the
+				shows it as measured. Shiki is timed highlighting every line in full: where one line takes
+				longer than its default per-line time limit (500ms), a consumer gets the rest of that line
+				as one plain token instead, and not the time shown, as <!> describes.</li> <li><strong>One bundler's sizes.</strong> A bundle size is what a page ships when Vite, with the
 				Rolldown inside it, builds it and esbuild minifies it; the results file records the three
 				versions. Another bundler can remove different code from the same entry, since what it can
 				prove unused, whether it folds a constant argument into a function, and how it wraps
@@ -292,4 +299,4 @@ node bench/run.ts --help`}),o(6),t(e,r)},$$slots:{default:!0}});var q=s(K,2);x(q
 				${e??``} for one cell and
 				${t??``} for a geometric mean. The results page marks a
 				ratio inside it.`)},[()=>w(n(H).noise_floor.per_cell),()=>w(n(H).noise_floor.geomean)]),t(e,r)},T=r=>{var i=M(),a=u(i),o=e=>{var n=h(`No timed run is published yet, so there is no floor to show here.`);t(e,n)},s=e=>{var n=h(`The run this site shows carries no floor, so its small differences can't be told from
-					noise.`);t(e,n)};e(a,e=>{n(H).source===`deterministic`?e(o):e(s,-1)}),m(i),t(r,i)};e(x,e=>{n(H).noise_floor&&n(H).machine?e(C):e(T,-1)}),t(r,d)},$$slots:{default:!0}});var X=s(Y,2);x(X,{children:(e,n)=>{var r=P(),i=f(r);S(i,{text:`The anchor`});var a=s(i,2),c=s(u(a),3);v(c,{name:`BenchAnchor`}),o(3),m(a),o(6),t(e,r)},$$slots:{default:!0}});var Z=s(X,2);x(Z,{children:(e,n)=>{var r=F(),i=f(r);S(i,{text:`One run at a time`}),o(2),t(e,r)},$$slots:{default:!0}});var Q=s(Z,2);x(Q,{children:(e,n)=>{var r=I(),i=f(r);S(i,{text:`Caveats`});var a=s(i,2),c=s(u(a),12),l=s(u(c),2);_(l,{slug:`adapters`}),o(),m(c);var d=s(c,4),p=s(u(d),2);_(p,{slug:`adapters`}),o(),m(d),o(14),m(a),t(e,r)},$$slots:{default:!0}});var $=s(Q,2);x($,{children:(e,n)=>{var r=L(),i=f(r);S(i,{text:`Compared with Twinkleplop's benchmark`}),o(6),t(e,r)},$$slots:{default:!0}});var re=s($,2);x(re,{children:(e,n)=>{var r=R(),i=f(r);S(i,{text:`Reproducing a run`});var a=s(i,2),c=s(u(a),3);_(c,{slug:`deterministic`}),o(),m(a),o(2),t(e,r)},$$slots:{default:!0}}),t(r,d)},$$slots:{default:!0}}),c()}export{z as t};
+					noise.`);t(e,n)};e(a,e=>{n(H).source===`deterministic`?e(o):e(s,-1)}),m(i),t(r,i)};e(x,e=>{n(H).noise_floor&&n(H).machine?e(C):e(T,-1)}),t(r,d)},$$slots:{default:!0}});var X=s(Y,2);x(X,{children:(e,n)=>{var r=P(),i=f(r);S(i,{text:`The anchor`});var a=s(i,2),c=s(u(a),3);v(c,{name:`BenchAnchor`}),o(3),m(a),o(6),t(e,r)},$$slots:{default:!0}});var Z=s(X,2);x(Z,{children:(e,n)=>{var r=F(),i=f(r);S(i,{text:`One run at a time`}),o(2),t(e,r)},$$slots:{default:!0}});var Q=s(Z,2);x(Q,{children:(e,n)=>{var r=I(),i=f(r);S(i,{text:`Caveats`});var a=s(i,2),c=s(u(a),8),l=s(u(c),4);_(l,{slug:`adapters`}),o(3),m(c);var d=s(c,6),p=s(u(d),2);_(p,{slug:`adapters`}),o(),m(d);var h=s(d,4),g=s(u(h),2);_(g,{slug:`adapters`}),o(),m(h),o(14),m(a),t(e,r)},$$slots:{default:!0}});var $=s(Q,2);x($,{children:(e,n)=>{var r=L(),i=f(r);S(i,{text:`Compared with Twinkleplop's benchmark`}),o(6),t(e,r)},$$slots:{default:!0}});var re=s($,2);x(re,{children:(e,n)=>{var r=R(),i=f(r);S(i,{text:`Reproducing a run`});var a=s(i,2),c=s(u(a),3);_(c,{slug:`deterministic`}),o(),m(a),o(2),t(e,r)},$$slots:{default:!0}}),t(r,d)},$$slots:{default:!0}}),c()}export{z as t};

@@ -10,22 +10,22 @@ import{D as e,F as t,G as n,I as r,L as i,M as a,Q as o,_t as s,at as c,d as l,f
 			one, or is far slower there than anywhere else, is a finding: it is shown, as an exclusion
 			with its reason or as the slow number, never smoothed over by changing the input. They come in
 			two kinds:</p> <ul><li><strong>derived</strong> — a neutral input as real code ships: the JS and the CSS minified
-				by esbuild, and the JSON serialized with no whitespace, each one long line. It keeps its
-				source's pins, is marked synthetic, and names how it was made, with the esbuild version,
+				by esbuild, and the JSON serialized with no whitespace: one long line, or a few. It keeps
+				its source's pins, is marked synthetic, and names how it was made, with the esbuild version,
 				since another version may minify to other bytes</li> <li><strong>written</strong> — a pathological file for each timed language: nesting far deeper
-				than code is written, a line of TypeScript tens of KB long, an unterminated string and block
+				than code is written, a line of TypeScript tens of kB long, an unterminated string and block
 				comment near the top of a file, template literals nested in their substitutions, Markdown
 				delimiters that never close, HTML tags that never close and attributes without quotes, and a
 				selector list on one long line. Each says in its first comment what it stresses</li></ul> <p>Shiki is timed with its per-line time limit out of reach, as on every input, so on a stress
-			input it highlights every line in full. With its default limit a line that slow comes back
-			with its rest as plain text, so a consumer with default options gets that fallback there
-			rather than the stress number.</p>`,1),W=i(`<!> <p>An input's tier comes from its size in bytes, never from its name:</p> <table><thead><tr><th>tier</th><th>size</th></tr></thead><tbody><tr><td><code>micro</code></td><td>under 600 bytes</td></tr><tr><td><code>small</code></td><td>600 bytes to under 3,200</td></tr><tr><td><code>medium</code></td><td>3,200 bytes to under 32,000</td></tr><tr><td><code>large</code></td><td>32,000 bytes and over</td></tr></tbody></table> <p>The upper three center on roughly 1KB, 10KB, and 100KB. The micro tier is the docs-site case:
-			a snippet of a few lines, where the fixed cost of a call outweighs the scanning. The large
-			tier has no upper bound, and the neutral large inputs range from about 90KB to several hundred
-			KB, so compare throughput in MB/s across languages, not time per call.</p>`,1),G=i(`<!> <p>An input is marked synthetic when it is not one real file as published but was built by
+			input it highlights every line in full. With its default limit, a line that takes over half a
+			second comes back with its rest as plain text, so where a stress input has such a line a
+			consumer with default options gets that fallback rather than the number shown.</p>`,1),W=i(`<!> <p>An input's tier comes from its size in bytes, never from its name:</p> <table><thead><tr><th>tier</th><th>size</th></tr></thead><tbody><tr><td><code>micro</code></td><td>under 600 bytes</td></tr><tr><td><code>small</code></td><td>600 bytes to under 3,200</td></tr><tr><td><code>medium</code></td><td>3,200 bytes to under 32,000</td></tr><tr><td><code>large</code></td><td>32,000 bytes and over</td></tr></tbody></table> <p>The upper three center on roughly 1 kB, 10 kB, and 100 kB. The micro tier is the docs-site
+			case: a snippet of a few lines, where the fixed cost of a call outweighs the scanning. The
+			large tier has no upper bound, and the neutral large inputs range from about 90 kB to several
+			hundred kB, so compare throughput in MB/s across languages, not time per call.</p>`,1),G=i(`<!> <p>An input is marked synthetic when it is not one real file as published but was built by
 			joining or repeating files to reach its size, or derived from one, as the minified stress
 			inputs are. Real files are preferred. Most of Twinkleplop's own corpus is built this way and
-			is marked.</p> <p>One neutral input is synthetic: the large Svelte file. Svelte components of around 100KB are
+			is marked.</p> <p>One neutral input is synthetic: the large Svelte file. Svelte components of around 100 kB are
 			rare, so a script builds one from several real components of other projects. It splits each
 			component into its scripts, markup, and style, and writes one of each block holding the bodies
 			in order, unchanged. The result is shaped like one large component and is lexically well
