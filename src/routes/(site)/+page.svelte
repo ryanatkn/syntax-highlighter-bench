@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 
-	import Card from '@fuzdev/fuz_ui/Card.svelte';
-
 	import BarChart from '#lib/BarChart.svelte';
 	import CoverageTable from '#lib/CoverageTable.svelte';
 	import LibrariesTable from '#lib/LibrariesTable.svelte';
@@ -21,8 +19,8 @@
 		<a href="https://prismjs.com/">Prism</a>, and <a href="https://shiki.style/">Shiki</a> with each
 		of its two engines, run on the same inputs through one adapter each. It times throughput and
 		cold start on one named machine, and measures bundle size, install footprint, retained memory,
-		token counts, and output size, which come out the same on any machine with the same Node
-		version.
+		and the size of each library's output: how many tokens it splits an input into, and the bytes of
+		its HTML.
 	</p>
 	<p>
 		The maintainer of this benchmark also maintains fuz_code, so that library is marked wherever it
@@ -39,18 +37,16 @@
 		library's output without scoring its quality.
 	</p>
 	<p>
-		They also lex differently, and the throughput figures reflect it. fuz_code has a hand-written
-		lexer for each language that scans the source once, without regular expressions, and writes its
-		tokens into one typed array that the next call reuses. Twinkleplop compiles a grammar declared
-		for each language and runs it, then passes the tokens through the language's reclassifiers.
-		Prism matches the regular expressions of a grammar. Shiki runs TextMate grammars on a
-		regular-expression engine, Oniguruma compiled to wasm or the JS engine's own, and resolves each
-		token's theme color as it goes. A hand-written lexer does less work for each byte than an engine
-		that interprets a grammar, and gives up the grammar: fuz_code's lexers don't read TextMate
-		grammars or VS Code themes, differ from an editor's highlighting in some edge cases, and a new
-		language is a lexer to write, not a grammar to load. Its reused array also means its tokenizing
-		allocates no result for the caller to keep, where most other libraries return one;
-		<a href={resolve('/docs/method#Caveats')}>the caveats</a> say what that leaves out.
+		They also lex differently, and the throughput figures reflect it. fuz_code's lexers scan the
+		source once, without regular expressions, and write their tokens into one typed array that the
+		next call reuses. Twinkleplop compiles a grammar declared for each language and runs it, then
+		passes the tokens through the language's reclassifiers. Prism matches the regular expressions of
+		a grammar. Shiki runs TextMate grammars on a regular-expression engine, Oniguruma compiled to
+		wasm or the JS engine's own, and resolves each token's theme color as it goes. A lexer written
+		for one language does less work for each byte than an engine that interprets a grammar, and
+		gives up the grammar: fuz_code's lexers don't read TextMate grammars or VS Code themes, differ
+		from an editor's highlighting in some edge cases, and a new language is a lexer to write, not a
+		grammar to load.
 	</p>
 	<p class="links">
 		<a class="chip" href={resolve('/(site)/results')}>every result, with filters</a>
@@ -79,22 +75,18 @@
 			/>
 		{/each}
 	</div>
-	<Provenance meta={data.meta} moved={data.moved}>
-		See <a href={resolve('/docs/method')}>the method</a> for what each number means.
-	</Provenance>
+	<Provenance meta={data.meta} moved={data.moved} />
 	<p>
 		These are summaries. <a href={resolve('/(site)/results')}>The results page</a> has every cell
 		behind them, on inputs from other sources too.
-		<a href={resolve('/docs/method#Caveats')}>The caveats</a> say what the numbers don't: the
-		libraries don't do identical work, and Shiki's HTML carries inline styles where the others emit
-		classes.
+		<a href={resolve('/docs/method#Caveats')}>The caveats</a> say what the numbers don't.
 	</p>
 </section>
 <section>
 	<h2>What the numbers mean in practice</h2>
 	<p>
-		Whether a ratio matters depends on where the highlighting runs and how often. Which figure to
-		read first:
+		Whether a ratio matters depends on where the highlighting runs and how often, and so does which
+		figure to read first:
 	</p>
 	<ul>
 		<li>
@@ -177,24 +169,11 @@
 	</p>
 </section>
 
-<section class="cards">
-	<Card href={resolve('/(site)/results')}>every result, with filters</Card>
-	<Card href={resolve('/docs/method')}>how it is measured</Card>
-	<Card href={resolve('/docs/corpus')}>the inputs</Card>
-	<Card href={resolve('/docs/adapters')}>the adapters, and how to add a library</Card>
-</section>
-
 <style>
 	.links {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space_xs);
-	}
-	.cards {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space_lg);
 	}
 	/* two charts side by side where they fit, one per line where they don't */
 	.charts {
