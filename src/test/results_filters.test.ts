@@ -44,7 +44,7 @@ describe('the options and the defaults', () => {
 			'stress'
 		]);
 		assert.deepStrictEqual(options.set, ['docs', 'web_rust', 'timed']);
-		assert.deepStrictEqual(options.engines, ['scanner', 'grammar_vm', 'regex', 'textmate']);
+		assert.deepStrictEqual(options.engines, ['grammar_vm', 'regex', 'textmate', 'scanner']);
 		assert.deepStrictEqual(options.outputs, ['classes', 'inline_styles']);
 	});
 
@@ -97,7 +97,7 @@ describe('encoding', () => {
 		const selections: Array<Partial<ResultsFilters>> = [
 			{ langs: ['ts', 'rust'], sizes: ['large'], modes: ['html'] },
 			{ sources: ['neutral', 'home:twinkleplop'], reference: 'shiki_wasm' },
-			{ libraries: ['fuz_code', 'prism'], engines: ['scanner'], outputs: ['classes'] },
+			{ libraries: ['prism', 'fuz_code'], engines: ['scanner'], outputs: ['classes'] },
 			{ metrics: ['bundle'], bundle: 'totals', compression: 'raw', set: 'web_rust' },
 			{ unit: 'ns_per_op', forms: ['bundled', 'unbundled'], measures: ['spans'] },
 			{ parts: ['total', 'external'] },
@@ -172,9 +172,9 @@ describe('the selected libraries', () => {
 
 	test('are the selected ones whose tags are selected too, in roster order', () => {
 		assert.deepStrictEqual(ids({}), options.libraries);
-		assert.deepStrictEqual(ids({ libraries: ['prism', 'fuz_code'] }), ['fuz_code', 'prism']);
+		assert.deepStrictEqual(ids({ libraries: ['fuz_code', 'prism'] }), ['prism', 'fuz_code']);
 		assert.deepStrictEqual(ids({ engines: ['textmate'] }), ['shiki_js', 'shiki_wasm']);
-		assert.deepStrictEqual(ids({ outputs: ['classes'] }), ['fuz_code', 'twinkleplop', 'prism']);
+		assert.deepStrictEqual(ids({ outputs: ['classes'] }), ['twinkleplop', 'prism', 'fuz_code']);
 		assert.deepStrictEqual(ids({ outputs: ['classes'], engines: ['textmate'] }), []);
 	});
 

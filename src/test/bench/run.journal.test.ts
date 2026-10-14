@@ -313,7 +313,7 @@ describe('a timed run keeps a journal', () => {
 		// and says what it records, so a leftover from another run is recognizable
 		assert.match(
 			error.message,
-			/it records a full run started \S+, filtered to libraries fuz_code,prism; langs json; sizes micro; metrics throughput, holding 3 results/
+			/it records a full run started \S+, filtered to libraries prism,fuz_code; langs json; sizes micro; metrics throughput, holding 3 results/
 		);
 		writeFileSync(journal_path, 'garbage\n');
 		const unreadable = await catch_run_error(parse(), machine.options);
@@ -675,7 +675,7 @@ describe('a timed run and the deterministic results file', () => {
 		const machine = create_machine((spec) => to_expected_outcome(spec, expected));
 		const { results } = await run_bench(parse(), machine.options);
 		assert.deepStrictEqual(results.bundle, bundle);
-		assert.deepStrictEqual(Object.keys(results.bundle), ['fuz_code', 'prism']);
+		assert.deepStrictEqual(Object.keys(results.bundle), ['prism', 'fuz_code']);
 		assert.deepStrictEqual(results.meta.bundler, bundler);
 		assert.ok(machine.log.every((line) => !line.includes('no bundle sizes')));
 		// the cells state what the processes reported, which is what the file has
@@ -781,7 +781,7 @@ describe('a timed run and the deterministic results file', () => {
 		assert.strictEqual(refused.exit_code, 2);
 		assert.match(
 			refused.message,
-			/doesn't describe this run, it measured fuz_code with @fuzdev\/fuz_code 0\.0\.1, and this run has/
+			/doesn't describe this run, it measured twinkleplop with @twinkleplop\/core 0\.0\.1, and this run has/
 		);
 		assert.strictEqual(machine.spawned, 0);
 		// a file whose install closure isn't this tree's: a dependency moved under the same version
@@ -850,7 +850,7 @@ describe('before a timed run measures', () => {
 		const text = format_run_plan(plan);
 		assert.match(text, /^the plan of a full run on .*: nothing is measured/);
 		assert.match(text, new RegExp(`cells +${INPUTS.length * 2}\\n`));
-		assert.match(text, /libraries +fuz_code, prism\n/);
+		assert.match(text, /libraries +prism, fuz_code\n/);
 		assert.match(
 			text,
 			new RegExp(`processes +${PLANNED}, one at a time, and at most ${PLANNED * 2} more`)

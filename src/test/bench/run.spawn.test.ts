@@ -105,7 +105,7 @@ describe('run_bench', () => {
 				const [stated, unstated] =
 					cell.mode === 'tokenize' ? [cell.tokens, cell.output] : [cell.output, cell.tokens];
 				for (const section of [cell.values, stated]) {
-					assert.deepStrictEqual(Object.keys(section), ['fuz_code', 'prism']);
+					assert.deepStrictEqual(Object.keys(section), ['prism', 'fuz_code']);
 				}
 				assert.deepStrictEqual(unstated, {});
 				for (const value of Object.values(cell.values)) {
@@ -117,7 +117,7 @@ describe('run_bench', () => {
 			assert.deepStrictEqual(results.meta.excluded, []);
 			assert.deepStrictEqual(
 				results.meta.libraries.map((l) => l.id),
-				['fuz_code', 'prism']
+				['prism', 'fuz_code']
 			);
 
 			const { meta } = results;

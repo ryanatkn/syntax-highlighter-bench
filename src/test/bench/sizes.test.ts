@@ -173,11 +173,11 @@ describe('the theme CSS column', () => {
 		assert.deepStrictEqual(
 			ADAPTERS.map((a) => [a.id, a.theme_schemes]),
 			[
-				['fuz_code', ['light', 'dark']],
 				['twinkleplop', ['light', 'dark']],
 				['prism', ['light']],
 				['shiki_js', ['light']],
-				['shiki_wasm', ['light']]
+				['shiki_wasm', ['light']],
+				['fuz_code', ['light', 'dark']]
 			]
 		);
 	});

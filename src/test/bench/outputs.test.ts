@@ -184,8 +184,8 @@ describe('to_deterministic_cells', () => {
 			assert.deepStrictEqual(cell.values, {});
 			// roster order
 			assert.deepStrictEqual(Object.keys(cell.mode === 'tokenize' ? cell.tokens : cell.output), [
-				'fuz_code',
-				'twinkleplop'
+				'twinkleplop',
+				'fuz_code'
 			]);
 		}
 	});
@@ -218,7 +218,7 @@ describe('to_deterministic_cells', () => {
 		assert.deepStrictEqual(cells, []);
 		assert.throws(
 			() => to_deterministic_cells(manifest.inputs, adapters, create_outputs().slice(1)),
-			/fuz_code has no output for/
+			/twinkleplop has no output for/
 		);
 	});
 });

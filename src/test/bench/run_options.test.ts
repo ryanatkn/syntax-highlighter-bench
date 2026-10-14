@@ -105,7 +105,7 @@ describe('parse_run_args', () => {
 			'home,neutral'
 		);
 		assert.deepStrictEqual(options.filters, {
-			libraries: ['fuz_code', 'prism'],
+			libraries: ['prism', 'fuz_code'],
 			langs: ['ts', 'rust'],
 			sizes: ['micro', 'large'],
 			modes: ['html'],
@@ -457,7 +457,7 @@ describe('plan_cells', () => {
 				.toSorted()
 		);
 		assert.ok(cells.length > 0);
-		for (const cell of cells) assert.deepStrictEqual(cell.libraries, ['fuz_code', 'prism']);
+		for (const cell of cells) assert.deepStrictEqual(cell.libraries, ['prism', 'fuz_code']);
 	});
 
 	test('a library that does not claim a language is left out of its cells: unsupported', () => {

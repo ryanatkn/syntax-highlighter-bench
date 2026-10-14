@@ -14,9 +14,9 @@ import { twinkleplop_adapter } from './libraries/twinkleplop/adapter.ts';
 
 /** Every adapter, in display order. */
 export const ADAPTERS: ReadonlyArray<HighlighterAdapter> = [
-	fuz_code_adapter,
 	twinkleplop_adapter,
 	prism_adapter,
 	shiki_js_adapter,
-	shiki_wasm_adapter
+	shiki_wasm_adapter,
+	fuz_code_adapter
 ];

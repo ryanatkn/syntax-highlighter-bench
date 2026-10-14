@@ -827,13 +827,13 @@ describe('assemble_results', () => {
 	});
 
 	test('a filtered run lists only the libraries it selected', () => {
-		const filters: BenchRunFilters = { ...SMALL_TS, libraries: ['fuz_code', 'prism'] };
+		const filters: BenchRunFilters = { ...SMALL_TS, libraries: ['prism', 'fuz_code'] };
 		const { results } = assemble_results(create_record({ options: create_options({ filters }) }));
 		assert.deepStrictEqual(
 			results.meta.libraries.map((l) => l.id),
-			['fuz_code', 'prism']
+			['prism', 'fuz_code']
 		);
-		assert.deepStrictEqual(Object.keys(results.coverage), ['fuz_code', 'prism']);
+		assert.deepStrictEqual(Object.keys(results.coverage), ['prism', 'fuz_code']);
 		assert.deepStrictEqual(results.meta.run!.filters, filters);
 	});
 

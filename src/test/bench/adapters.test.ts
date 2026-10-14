@@ -98,7 +98,7 @@ describe('roster', () => {
 		const [adapter] = ADAPTERS;
 		assert.throws(() => to_bench_libraries([adapter!, adapter!]), /duplicate library id/);
 		assert.throws(
-			() => to_bench_coverage([{ ...ADAPTERS[1]!, via: { xml: 'nope' } }]),
+			() => to_bench_coverage([{ ...ADAPTERS[0]!, via: { xml: 'nope' } }]),
 			/without claiming it/
 		);
 	});

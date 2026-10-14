@@ -865,7 +865,7 @@ node bench/run.ts --help`;
 				<tr>
 					<td>libraries</td>
 					<td>Twinkleplop, Shiki (both engines), Prism, sugar-high, speed-highlight</td>
-					<td>fuz_code, Twinkleplop, Prism, Shiki (both engines)</td>
+					<td>Twinkleplop, Prism, Shiki (both engines), fuz_code</td>
 				</tr>
 				<tr>
 					<td>languages</td>

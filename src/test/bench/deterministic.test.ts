@@ -84,11 +84,11 @@ describe('the committed deterministic file', () => {
 				.map(([lang]) => `${library}:${lang}`)
 		);
 		assert.deepStrictEqual(footnoted, [
-			'fuz_code:js',
 			'prism:xml',
 			'prism:svelte',
 			'shiki_js:xml',
-			'shiki_wasm:xml'
+			'shiki_wasm:xml',
+			'fuz_code:js'
 		]);
 	});
 
@@ -301,7 +301,7 @@ describe('carry_deterministic', () => {
 				c.libraries[0]!.version = '99.0.0';
 				return c;
 			}),
-			/it measured fuz_code with @fuzdev\/fuz_code [^,]+, and this run has @fuzdev\/fuz_code 99\.0\.0/
+			/it measured twinkleplop with @twinkleplop\/core [^,]+, and this run has @twinkleplop\/core 99\.0\.0/
 		);
 		assert.match(
 			reason((c) => {
