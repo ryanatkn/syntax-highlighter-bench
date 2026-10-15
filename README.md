@@ -492,4 +492,4 @@ Built with [SvelteKit](https://github.com/sveltejs/kit),
 
 ## License
 
-[MIT](LICENSE)
+[0BSD](LICENSE)
