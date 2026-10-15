@@ -71,7 +71,7 @@
 						class="bar-fill"
 						style:width="{Math.min(1, bar) * 100}%"
 						style:background={ratio === undefined
-							? 'var(--fg_30)'
+							? 'var(--ink_30)'
 							: to_ratio_display_color(ratio, bound)}
 					></span>
 				{/if}
@@ -135,7 +135,7 @@
 		height: 0.4rem;
 		margin-top: var(--space_xs3);
 		border-radius: var(--border_radius_xs);
-		background: var(--fg_05);
+		background: var(--ink_05);
 	}
 	.bar-fill {
 		display: block;

@@ -252,7 +252,7 @@
 	.group th {
 		font-size: var(--font_size_lg);
 		font-weight: 700;
-		background-color: var(--fg_05);
+		background-color: var(--ink_05);
 	}
 	.summary :global(:is(th, td)) {
 		font-weight: 700;
