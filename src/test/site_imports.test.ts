@@ -122,7 +122,7 @@ describe('what the site imports', () => {
 			if (is_server_only(file)) continue;
 			for (const specifier of to_runtime_imports(file)) {
 				assert.notMatch(specifier, /results_schema\.ts$/, file);
-				assert.notStrictEqual(specifier, 'zod', file);
+				assert.notMatch(specifier, /^@fuzdev\/fuz_schema\//, file);
 			}
 		}
 	});

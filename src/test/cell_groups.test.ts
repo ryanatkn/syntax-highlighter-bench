@@ -18,8 +18,8 @@ const fixture = load_fixture();
 
 const EVERYTHING = {
 	langs: deterministic.langs.map((lang) => lang.id),
-	sizes: BenchSize.options,
-	modes: BenchMode.options,
+	sizes: [...BenchSize.def],
+	modes: [...BenchMode.def],
 	sources: to_source_keys(deterministic.cells)
 };
 
@@ -75,7 +75,7 @@ describe('group_cells', () => {
 			const ranks = group.cells.map((cell) => {
 				assert.strictEqual(cell.lang, group.lang.id);
 				assert.strictEqual(to_source_key(cell), group.source_key);
-				return BenchSize.options.indexOf(cell.size);
+				return BenchSize.def.indexOf(cell.size);
 			});
 			assert.deepStrictEqual(
 				ranks,

@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { brotliCompressSync, constants, gunzipSync, gzipSync } from 'node:zlib';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchBundler } from '#lib/results_schema.ts';
 import { check_bundle } from '../../../bench/bundle_check.ts';
@@ -198,7 +199,7 @@ describe('sum_byte_sizes', () => {
 
 describe('read_bundler', () => {
 	test('records the versions the sizes depend on, and the compression levels', async () => {
-		const bundler = BenchBundler.parse(await read_bundler());
+		const bundler = s.parse_or_throw(BenchBundler, await read_bundler());
 		assert.strictEqual(bundler.vite, require('vite/package.json').version);
 		// the versions installed, never the stand-ins Vite 8 still exports as `rollupVersion` and
 		// `esbuildVersion`

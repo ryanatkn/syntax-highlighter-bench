@@ -1,5 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { join } from 'node:path';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchRunFilters, bench_run_is_complete } from '#lib/results_schema.ts';
 import type { HighlighterAdapter } from '../../../bench/adapter.ts';
@@ -112,7 +113,7 @@ describe('parse_run_args', () => {
 			sources: ['neutral', 'home'],
 			metrics: null
 		});
-		BenchRunFilters.parse(options.filters);
+		s.parse_or_throw(BenchRunFilters, options.filters);
 	});
 
 	test('a repeated id counts once', () => {

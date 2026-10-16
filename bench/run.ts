@@ -73,6 +73,7 @@ import {
 	stats_ratio_deviation
 } from '@fuzdev/fuz_util/stats.js';
 import { time_format_adaptive } from '@fuzdev/fuz_util/time.js';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import {
 	bench_run_is_complete,
@@ -275,11 +276,13 @@ export const read_cell_result = (planned: PlannedProcess, outcome: ChildOutcome)
 	if ('failed' in read) {
 		throw new RunError(`${label} failed (${read.failed.how}):\n${read.failed.stderr}`);
 	}
-	const parsed = CellResult.safeParse(read.data);
-	if (!parsed.success) {
-		throw new RunError(`${label} reported a malformed result: ${parsed.error.message}`);
+	const parsed = s.parse(CellResult, read.data);
+	if (!parsed.ok) {
+		throw new RunError(
+			`${label} reported a malformed result: ${parsed.issues.map(s.format_issue).join('; ')}`
+		);
 	}
-	const result = parsed.data;
+	const result = parsed.value;
 	if (result.cell !== planned.cell.id || result.library !== planned.library) {
 		throw new RunError(`${label} reported on "${result.cell}" (${result.library})`);
 	}
@@ -344,16 +347,18 @@ export const read_startup_result = (
 			excluded: `the process failed: ${to_failure_reason(read.failed)}`
 		};
 	}
-	const parsed = StartupChildOutput.safeParse(read.data);
-	if (!parsed.success) {
-		throw new RunError(`${label} reported a malformed result: ${parsed.error.message}`);
-	}
-	if (parsed.data.compile_cache_dir !== null) {
+	const parsed = s.parse(StartupChildOutput, read.data);
+	if (!parsed.ok) {
 		throw new RunError(
-			`${label} ran with V8's compile cache in ${parsed.data.compile_cache_dir}, so it was not a cold start`
+			`${label} reported a malformed result: ${parsed.issues.map(s.format_issue).join('; ')}`
 		);
 	}
-	return check_startup_output(scenario, parsed.data);
+	if (parsed.value.compile_cache_dir !== null) {
+		throw new RunError(
+			`${label} ran with V8's compile cache in ${parsed.value.compile_cache_dir}, so it was not a cold start`
+		);
+	}
+	return check_startup_output(scenario, parsed.value);
 };
 
 /** Runs a Node process and blocks until it exits, so nothing else runs beside it. */
@@ -1250,7 +1255,7 @@ const MAX_ISSUES_LISTED = 5;
  * file from an older harness can fail once for every value it holds.
  */
 export const cap_issues = (message: string, max = MAX_ISSUES_LISTED): string => {
-	// `z.prettifyError` starts every issue on a line of its own with this mark
+	// `format_bench_issues` starts every issue on a line of its own with this mark
 	const issues = message.split(/\n(?=✖)/);
 	if (issues.length <= max) return message;
 	return `${issues.slice(0, max).join('\n')}\nand ${issues.length - max} more issues`;

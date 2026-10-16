@@ -25,7 +25,7 @@
  * most of all for regexp and wasm engines.
  *
  * **A module of its own, not the bundle check.** `bench/bundle_check.ts` is a
- * TypeScript module that imports zod, the corpus, and the adapter before any of
+ * TypeScript module that imports fuz_schema, the corpus, and the adapter before any of
  * its code runs, and the adapter imports every language of some libraries. A
  * reading there would carry all of that, and Node's type stripper. So the
  * process runs a generated module with nothing of the harness in it, as a
@@ -55,9 +55,15 @@ import { execFile } from 'node:child_process';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { map_concurrent } from '@fuzdev/fuz_util/async.js';
-import { z } from 'zod';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
 
-import { BenchHeap, type BenchResults } from '../src/lib/results_schema.ts';
+import {
+	BenchHeap,
+	NonnegativeInt,
+	PositiveInt,
+	type BenchResults
+} from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
 import { load_corpus_manifest, read_corpus_input } from './corpus.ts';
 import { TIMED_LANGS } from './langs.ts';
@@ -167,18 +173,18 @@ export const to_heap_child_source = (entry: string | null, highlight: HeapHighli
 	].join('\n');
 
 /** What a heap process prints. */
-export const HeapChildOutput = z.strictObject({
-	heap_bytes: z.number().int().positive(),
-	code_bytes: z.number().int().nonnegative(),
-	external_bytes: z.number().int().nonnegative(),
-	collections: z.number().int().positive(),
-	settled: z.boolean().meta({
+export const HeapChildOutput = s.object({
+	heap_bytes: PositiveInt,
+	code_bytes: NonnegativeInt,
+	external_bytes: NonnegativeInt,
+	collections: PositiveInt,
+	settled: meta(s.boolean, {
 		description: 'Whether a collection changed the heap by under `HEAP_SETTLED_BELOW_BYTES`.'
 	}),
-	exports: z.number().int().nonnegative(),
-	html_length: z.number().int().nonnegative()
+	exports: NonnegativeInt,
+	html_length: NonnegativeInt
 });
-export type HeapChildOutput = z.infer<typeof HeapChildOutput>;
+export type HeapChildOutput = s.Infer<typeof HeapChildOutput>;
 
 /**
  * Runs a heap process with `HEAP_NODE_FLAGS`.
@@ -198,7 +204,7 @@ export const run_heap_child = (path: string, label: string): Promise<HeapChildOu
 				}
 				let output: HeapChildOutput;
 				try {
-					output = HeapChildOutput.parse(JSON.parse(stdout));
+					output = s.parse_or_throw(HeapChildOutput, JSON.parse(stdout));
 				} catch {
 					reject(
 						new Error(`${label} printed something other than its reading: ${stdout.slice(0, 200)}`)
@@ -226,7 +232,7 @@ export const to_bench_heap = (
 	reading: Pick<HeapChildOutput, 'heap_bytes' | 'code_bytes' | 'external_bytes'>,
 	bare: Pick<HeapChildOutput, 'heap_bytes' | 'code_bytes' | 'external_bytes'>
 ): BenchHeap =>
-	BenchHeap.parse({
+	s.parse_or_throw(BenchHeap, {
 		retained_kb: Math.max(0, Math.round((reading.heap_bytes - bare.heap_bytes) / 1024)),
 		code_kb: Math.max(0, Math.round((reading.code_bytes - bare.code_bytes) / 1024)),
 		external_kb: Math.max(0, Math.round((reading.external_bytes - bare.external_bytes) / 1024))

@@ -97,7 +97,7 @@ describe('the committed deterministic file', () => {
 		assert.deepStrictEqual(results.inputs, timed);
 		assert.deepStrictEqual(
 			results.cells.map((cell) => cell.id),
-			timed.flatMap((input) => BenchMode.options.map((mode) => `${input.file}:${mode}`))
+			timed.flatMap((input) => BenchMode.def.map((mode) => `${input.file}:${mode}`))
 		);
 	});
 

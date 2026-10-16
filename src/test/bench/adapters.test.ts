@@ -1,6 +1,7 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { globSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchCoverageEntry, BenchLibrary } from '#lib/results_schema.ts';
 import { LangNotSetUpError, type HighlighterAdapter } from '../../../bench/adapter.ts';
@@ -65,7 +66,8 @@ describe('roster', () => {
 			libraries.map((l) => l.id),
 			ADAPTERS.map((a) => a.id)
 		);
-		for (const library of libraries) assert.deepStrictEqual(BenchLibrary.parse(library), library);
+		for (const library of libraries)
+			assert.deepStrictEqual(s.parse_or_throw(BenchLibrary, library), library);
 		const coverage = to_bench_coverage(ADAPTERS);
 		assert.deepStrictEqual(
 			Object.keys(coverage),
@@ -73,7 +75,8 @@ describe('roster', () => {
 		);
 		for (const adapter of ADAPTERS) {
 			assert.deepStrictEqual(Object.keys(coverage[adapter.id]!), claimed_langs(adapter));
-			for (const entry of Object.values(coverage[adapter.id]!)) BenchCoverageEntry.parse(entry);
+			for (const entry of Object.values(coverage[adapter.id]!))
+				s.parse_or_throw(BenchCoverageEntry, entry);
 		}
 	});
 

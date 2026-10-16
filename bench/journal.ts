@@ -28,9 +28,19 @@ import {
 	readFileSync,
 	truncateSync
 } from 'node:fs';
-import { z } from 'zod';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
 
-import { BenchMachine, BenchRunFilters } from '../src/lib/results_schema.ts';
+import {
+	BenchDatetime,
+	BenchMachine,
+	BenchRunFilters,
+	NonEmptyString,
+	NonnegativeInt,
+	NonnegativeNumber,
+	PositiveInt,
+	PositiveNumber
+} from '../src/lib/results_schema.ts';
 import { CellResult } from './cell.ts';
 import { StartupResult } from './coldstart.ts';
 
@@ -41,89 +51,79 @@ import { StartupResult } from './coldstart.ts';
  */
 export const JOURNAL_VERSION = 5;
 
+/** The entries of `BenchMachine` a journal records. */
+const { name, cpu, threads, governor, cpufreq_driver, epp, boost, os_release } = BenchMachine.def;
+
 /**
  * What a journal says about the run it belongs to. A run resumes a journal only
  * when every field but `generated_at` is the same for it.
  */
-export const JournalHeader = z.strictObject({
-	type: z.literal('header'),
-	journal: z.literal(JOURNAL_VERSION),
-	generated_at: z.iso.datetime().meta({ description: 'When the first segment started.' }),
-	kind: z.enum(['full', 'calibrate']),
-	passes: z.number().int().positive(),
-	rounds: z.number().int().positive(),
-	target_ms: z.number().positive(),
-	warmup_ms: z.number().nonnegative(),
-	rewarm_ms: z.number().nonnegative(),
-	retries: z.number().int().nonnegative(),
-	startup_samples: z.number().int().positive(),
-	startup_discard: z.number().int().nonnegative(),
+export const JournalHeader = s.object({
+	type: s.literal('header'),
+	journal: s.literal(JOURNAL_VERSION),
+	generated_at: meta(BenchDatetime, { description: 'When the first segment started.' }),
+	kind: s.one_of(['full', 'calibrate']),
+	passes: PositiveInt,
+	rounds: PositiveInt,
+	target_ms: PositiveNumber,
+	warmup_ms: NonnegativeNumber,
+	rewarm_ms: NonnegativeNumber,
+	retries: NonnegativeInt,
+	startup_samples: PositiveInt,
+	startup_discard: NonnegativeInt,
 	filters: BenchRunFilters,
-	corpus_hash: z.string().min(1),
-	libraries: z.array(
-		z.strictObject({
-			id: z.string().min(1),
-			version: z.string().min(1),
-			extra_packages: z.record(z.string(), z.string()).optional()
+	corpus_hash: NonEmptyString,
+	libraries: s.array(
+		s.object({
+			id: NonEmptyString,
+			version: NonEmptyString,
+			extra_packages: s.optional(s.record(s.string))
 		})
 	),
-	machine: BenchMachine.pick({
-		name: true,
-		cpu: true,
-		threads: true,
-		governor: true,
-		cpufreq_driver: true,
-		epp: true,
-		boost: true
-	}).meta({
+	machine: meta(s.object({ name, cpu, threads, governor, cpufreq_driver, epp, boost }), {
 		description: "What of the machine can change what is measured: not its memory's size."
 	}),
-	os_release: BenchMachine.shape.os_release,
-	node: z.string().min(1),
-	node_options: z.string().meta({
+	os_release,
+	node: NonEmptyString,
+	node_options: meta(s.string, {
 		description: 'The `NODE_OPTIONS` the processes inherit, empty when it is unset.'
 	}),
-	commit: z.string().min(1)
+	commit: NonEmptyString
 });
-export type JournalHeader = z.infer<typeof JournalHeader>;
+export type JournalHeader = s.Infer<typeof JournalHeader>;
 
-const at_ms = z
-	.number()
-	.int()
-	.nonnegative()
-	.meta({ description: 'Milliseconds since the segment started.' });
+const at_ms = meta(NonnegativeInt, { description: 'Milliseconds since the segment started.' });
 
 /** A line after the header. */
-export const JournalEntry = z.discriminatedUnion('type', [
-	z.strictObject({
-		type: z.literal('segment'),
+export const JournalEntry = s.variant('type', [
+	s.object({
+		type: s.literal('segment'),
 		at_ms,
-		anchor_ns: z.number().positive().meta({ description: "The segment's opening anchor reading." }),
-		load: z
-			.number()
-			.nonnegative()
-			.meta({ description: "The 1-minute load average when the segment's run was planned." })
+		anchor_ns: meta(PositiveNumber, { description: "The segment's opening anchor reading." }),
+		load: meta(NonnegativeNumber, {
+			description: "The 1-minute load average when the segment's run was planned."
+		})
 	}),
-	z.strictObject({
-		type: z.literal('result'),
+	s.object({
+		type: s.literal('result'),
 		at_ms,
-		pass: z.number().int().nonnegative(),
-		attempt: z.number().int().nonnegative(),
+		pass: NonnegativeInt,
+		attempt: NonnegativeInt,
 		result: CellResult
 	}),
-	z.strictObject({
-		type: z.literal('startup'),
+	s.object({
+		type: s.literal('startup'),
 		at_ms,
-		round: z.number().int().nonnegative(),
+		round: NonnegativeInt,
 		result: StartupResult
 	}),
-	z.strictObject({
-		type: z.literal('anchor'),
+	s.object({
+		type: s.literal('anchor'),
 		at_ms,
-		anchor_ns: z.number().positive().meta({ description: "The segment's closing anchor reading." })
+		anchor_ns: meta(PositiveNumber, { description: "The segment's closing anchor reading." })
 	})
 ]);
-export type JournalEntry = z.infer<typeof JournalEntry>;
+export type JournalEntry = s.Infer<typeof JournalEntry>;
 
 /** Identifies one process of a run: a library's pass on a cell, in one attempt. */
 export const to_journal_key = (
@@ -176,8 +176,8 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 			return undefined;
 		}
 	};
-	const header = JournalHeader.safeParse(parse_line(lines[0] ?? ''));
-	if (!header.success) return { ok: false, message: 'it has no header this harness can read' };
+	const header = s.parse(JournalHeader, parse_line(lines[0] ?? ''));
+	if (!header.ok) return { ok: false, message: 'it has no header this harness can read' };
 	const results: Map<string, CellResult> = new Map();
 	const startup: Map<string, StartupResult> = new Map();
 	const readings_ns: Array<number> = [];
@@ -187,9 +187,9 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 	let segment_ms = 0;
 	for (const [i, line] of lines.entries()) {
 		if (i === 0) continue;
-		const parsed = JournalEntry.safeParse(parse_line(line));
-		if (!parsed.success) return { ok: false, message: `line ${i + 1} is not a journal line` };
-		const entry = parsed.data;
+		const parsed = s.parse(JournalEntry, parse_line(line));
+		if (!parsed.ok) return { ok: false, message: `line ${i + 1} is not a journal line` };
+		const entry = parsed.value;
 		if (entry.type === 'segment') {
 			segments++;
 			duration_ms += segment_ms;
@@ -213,7 +213,7 @@ export const parse_journal = (bytes: Buffer): ReadJournalResult => {
 	}
 	return {
 		ok: true,
-		header: header.data,
+		header: header.value,
 		results,
 		startup,
 		readings_ns,

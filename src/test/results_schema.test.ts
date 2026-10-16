@@ -1,5 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { readFileSync } from 'node:fs';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import {
 	BENCH_ANCHOR_STABLE_BELOW,
@@ -9,6 +10,7 @@ import {
 	bench_results_find_startup_gaps,
 	bench_results_is_publishable,
 	bench_run_is_complete,
+	order_keys_by_schema,
 	parse_bench_results,
 	to_bench_cell_id,
 	type BenchStartupKey,
@@ -24,9 +26,12 @@ const load_fixture = (): BenchResults => JSON.parse(fixture_text);
 
 /** Asserts that parsing fails with an issue whose message includes `expected`. */
 const assert_rejects = (data: unknown, expected: string): void => {
-	const parsed = BenchResults.safeParse(data);
-	assert.ok(!parsed.success, 'expected the parse to fail');
-	const messages = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
+	const parsed = s.parse(BenchResults, data);
+	assert.ok(!parsed.ok, 'expected the parse to fail');
+	const messages = parsed.issues.map(
+		(i) =>
+			`${i.path.map(String).join('.')}: ${i.message ?? `expected ${i.expected}, received ${i.received}`}`
+	);
 	assert.ok(
 		messages.some((m) => m.includes(expected)),
 		`expected an issue including "${expected}", got:\n${messages.join('\n')}`
@@ -109,7 +114,7 @@ const to_smoke = (data: BenchResults): BenchResults => {
 
 describe('round trip', () => {
 	test('the fixture parses and serializes back to itself', () => {
-		const parsed = BenchResults.parse(JSON.parse(fixture_text));
+		const parsed = s.parse_or_throw(BenchResults, JSON.parse(fixture_text));
 		assert.strictEqual(JSON.stringify(parsed, null, '\t') + '\n', fixture_text);
 	});
 
@@ -133,7 +138,7 @@ describe('sections later filled', () => {
 		data.inputs = [];
 		data.meta.excluded = [];
 		data.meta.process_noise = null;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('every value has a median for each pass', () => {
@@ -154,7 +159,7 @@ describe('sections later filled', () => {
 		}
 		assert_rejects(one_pass, 'process noise is set exactly when');
 		one_pass.meta.process_noise = null;
-		BenchResults.parse(one_pass);
+		s.parse_or_throw(BenchResults, one_pass);
 	});
 
 	test('the process noise is ordered and has a pair', () => {
@@ -187,28 +192,42 @@ describe('sections later filled', () => {
 	test('the noise floor is null until calibrated', () => {
 		const data = load_fixture();
 		data.meta.noise_floor = null;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('a cell can carry deterministic numbers without timed ones', () => {
 		const data = load_fixture();
 		clear_values(data);
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
+	});
+});
+
+describe('order_keys_by_schema', () => {
+	test("puts every object's keys in the schema's order, however they were built", () => {
+		const data = load_fixture();
+		const reversed = <T extends object>(o: T): T =>
+			Object.fromEntries(Object.entries(o).reverse()) as T;
+		data.meta.libraries[0] = reversed(data.meta.libraries[0]!);
+		data.cells[0]!.values.fuz_code = reversed(data.cells[0]!.values.fuz_code!);
+		data.bundle.prism!.docs = reversed(data.bundle.prism!.docs!);
+		const expected = JSON.stringify(JSON.parse(fixture_text));
+		assert.notStrictEqual(JSON.stringify(data), expected);
+		assert.strictEqual(JSON.stringify(order_keys_by_schema(BenchResults, data)), expected);
 	});
 });
 
 describe('strictness', () => {
 	test('rejects an unknown key at the top level', () => {
-		assert_rejects({ ...load_fixture(), extra: 1 }, 'Unrecognized key');
+		assert_rejects({ ...load_fixture(), extra: 1 }, 'expected no unknown keys');
 	});
 
 	test('rejects an unknown key in a nested object', () => {
 		const data = load_fixture();
 		(data.meta.machine as any).os = 'linux';
-		assert_rejects(data, 'Unrecognized key');
+		assert_rejects(data, 'expected no unknown keys');
 		const data2 = load_fixture();
 		(data2.cells[0]!.values.fuz_code as any).mean = 1;
-		assert_rejects(data2, 'Unrecognized key');
+		assert_rejects(data2, 'expected no unknown keys');
 	});
 
 	test('rejects a missing section', () => {
@@ -262,14 +281,14 @@ describe('rosters', () => {
 		data2.cells[0]!.lang = 'tsx';
 		assert_rejects(data2, 'unknown lang "tsx"');
 		// one issue for the cell, not another for every library with numbers in it
-		const parsed = BenchResults.safeParse(data2);
-		assert.ok(!parsed.success);
-		assert.ok(parsed.error.issues.every((i) => !i.message.includes("doesn't claim")));
+		const parsed = s.parse(BenchResults, data2);
+		assert.ok(!parsed.ok);
+		assert.ok(parsed.issues.every((i) => !i.message?.includes("doesn't claim")));
 		const data4 = load_fixture();
 		data4.cells.find((c) => c.id === EXCLUDED_CELL)!.lang = 'tsx';
-		const parsed4 = BenchResults.safeParse(data4);
-		assert.ok(!parsed4.success);
-		assert.ok(parsed4.error.issues.every((i) => !i.message.includes('not excluded')));
+		const parsed4 = s.parse(BenchResults, data4);
+		assert.ok(!parsed4.ok);
+		assert.ok(parsed4.issues.every((i) => !i.message?.includes('not excluded')));
 		const data3 = load_fixture();
 		data3.coverage.prism!.tsx = true;
 		assert_rejects(data3, 'unknown lang "tsx"');
@@ -392,10 +411,10 @@ describe('unsupported and excluded', () => {
 	test('rejects a bundle entry that is both or neither shape', () => {
 		const data = load_fixture();
 		data.bundle.prism!.docs = { ...data.bundle.prism!.docs!, unsupported: ['xml'] };
-		assert.ok(!BenchResults.safeParse(data).success);
+		assert.ok(!s.parse(BenchResults, data).ok);
 		const data2 = load_fixture();
 		data2.bundle.prism!.docs = { unsupported: [] };
-		assert.ok(!BenchResults.safeParse(data2).success);
+		assert.ok(!s.parse(BenchResults, data2).ok);
 	});
 
 	test('rejects a bundle entry for an unknown set', () => {
@@ -417,7 +436,7 @@ describe('anchor', () => {
 	test('a deterministic-only run parses with a null anchor', () => {
 		const data = load_deterministic_fixture();
 		data.meta.anchor = null;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('rejects a null anchor when a cell has timed values', () => {
@@ -460,7 +479,7 @@ describe('run', () => {
 		const data = load_deterministic_fixture();
 		data.meta.run = null;
 		data.meta.anchor = null;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('the kinds of run are told apart', () => {
@@ -469,7 +488,7 @@ describe('run', () => {
 			data.meta.run!.kind = kind;
 			// a calibration measures the cells only
 			if (kind === 'calibrate') clear_startup_run(data);
-			BenchResults.parse(data);
+			s.parse_or_throw(BenchResults, data);
 		}
 		const data = load_fixture();
 		(data.meta.run as any).kind = 'partial';
@@ -478,7 +497,7 @@ describe('run', () => {
 
 	test('a smoke run carries no noise floor', () => {
 		const data = to_smoke(load_fixture());
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 		data.meta.noise_floor = load_fixture().meta.noise_floor;
 		assert_rejects(data, 'meta.noise_floor: a smoke run carries no noise floor');
 	});
@@ -495,7 +514,7 @@ describe('run', () => {
 		const data = load_fixture();
 		assert.strictEqual(data.meta.run!.segments, 1);
 		data.meta.run!.segments = 3;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 		for (const [key, value] of [
 			['segments', 0],
 			['retries', -1],
@@ -518,7 +537,7 @@ describe('run', () => {
 		data4.cells[0]!.values.fuz_code!.attempts = data4.meta.run!.retries + 2;
 		assert_rejects(data4, 'cells.0.values.fuz_code.attempts: more attempts than');
 		data4.cells[0]!.values.fuz_code!.attempts = data4.meta.run!.retries + 1;
-		BenchResults.parse(data4);
+		s.parse_or_throw(BenchResults, data4);
 	});
 
 	/** The fixture narrowed to one of its cells, with the filters that describe exactly that. */
@@ -546,7 +565,7 @@ describe('run', () => {
 	};
 
 	test('filters are null, or describe what the file holds', () => {
-		BenchResults.parse(load_filtered_fixture());
+		s.parse_or_throw(BenchResults, load_filtered_fixture());
 	});
 
 	test('rejects a cell outside a filter', () => {
@@ -578,7 +597,7 @@ describe('run', () => {
 		// the fixture's own roster, named in full, is a filter too
 		const data4 = load_fixture();
 		data4.meta.run!.filters.libraries = data4.meta.libraries.map((l) => l.id);
-		BenchResults.parse(data4);
+		s.parse_or_throw(BenchResults, data4);
 	});
 
 	test('rejects a filter that is empty, misnamed, or repeats an id', () => {
@@ -624,7 +643,7 @@ describe('run', () => {
 		// a run that was stopped and resumed is a result like any other
 		const resumed = load_fixture();
 		resumed.meta.run!.segments = 2;
-		assert.ok(bench_results_is_publishable(BenchResults.parse(resumed)));
+		assert.ok(bench_results_is_publishable(s.parse_or_throw(BenchResults, resumed)));
 	});
 
 	/** Removes a library's numbers from a cell. */
@@ -651,7 +670,7 @@ describe('run', () => {
 			]);
 			// excluded there, it is accounted for
 			data.meta.excluded.push({ cell: cell_id, library: 'prism', reason: 'produced no tokens' });
-			BenchResults.parse(data);
+			s.parse_or_throw(BenchResults, data);
 			assert.strictEqual(bench_results_is_publishable(data), kind === 'full');
 		}
 	});
@@ -666,7 +685,7 @@ describe('run', () => {
 		// and so are the cold-start scenarios that load it
 		data.startup = data.startup.filter((s) => !(s.library === 'twinkleplop' && s.lang === 'rust'));
 		assert.deepStrictEqual(bench_results_find_startup_gaps(data), []);
-		assert.ok(bench_results_is_publishable(BenchResults.parse(data)));
+		assert.ok(bench_results_is_publishable(s.parse_or_throw(BenchResults, data)));
 	});
 
 	test('a run with no filters has a cell for every listed input in every mode', () => {
@@ -684,19 +703,19 @@ describe('run', () => {
 		fit_process_noise(data);
 		data.meta.excluded = data.meta.excluded.filter((e) => e.cell.endsWith(':tokenize'));
 		assert.deepStrictEqual(bench_results_find_gaps(data), []);
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('a filtered or smoke run, and one that timed no cell, may have gaps', () => {
 		const filtered = load_filtered_fixture();
 		assert.ok(bench_results_find_gaps(filtered).length > 0);
-		BenchResults.parse(filtered);
+		s.parse_or_throw(BenchResults, filtered);
 		const smoke = to_smoke(load_fixture());
 		remove_library(smoke, 'neutral/ts/checker_excerpt.ts:html', 'prism');
-		BenchResults.parse(smoke);
+		s.parse_or_throw(BenchResults, smoke);
 		const untimed = load_fixture();
 		clear_values(untimed);
-		BenchResults.parse(untimed);
+		s.parse_or_throw(BenchResults, untimed);
 	});
 
 	test('rejects parameters that are not positive', () => {
@@ -713,7 +732,7 @@ describe('run', () => {
 	test('the commit is a full hash, marked when the tree was dirty', () => {
 		const data = load_fixture();
 		data.meta.commit = `${data.meta.commit}-dirty`;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 		for (const commit of ['abc123', 'main', `${'0'.repeat(40)}-changed`, `${'0'.repeat(40)} `]) {
 			const data2 = load_fixture();
 			data2.meta.commit = commit;
@@ -812,7 +831,7 @@ describe('startup', () => {
 		);
 		assert.strictEqual(set_entries.length, 2);
 		data.startup.push(...set_entries.map((entry) => ({ ...entry, set: 'web_rust' })));
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 		for (const scenario of ['lang', 'first_highlight']) {
 			const data2 = load_fixture();
 			const entry = data2.startup.find((s) => s.scenario === scenario && s.library === 'fuz_code')!;
@@ -882,7 +901,7 @@ describe('startup', () => {
 			const data = load_fixture();
 			clear_startup_run(data);
 			change(data);
-			BenchResults.parse(data);
+			s.parse_or_throw(BenchResults, data);
 			for (const key of KEYS) {
 				const data2 = load_fixture();
 				clear_startup(data2);
@@ -936,7 +955,7 @@ describe('startup', () => {
 		assert.ok(!bench_results_is_publishable(data));
 		// excluded there, it is accounted for
 		data.meta.startup_excluded.push({ ...to_scenario(removed!), library: 'prism', reason: 'x' });
-		assert.ok(bench_results_is_publishable(BenchResults.parse(data)));
+		assert.ok(bench_results_is_publishable(s.parse_or_throw(BenchResults, data)));
 		// the baseline is implied too, and every form of every scenario
 		const data2 = load_fixture();
 		data2.startup.shift();
@@ -956,7 +975,7 @@ describe('startup', () => {
 	test('a filtered, smoke, or calibration run need not hold every scenario', () => {
 		const smoke = to_smoke(load_fixture());
 		smoke.startup.pop();
-		BenchResults.parse(smoke);
+		s.parse_or_throw(BenchResults, smoke);
 		const filtered = load_fixture();
 		filtered.meta.run!.filters.langs = ['ts'];
 		filtered.cells = filtered.cells.filter((c) => c.lang === 'ts');
@@ -966,7 +985,7 @@ describe('startup', () => {
 		filtered.startup = filtered.startup.filter((s) => s.lang === null || s.lang === 'ts');
 		filtered.meta.startup_excluded = [];
 		filtered.startup.pop();
-		BenchResults.parse(filtered);
+		s.parse_or_throw(BenchResults, filtered);
 	});
 
 	test('the filters describe the cold start too', () => {
@@ -981,7 +1000,7 @@ describe('startup', () => {
 		assert_rejects(data3, `cells: timed cells are outside the run's metrics filter`);
 		// cold start alone: the cells are not timed
 		clear_values(data3);
-		BenchResults.parse(data3);
+		s.parse_or_throw(BenchResults, data3);
 		const data4 = load_fixture();
 		data4.meta.run!.kind = 'calibrate';
 		assert_rejects(data4, 'startup: a calibration measures no cold start');
@@ -989,7 +1008,8 @@ describe('startup', () => {
 
 	test('rejects a duplicate entry', () => {
 		const data = load_fixture();
-		data.startup.push({ ...data.startup[1]!, median_ms: 1 });
+		const entry = data.startup[1]!;
+		data.startup.push({ ...entry, median_ms: entry.p10_ms });
 		assert_rejects(data, 'duplicate startup entry');
 	});
 
@@ -1007,7 +1027,7 @@ describe('cells', () => {
 		const data = load_fixture();
 		for (const cell of data.cells.filter((c) => c.source === 'home')) cell.home = 'highlight_js';
 		data.inputs.find((i) => i.source === 'home')!.home = 'highlight_js';
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('rejects a home that is not shaped like a library id', () => {
@@ -1080,7 +1100,7 @@ describe('inputs', () => {
 		assert_rejects(data, 'has no tokenize cell');
 		// any filter makes the run partial, and a partial run lists what it has
 		data.meta.run!.filters.sizes = ['micro', 'small', 'medium', 'large'];
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('rejects a duplicate input file', () => {
@@ -1113,13 +1133,13 @@ describe('inputs', () => {
 			provenance: [],
 			derivation: null
 		};
-		BenchInput.parse(input);
+		s.parse_or_throw(BenchInput, input);
 		const pin = load_fixture().inputs[0]!.provenance[0]!;
-		assert.ok(!BenchInput.safeParse({ ...input, provenance: [pin] }).success);
-		assert.ok(!BenchInput.safeParse({ ...input, source: 'neutral' }).success);
+		assert.ok(!s.parse(BenchInput, { ...input, provenance: [pin] }).ok);
+		assert.ok(!s.parse(BenchInput, { ...input, source: 'neutral' }).ok);
 		// a stress input may be written here too, or come from upstream
-		BenchInput.parse({ ...input, file: 'stress/ts/a.ts', source: 'stress' });
-		BenchInput.parse({
+		s.parse_or_throw(BenchInput, { ...input, file: 'stress/ts/a.ts', source: 'stress' });
+		s.parse_or_throw(BenchInput, {
 			...input,
 			file: 'stress/ts/a.ts',
 			source: 'stress',
@@ -1138,11 +1158,11 @@ describe('inputs', () => {
 			synthetic: true,
 			derivation: 'minified'
 		};
-		BenchInput.parse(derived);
-		assert.ok(!BenchInput.safeParse({ ...derived, derivation: null }).success);
-		assert.ok(!BenchInput.safeParse({ ...derived, synthetic: false }).success);
-		assert.ok(!BenchInput.safeParse({ ...derived, provenance: [] }).success);
-		assert.ok(!BenchInput.safeParse({ ...derived, derivation: '' }).success);
+		s.parse_or_throw(BenchInput, derived);
+		assert.ok(!s.parse(BenchInput, { ...derived, derivation: null }).ok);
+		assert.ok(!s.parse(BenchInput, { ...derived, synthetic: false }).ok);
+		assert.ok(!s.parse(BenchInput, { ...derived, provenance: [] }).ok);
+		assert.ok(!s.parse(BenchInput, { ...derived, derivation: '' }).ok);
 	});
 
 	test('only a stress input is derived, and a written one is not synthetic', () => {
@@ -1155,50 +1175,45 @@ describe('inputs', () => {
 			synthetic: true,
 			derivation: 'minified'
 		};
-		BenchInput.parse(derived);
+		s.parse_or_throw(BenchInput, derived);
 		const neutral = { ...derived, file: 'neutral/ts/a.min.ts', source: 'neutral' as const };
-		assert.match(
-			JSON.stringify(BenchInput.safeParse(neutral).error?.issues),
-			/only a stress input is derived/
-		);
+		assert.match(JSON.stringify(s.parse(BenchInput, neutral)), /only a stress input is derived/);
 		const written = { ...derived, provenance: [], derivation: null, synthetic: false };
-		BenchInput.parse(written);
-		assert.ok(!BenchInput.safeParse({ ...written, synthetic: true }).success);
+		s.parse_or_throw(BenchInput, written);
+		assert.ok(!s.parse(BenchInput, { ...written, synthetic: true }).ok);
 	});
 
 	test('one upstream file is a verbatim copy, and several make the input synthetic', () => {
 		const input = load_fixture().inputs.find((i) => i.provenance.length === 1)!;
 		const pin = input.provenance[0]!;
-		BenchInput.parse(input);
+		s.parse_or_throw(BenchInput, input);
 		const changed = { ...input, provenance: [{ ...pin, sha256: 'b'.repeat(64) }] };
-		assert.ok(!BenchInput.safeParse(changed).success);
+		assert.ok(!s.parse(BenchInput, changed).ok);
 		const joined = { ...changed, provenance: [...changed.provenance, pin] };
-		assert.ok(!BenchInput.safeParse(joined).success);
-		BenchInput.parse({ ...joined, synthetic: true });
+		assert.ok(!s.parse(BenchInput, joined).ok);
+		s.parse_or_throw(BenchInput, { ...joined, synthetic: true });
 	});
 
 	test('rejects a home input without its library, and the reverse', () => {
 		const data = load_fixture();
 		const home = data.inputs.find((i) => i.source === 'home')!;
-		assert.ok(!BenchInput.safeParse({ ...home, home: null }).success);
+		assert.ok(!s.parse(BenchInput, { ...home, home: null }).ok);
 		const neutral = data.inputs.find((i) => i.source === 'neutral')!;
-		assert.ok(!BenchInput.safeParse({ ...neutral, home: 'fuz_code' }).success);
+		assert.ok(!s.parse(BenchInput, { ...neutral, home: 'fuz_code' }).ok);
 	});
 
 	test('rejects a pin that is not a full commit or hash', () => {
 		const input = load_fixture().inputs[0]!;
 		const pin = input.provenance[0]!;
-		assert.ok(
-			!BenchInput.safeParse({ ...input, provenance: [{ ...pin, commit: 'main' }] }).success
-		);
-		assert.ok(!BenchInput.safeParse({ ...input, sha256: 'abc' }).success);
+		assert.ok(!s.parse(BenchInput, { ...input, provenance: [{ ...pin, commit: 'main' }] }).ok);
+		assert.ok(!s.parse(BenchInput, { ...input, sha256: 'abc' }).ok);
 	});
 
 	test('a pin names an https repository and a path that stays inside it', () => {
 		const input = load_fixture().inputs[0]!;
 		const pin = input.provenance[0]!;
 		const parses = (changed: Partial<typeof pin>): boolean =>
-			BenchInput.safeParse({ ...input, provenance: [{ ...pin, ...changed }] }).success;
+			s.parse(BenchInput, { ...input, provenance: [{ ...pin, ...changed }] }).ok;
 		assert.ok(parses({}));
 		// the repository is rendered as a link, so nothing but https
 		for (const repo of [
@@ -1226,7 +1241,7 @@ describe('inputs', () => {
 
 	test("an input's file is a relative path that stays inside the corpus", () => {
 		const input = load_fixture().inputs[0]!;
-		const parses = (file: string): boolean => BenchInput.safeParse({ ...input, file }).success;
+		const parses = (file: string): boolean => s.parse(BenchInput, { ...input, file }).ok;
 		assert.ok(parses(input.file));
 		assert.ok(parses('neutral/ts/.config/a..b.ts'));
 		for (const file of [
@@ -1274,10 +1289,10 @@ describe('libraries', () => {
 		const library = data.meta.libraries.find((l) => l.extra_packages)!;
 		assert.deepStrictEqual(library.extra_packages, { '@twinkleplop/typescript': '0.1.5' });
 		delete library.extra_packages;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 		const data2 = load_fixture();
 		data2.meta.libraries[0]!.extra_packages = { 'prism-svelte': '' };
-		assert.ok(!BenchResults.safeParse(data2).success);
+		assert.ok(!s.parse(BenchResults, data2).ok);
 	});
 });
 
@@ -1397,7 +1412,7 @@ const load_deterministic_only = (): BenchResults => {
 describe('a deterministic-only file', () => {
 	test('records no time, machine, Node version, or commit', () => {
 		const data = load_deterministic_only();
-		const parsed = BenchResults.parse(data);
+		const parsed = s.parse_or_throw(BenchResults, data);
 		assert.ok(!bench_results_is_publishable(parsed));
 		// it still holds every deterministic section
 		assert.ok(parsed.cells.length > 0);
@@ -1428,7 +1443,7 @@ describe('a deterministic-only file', () => {
 		]);
 		// excluded there, it is accounted for, as in the cells the fixture already excludes it from
 		data2.meta.excluded.push({ cell: data2.cells[1]!.id, library: 'prism', reason: 'no HTML' });
-		BenchResults.parse(data2);
+		s.parse_or_throw(BenchResults, data2);
 		assert.deepStrictEqual(bench_results_find_gaps(load_deterministic_only(), 'deterministic'), []);
 	});
 
@@ -1444,7 +1459,7 @@ describe('a deterministic-only file', () => {
 		clear_values(data);
 		delete data.cells[0]!.tokens.prism;
 		data.meta.run!.filters.sizes = ['micro', 'small', 'medium', 'large'];
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('rejects a file with timed numbers that does not say where they came from', () => {
@@ -1567,7 +1582,7 @@ describe('bundle', () => {
 				assert_rejects(data, `${key} is larger than raw`);
 				// equal to raw, or over it by a header, is what a few bytes compress to
 				sizes[key] = sizes.raw + 20;
-				BenchResults.parse(data);
+				s.parse_or_throw(BenchResults, data);
 			}
 		}
 		assert.ok(to_max_compressed_bytes(1) >= 1 + 20);
@@ -1614,22 +1629,22 @@ describe('bundle', () => {
 		assert_rejects(data, 'read as sizes: gzip: ');
 		const data2 = load_fixture();
 		(data2.bundle.prism!.docs as any).extra = 1;
-		assert_rejects(data2, 'read as sizes: Unrecognized key');
+		assert_rejects(data2, 'read as sizes: extra: expected no unknown keys');
 		const data3 = load_fixture();
 		(data3.bundle.prism!['single:xml'] as any).unsupported = ['XML'];
-		// zod names the place itself when only one shape comes close
-		assert_rejects(data3, 'bundle.prism.single:xml.unsupported.0: Invalid string');
+		assert_rejects(data3, 'bundle.prism.single:xml: a bundle entry is sizes');
+		assert_rejects(data3, 'read as unsupported: unsupported.0: expected');
 		const data5 = load_fixture();
 		(data5.bundle.prism as any)['single:xml'] = { unsupported: ['xml'], raw: 1 };
-		assert_rejects(data5, 'read as unsupported: Unrecognized key');
+		assert_rejects(data5, 'read as unsupported: raw: expected no unknown keys');
 		const data4 = load_fixture();
 		(data4.bundle.prism as any).docs = 12;
 		assert_rejects(data4, 'read as sizes: ');
 		// the message never falls back to the union's own
 		for (const changed of [data, data2, data3, data4, data5]) {
-			const parsed = BenchResults.safeParse(changed);
-			assert.ok(!parsed.success);
-			assert.ok(parsed.error.issues.every((i) => i.message !== 'Invalid input'));
+			const parsed = s.parse(BenchResults, changed);
+			assert.ok(!parsed.ok);
+			assert.ok(parsed.issues.every((i) => i.kind !== 'union' || i.message !== undefined));
 		}
 	});
 
@@ -1665,7 +1680,7 @@ describe('bundle', () => {
 		] as const) {
 			const data3 = load_fixture();
 			(data3.meta.bundler as any)[key] = value;
-			assert_rejects(data3, `meta.bundler.${key}`);
+			assert_rejects(data3, `meta.bundler: a bundler built with rolldown: ${key}: `);
 		}
 	});
 
@@ -1676,7 +1691,7 @@ describe('bundle', () => {
 		assert_rejects(data, 'meta.bundler: a bundler names exactly one of rolldown and rollup');
 		delete bundler.rolldown;
 		bundler.vite = '7.0.0';
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 		delete bundler.rollup;
 		assert_rejects(data, 'meta.bundler: a bundler names exactly one of rolldown and rollup');
 	});
@@ -1689,7 +1704,7 @@ describe('plausibility of timed numbers', () => {
 		[value.p10_ns, value.p90_ns] = [value.p90_ns, value.p10_ns];
 		assert_rejects(data, 'cells.0.values.fuz_code.p10_ns: the 10th percentile is at most the 90th');
 		value.p10_ns = value.p90_ns;
-		BenchResults.parse(data);
+		s.parse_or_throw(BenchResults, data);
 	});
 
 	test('stable is exactly a drift under the threshold, either way', () => {
@@ -1703,7 +1718,7 @@ describe('plausibility of timed numbers', () => {
 		] as const) {
 			const data = load_fixture();
 			data.meta.anchor = { drift, stable };
-			BenchResults.parse(data);
+			s.parse_or_throw(BenchResults, data);
 			data.meta.anchor = { drift, stable: !stable };
 			assert_rejects(data, 'meta.anchor.stable: stable is exactly a drift under');
 		}

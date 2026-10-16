@@ -37,16 +37,18 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { HEAP_TOLERANCE_KB, HEAP_TOLERANCE_RATIO } from '../src/lib/bench_constants.ts';
 import {
 	BenchHeap,
+	BenchResults,
 	heap_readings_agree,
+	order_keys_by_schema,
 	parse_bench_results,
 	type BenchBundler,
 	type BenchCellCompressed,
 	type BenchLibrary,
-	type BenchResults,
 	type BenchSet
 } from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
@@ -65,9 +67,13 @@ import { measure_bundles, read_bundler, type MeasureBundlesOptions } from './siz
 export const to_deterministic_path = (dir: string = RESULTS_DIR): string =>
 	join(dir, 'deterministic.json');
 
-/** The text of a results file: what is written to disk, and what a check compares. */
+/**
+ * The text of a results file: what is written to disk, and what a check
+ * compares. Keys are in the schema's order, whatever order the harness built
+ * them in.
+ */
 export const serialize_results = (results: BenchResults): string =>
-	JSON.stringify(results, null, '\t') + '\n';
+	JSON.stringify(order_keys_by_schema(BenchResults, results), null, '\t') + '\n';
 
 /** How `build_deterministic_results` is run. */
 export interface BuildDeterministicOptions extends MeasureBundlesOptions {
@@ -300,14 +306,14 @@ export const keep_agreeing_heaps = (committed: unknown, generated: BenchResults)
 		heap[library] = {};
 		for (const [lang, entry] of Object.entries(by_lang)) {
 			const kept = is_record(own) ? own[lang] : undefined;
-			const parsed = BenchHeap.safeParse(kept);
-			if (!parsed.success) {
+			const parsed = s.parse(BenchHeap, kept);
+			if (!parsed.ok) {
 				heap[library][lang] = entry;
 				continue;
 			}
 			// number by number, so a check names only a number outside the tolerance
 			const keep = (key: keyof BenchHeap): number =>
-				heap_readings_agree(parsed.data[key], entry[key]) ? parsed.data[key] : entry[key];
+				heap_readings_agree(parsed.value[key], entry[key]) ? parsed.value[key] : entry[key];
 			heap[library][lang] = {
 				retained_kb: keep('retained_kb'),
 				code_kb: keep('code_kb'),

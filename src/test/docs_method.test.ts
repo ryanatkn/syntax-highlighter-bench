@@ -1,5 +1,6 @@
 import { assert, test } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { get_schema_entries } from '@fuzdev/fuz_schema/introspect.ts';
 
 import {
 	BENCH_ANCHOR_STABLE_BELOW,
@@ -31,14 +32,13 @@ test('the method docs name every flag of a run', () => {
 
 test('the method docs name every kind of run', () => {
 	for (const [name, text] of Object.entries(docs)) {
-		for (const kind of BenchRunKind.options)
-			assert.ok(text.includes(kind), `${name} lacks ${kind}`);
+		for (const kind of BenchRunKind.def) assert.ok(text.includes(kind), `${name} lacks ${kind}`);
 	}
 });
 
 test('the method docs name every number of a cell', () => {
 	for (const [name, text] of Object.entries(docs)) {
-		for (const key of Object.keys(BenchCellValue.shape)) {
+		for (const key of Object.keys(get_schema_entries(BenchCellValue)!)) {
 			assert.ok(text.includes(key), `${name} lacks ${key}`);
 		}
 	}
@@ -66,8 +66,8 @@ test('the method docs name every cold-start scenario, number, and metric', () =>
 	for (const [name, text] of Object.entries(docs)) {
 		const plain = text.replace(/<\/?code>/g, '`');
 		for (const id of [
-			...BenchStartupScenario.options,
-			...BenchRunMetric.options,
+			...BenchStartupScenario.def,
+			...BenchRunMetric.def,
 			...['samples', 'median_ms', 'p10_ms', 'p90_ms', 'spread', 'rss_peak_bytes', 'bundled']
 		]) {
 			assert.ok(plain.includes(`\`${id}\``), `${name} lacks ${id}`);
@@ -78,7 +78,7 @@ test('the method docs name every cold-start scenario, number, and metric', () =>
 	}
 	// and those are the numbers of an entry
 	for (const key of ['samples', 'median_ms', 'p10_ms', 'p90_ms', 'spread', 'rss_peak_bytes']) {
-		assert.ok(Object.hasOwn(BenchStartup.shape, key), key);
+		assert.ok(Object.hasOwn(get_schema_entries(BenchStartup)!, key), key);
 	}
 });
 

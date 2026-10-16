@@ -10,7 +10,7 @@ const libraries = to_library_ids(results);
 
 const NEUTRAL: OutputSelection = {
 	langs: ['rust'],
-	sizes: BenchSize.options,
+	sizes: [...BenchSize.def],
 	sources: ['neutral'],
 	measures: OUTPUT_MEASURES.map((measure) => measure.id),
 	compression: 'raw'
@@ -75,7 +75,7 @@ describe('to_output_groups', () => {
 		const fixture = load_fixture();
 		const groups = to_output_groups(fixture, {
 			langs: ['rust'],
-			sizes: BenchSize.options,
+			sizes: [...BenchSize.def],
 			sources: ['shiki'],
 			measures: OUTPUT_MEASURES.map((measure) => measure.id),
 			compression: 'gzip'

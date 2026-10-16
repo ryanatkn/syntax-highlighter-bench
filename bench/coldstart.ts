@@ -55,10 +55,16 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { stats_median, stats_percentile, stats_spread } from '@fuzdev/fuz_util/stats.js';
-import { z } from 'zod';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
 
 import {
 	BenchCellOutput,
+	NonEmptyString,
+	NonnegativeInt,
+	PositiveInt,
+	PositiveNumber,
+	refined,
 	type BenchResults,
 	type BenchRunFilters,
 	type BenchStartup,
@@ -461,50 +467,48 @@ export const prepare_startup = async (
 };
 
 /** What a cold-start process prints: one line of JSON. */
-export const StartupChildOutput = z.strictObject({
-	ms: z.number().positive().meta({
+export const StartupChildOutput = s.object({
+	ms: meta(PositiveNumber, {
 		description: "The process's clock when the work was done: milliseconds since it started."
 	}),
-	max_rss_kb: z.number().int().positive().meta({
+	max_rss_kb: meta(PositiveInt, {
 		description: "The process's peak resident size at that point, in kilobytes."
 	}),
-	exports: z
-		.number()
-		.int()
-		.nonnegative()
-		.meta({ description: 'How many names the entry module exports.' }),
-	html: z.string().nullable().meta({ description: 'What a first highlight returned.' }),
-	compile_cache_dir: z.string().nullable().meta({
+	exports: meta(NonnegativeInt, { description: 'How many names the entry module exports.' }),
+	html: meta(s.nullable(s.string), { description: 'What a first highlight returned.' }),
+	compile_cache_dir: meta(s.nullable(s.string), {
 		description: "The directory of V8's compile cache, which must not be in use."
 	})
 });
-export type StartupChildOutput = z.infer<typeof StartupChildOutput>;
+export type StartupChildOutput = s.Infer<typeof StartupChildOutput>;
 
 /** One sample of a scenario. */
-export const StartupSample = z.strictObject({
-	ms: z.number().positive(),
-	rss_peak_bytes: z.number().int().positive(),
-	output: BenchCellOutput.nullable().meta({
+export const StartupSample = s.object({
+	ms: PositiveNumber,
+	rss_peak_bytes: PositiveInt,
+	output: meta(s.nullable(BenchCellOutput), {
 		description: 'The size of the HTML a first highlight returned. Null for any other scenario.'
 	})
 });
-export type StartupSample = z.infer<typeof StartupSample>;
+export type StartupSample = s.Infer<typeof StartupSample>;
 
 /**
  * What one cold-start process came to: a sample, or the reason the library is
  * excluded from the scenario.
  */
-export const StartupResult = z
-	.strictObject({
-		key: z.string().min(1).meta({ description: 'The key of the scenario.' }),
-		sample: StartupSample.nullable(),
-		excluded: z.string().min(1).nullable()
-	})
-	.refine(
-		(result) => (result.sample === null) !== (result.excluded === null),
-		'a scenario is sampled or excluded, and never both'
-	);
-export type StartupResult = z.infer<typeof StartupResult>;
+export const StartupResult = refined(
+	s.object({
+		key: meta(NonEmptyString, { description: 'The key of the scenario.' }),
+		sample: s.nullable(StartupSample),
+		excluded: s.nullable(NonEmptyString)
+	}),
+	(result, issue) => {
+		if ((result.sample === null) === (result.excluded === null)) {
+			issue([], 'a scenario is sampled or excluded, and never both');
+		}
+	}
+);
+export type StartupResult = s.Infer<typeof StartupResult>;
 
 /**
  * Checks what a cold-start process reported, and turns it into a sample.

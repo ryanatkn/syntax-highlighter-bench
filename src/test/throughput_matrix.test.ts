@@ -20,8 +20,8 @@ const libraries = to_library_ids(fixture);
 
 const EVERYTHING: ThroughputSelection = {
 	langs: fixture.langs.map((lang) => lang.id),
-	sizes: BenchSize.options,
-	modes: BenchMode.options,
+	sizes: [...BenchSize.def],
+	modes: [...BenchMode.def],
 	sources: ['neutral', 'shiki', 'home:fuz_code'],
 	unit: 'mb_per_sec'
 };

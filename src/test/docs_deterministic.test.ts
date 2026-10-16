@@ -1,5 +1,6 @@
 import { assert, test } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { get_schema_entries } from '@fuzdev/fuz_schema/introspect.ts';
 
 import {
 	BenchBundleSizes,
@@ -36,11 +37,11 @@ test('the deterministic docs state the compression levels as the harness defines
 
 test('the deterministic docs name every size of a bundle, an output, an install, and a heap', () => {
 	const keys = [
-		...Object.keys(BenchBundleSizes.shape),
-		...Object.keys(BenchCellOutput.shape),
-		...Object.keys(BenchCellCompressed.shape),
-		...Object.keys(BenchInstall.shape),
-		...Object.keys(BenchHeap.shape)
+		...Object.keys(get_schema_entries(BenchBundleSizes)!),
+		...Object.keys(get_schema_entries(BenchCellOutput)!),
+		...Object.keys(get_schema_entries(BenchCellCompressed)!),
+		...Object.keys(get_schema_entries(BenchInstall)!),
+		...Object.keys(get_schema_entries(BenchHeap)!)
 	];
 	for (const [name, text] of Object.entries(docs)) {
 		for (const key of keys) assert.ok(text.includes(`\`${key}\``), `${name} lacks ${key}`);

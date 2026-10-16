@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchSet } from '#lib/results_schema.ts';
 import { LANGS, is_lang } from '../../../bench/langs.ts';
@@ -27,7 +28,7 @@ describe('FEATURE_SETS', () => {
 
 	test('every set matches the results schema', () => {
 		for (const set of FEATURE_SETS) {
-			assert.deepStrictEqual(BenchSet.parse(set), { ...set, langs: [...set.langs] });
+			assert.deepStrictEqual(s.parse_or_throw(BenchSet, set), { ...set, langs: [...set.langs] });
 		}
 	});
 

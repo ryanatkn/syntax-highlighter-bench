@@ -12,6 +12,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import {
 	build_corpus_manifest,
@@ -36,7 +37,8 @@ if (import.meta.main) {
 		existsSync(path) ? readFileSync(path, 'utf8') : null;
 
 	const committed = read(CORPUS_MANIFEST_PATH);
-	const previous = committed === null ? [] : CorpusManifestSeed.parse(JSON.parse(committed)).inputs;
+	const previous =
+		committed === null ? [] : s.parse_or_throw(CorpusManifestSeed, JSON.parse(committed)).inputs;
 
 	const { manifest, problems, dropped } = build_corpus_manifest(previous);
 	const serialized = serialize_corpus_manifest(manifest);

@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { LangNotSetUpError, type HighlighterAdapter } from '../../../bench/adapter.ts';
 import {
@@ -138,7 +139,7 @@ describe('create_timed_call', () => {
 describe('run_cell', () => {
 	test('measures the library and reports the cell', async () => {
 		const result = await run_cell(create_spec(), deps);
-		CellResult.parse(result);
+		s.parse_or_throw(CellResult, result);
 		assert.strictEqual(result.cell, `${SNIPPET}:tokenize`);
 		assert.strictEqual(result.library, 'fuz_code');
 		assert.deepStrictEqual(result.loaded_langs, ['json']);
@@ -185,7 +186,7 @@ describe('run_cell', () => {
 				reasons.push(result.excluded);
 				// checked once, on the snippet, and never timed
 				assert.deepStrictEqual(stub.log, ['setup json', 'tokenize', 'html']);
-				CellResult.parse(result);
+				s.parse_or_throw(CellResult, result);
 			}
 		}
 		assert.strictEqual(new Set(reasons).size, 1);
@@ -243,12 +244,12 @@ describe('run_cell', () => {
 
 describe('CellSpec and CellResult', () => {
 	test('a spec is strict about what a cell is asked', () => {
-		CellSpec.parse(create_spec());
-		assert.ok(!CellSpec.safeParse({ ...create_spec(), extra: 1 }).success);
-		assert.ok(!CellSpec.safeParse({ ...create_spec(), library: '../x' }).success);
-		assert.ok(!CellSpec.safeParse({ ...create_spec(), mode: 'render' }).success);
-		assert.ok(!CellSpec.safeParse({ ...create_spec(), rounds: 0 }).success);
-		assert.ok(!CellSpec.safeParse(null).success);
+		s.parse_or_throw(CellSpec, create_spec());
+		assert.ok(!s.parse(CellSpec, { ...create_spec(), extra: 1 }).ok);
+		assert.ok(!s.parse(CellSpec, { ...create_spec(), library: '../x' }).ok);
+		assert.ok(!s.parse(CellSpec, { ...create_spec(), mode: 'render' }).ok);
+		assert.ok(!s.parse(CellSpec, { ...create_spec(), rounds: 0 }).ok);
+		assert.ok(!s.parse(CellSpec, null).ok);
 	});
 
 	test('a result is a measurement or an exclusion, never both or neither', () => {
@@ -260,9 +261,9 @@ describe('CellSpec and CellResult', () => {
 			ns_per_op: [1],
 			rss_peak_bytes: 1
 		};
-		CellResult.parse({ ...base, measurement, excluded: null });
-		CellResult.parse({ ...base, measurement: null, excluded: 'why' });
-		assert.ok(!CellResult.safeParse({ ...base, measurement, excluded: 'why' }).success);
-		assert.ok(!CellResult.safeParse({ ...base, measurement: null, excluded: null }).success);
+		s.parse_or_throw(CellResult, { ...base, measurement, excluded: null });
+		s.parse_or_throw(CellResult, { ...base, measurement: null, excluded: 'why' });
+		assert.ok(!s.parse(CellResult, { ...base, measurement, excluded: 'why' }).ok);
+		assert.ok(!s.parse(CellResult, { ...base, measurement: null, excluded: null }).ok);
 	});
 });

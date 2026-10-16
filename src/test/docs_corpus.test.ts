@@ -22,7 +22,7 @@ const adapters_page = readFileSync(
 const format_bytes = (bytes: number): string => bytes.toLocaleString('en-US');
 
 test('the corpus docs name every source', () => {
-	for (const source of BenchSource.options) {
+	for (const source of BenchSource.def) {
 		assert.ok(corpus_page.includes(`<code>${source}</code>`), `the tome lacks "${source}"`);
 		assert.ok(corpus_readme.includes(`\`${source}\``), `the readme lacks "${source}"`);
 	}

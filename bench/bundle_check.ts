@@ -28,30 +28,34 @@
  */
 
 import { pathToFileURL } from 'node:url';
-import { z } from 'zod';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
 
+import { NonEmptyString, PositiveInt } from '../src/lib/results_schema.ts';
 import { load_adapter } from './cell.ts';
 import { analyze_html, MIN_SNIPPET_SPAN_KINDS } from './check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from './corpus.ts';
 import { is_lang } from './langs.ts';
 
 /** A bundle to check: the file, the library it is of, and the languages it should hold. */
-export const BundleCheckSpec = z.strictObject({
-	library: z.string().regex(/^[a-z][a-z0-9_]*$/),
-	langs: z.array(z.string().min(1)),
-	path: z.string().min(1).meta({ description: 'The built bundle, as an absolute path.' })
+export const BundleCheckSpec = s.object({
+	library: s.pipe(s.string, s.regex(/^[a-z][a-z0-9_]*$/)),
+	langs: s.array(NonEmptyString),
+	path: meta(NonEmptyString, { description: 'The built bundle, as an absolute path.' })
 });
-export type BundleCheckSpec = z.infer<typeof BundleCheckSpec>;
+export type BundleCheckSpec = s.Infer<typeof BundleCheckSpec>;
 
 /** What a bundle was seen to hold. */
-export const BundleCheckResult = z.strictObject({
-	library: z.string().min(1),
-	exports: z.array(z.string()).min(1).meta({ description: 'The names the bundle exports.' }),
-	span_kinds: z.record(z.string(), z.number().int().positive()).meta({
+export const BundleCheckResult = s.object({
+	library: NonEmptyString,
+	exports: meta(s.pipe(s.array(s.string), s.min_length(1)), {
+		description: 'The names the bundle exports.'
+	}),
+	span_kinds: meta(s.record(PositiveInt), {
 		description: "How many kinds of span each language's snippet was highlighted with."
 	})
 });
-export type BundleCheckResult = z.infer<typeof BundleCheckResult>;
+export type BundleCheckResult = s.Infer<typeof BundleCheckResult>;
 
 /**
  * Evaluates what an adapter's `bundle_html_source` returns, the way a cold-start
@@ -123,7 +127,7 @@ export const check_bundle = async (spec: BundleCheckSpec): Promise<BundleCheckRe
 };
 
 if (import.meta.main) {
-	const spec = BundleCheckSpec.parse(JSON.parse(process.argv[2] ?? 'null'));
+	const spec = s.parse_or_throw(BundleCheckSpec, JSON.parse(process.argv[2] ?? 'null'));
 	const result = await check_bundle(spec);
 	// exits once the line is written, so a handle the library leaves open can't keep the process
 	// alive; the callback waits for the write, which is asynchronous to a pipe

@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchResults, heap_readings_agree, parse_bench_results } from '#lib/results_schema.ts';
 import {
@@ -160,7 +161,7 @@ describe('run_bench', () => {
 				[]
 			);
 			assert.ok(log.some((line) => line.includes('smoke run')));
-			BenchResults.parse(results);
+			s.parse_or_throw(BenchResults, results);
 		}
 	);
 

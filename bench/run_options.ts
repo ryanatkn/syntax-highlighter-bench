@@ -125,22 +125,22 @@ export const RUN_FLAGS: ReadonlyArray<{ flag: string; value: string | null; desc
 		{
 			flag: '--sizes',
 			value: '<tiers>',
-			description: `measure only inputs of these size tiers (${BenchSize.options.join(', ')})`
+			description: `measure only inputs of these size tiers (${BenchSize.def.join(', ')})`
 		},
 		{
 			flag: '--modes',
 			value: '<modes>',
-			description: `measure only these modes (${BenchMode.options.join(', ')})`
+			description: `measure only these modes (${BenchMode.def.join(', ')})`
 		},
 		{
 			flag: '--sources',
 			value: '<sources>',
-			description: `measure only inputs from these sources (${BenchSource.options.join(', ')})`
+			description: `measure only inputs from these sources (${BenchSource.def.join(', ')})`
 		},
 		{
 			flag: '--metrics',
 			value: '<metrics>',
-			description: `measure only these (${BenchRunMetric.options.join(', ')}): the timed cells, cold start, or by default both`
+			description: `measure only these (${BenchRunMetric.def.join(', ')}): the timed cells, cold start, or by default both`
 		},
 		{
 			flag: '--passes',
@@ -306,13 +306,13 @@ export const parse_run_args = (
 	if (typeof libraries === 'string') return error(libraries);
 	const langs = parse_list('--langs', TIMED_LANGS);
 	if (typeof langs === 'string') return error(langs);
-	const sizes = parse_list('--sizes', BenchSize.options);
+	const sizes = parse_list('--sizes', BenchSize.def);
 	if (typeof sizes === 'string') return error(sizes);
-	const modes = parse_list('--modes', BenchMode.options);
+	const modes = parse_list('--modes', BenchMode.def);
 	if (typeof modes === 'string') return error(modes);
-	const sources = parse_list('--sources', BenchSource.options);
+	const sources = parse_list('--sources', BenchSource.def);
 	if (typeof sources === 'string') return error(sources);
-	const metrics = parse_list('--metrics', BenchRunMetric.options);
+	const metrics = parse_list('--metrics', BenchRunMetric.def);
 	if (typeof metrics === 'string') return error(metrics);
 	if (kind === 'calibrate' && (metrics?.includes('startup') || values.has('--startup-samples'))) {
 		return error(
@@ -361,7 +361,7 @@ export const parse_run_args = (
 				// naming every metric restricts nothing, so it is no filter, and nor does naming
 				// throughput on a calibration, which measures nothing else
 				metrics:
-					metrics?.length === BenchRunMetric.options.length || kind === 'calibrate' ? null : metrics
+					metrics?.length === BenchRunMetric.def.length || kind === 'calibrate' ? null : metrics
 			},
 			...params,
 			machine,
@@ -472,7 +472,7 @@ export const plan_cells = (
 	adapters: ReadonlyArray<HighlighterAdapter>
 ): Array<PlannedCell> => {
 	const selected = adapters.filter((a) => filters.libraries?.includes(a.id) ?? true);
-	const modes = BenchMode.options.filter((mode) => filters.modes?.includes(mode) ?? true);
+	const modes = BenchMode.def.filter((mode) => filters.modes?.includes(mode) ?? true);
 	const cells: Array<PlannedCell> = [];
 	let input_index = 0;
 	for (const input of inputs) {

@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -668,8 +669,11 @@ describe('assemble_results', () => {
 		const record = create_record();
 		const { results, pairs } = assemble_results(record);
 		// what comes back is the parsed value, and it parses again to itself
-		assert.deepStrictEqual(BenchResults.parse(results), results);
-		assert.deepStrictEqual(BenchResults.parse(JSON.parse(JSON.stringify(results))), results);
+		assert.deepStrictEqual(s.parse_or_throw(BenchResults, results), results);
+		assert.deepStrictEqual(
+			s.parse_or_throw(BenchResults, JSON.parse(JSON.stringify(results))),
+			results
+		);
 		assert.deepStrictEqual(pairs, []);
 
 		const cells = plan_cells(manifest.inputs, SMALL_TS, ADAPTERS);
@@ -1117,7 +1121,7 @@ describe('carry_noise_floor', () => {
 describe('read_machine', () => {
 	test('describes this machine in the shape a results file carries', () => {
 		const machine = read_machine('box');
-		BenchMachine.parse(machine);
+		s.parse_or_throw(BenchMachine, machine);
 		assert.strictEqual(machine.name, 'box');
 		assert.ok(machine.threads === null || machine.threads > 0);
 	});

@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchCell, BenchMode } from '#lib/results_schema.ts';
 import type { HighlighterAdapter } from '../../../bench/adapter.ts';
@@ -56,7 +57,8 @@ const JSON_INPUTS = manifest.inputs.filter((input) => input.lang === 'json');
 describe('run_outputs', () => {
 	test('sets up exactly the language, once, and reports every input of it', async () => {
 		const stub = create_stub();
-		const result = OutputsResult.parse(
+		const result = s.parse_or_throw(
+			OutputsResult,
 			await run_outputs({ library: 'stub', lang: 'json' }, stub.load)
 		);
 		assert.deepStrictEqual(stub.setups, [['json']]);
@@ -125,11 +127,11 @@ describe('to_bench_cell', () => {
 			['fuz_code', NUMBERS],
 			['prism', { tokens: 9, output: { html_bytes: 90, spans: 8 }, compressed: null }]
 		] as const;
-		const tokenize = BenchCell.parse(to_bench_cell(input, 'tokenize', numbers));
+		const tokenize = s.parse_or_throw(BenchCell, to_bench_cell(input, 'tokenize', numbers));
 		assert.deepStrictEqual(tokenize.tokens, { fuz_code: 7, prism: 9 });
 		assert.deepStrictEqual(tokenize.output, {});
 		assert.deepStrictEqual(tokenize.compressed, {});
-		const html = BenchCell.parse(to_bench_cell(input, 'html', numbers));
+		const html = s.parse_or_throw(BenchCell, to_bench_cell(input, 'html', numbers));
 		assert.deepStrictEqual(html.tokens, {});
 		// a library with no compressed sizes, as in a run that doesn't carry the deterministic file
 		assert.deepStrictEqual(html.compressed, { fuz_code: { gzip: 60, brotli: 50 } });
@@ -177,7 +179,7 @@ describe('to_deterministic_cells', () => {
 		assert.deepStrictEqual(inputs, timed);
 		assert.deepStrictEqual(
 			cells.map((cell) => cell.id),
-			timed.flatMap((input) => BenchMode.options.map((mode) => `${input.file}:${mode}`))
+			timed.flatMap((input) => BenchMode.def.map((mode) => `${input.file}:${mode}`))
 		);
 		assert.deepStrictEqual(excluded, []);
 		for (const cell of cells) {
@@ -199,7 +201,7 @@ describe('to_deterministic_cells', () => {
 		);
 		assert.deepStrictEqual(
 			excluded,
-			BenchMode.options.map((mode) => ({
+			BenchMode.def.map((mode) => ({
 				cell: `${file}:${mode}`,
 				library: 'twinkleplop',
 				reason: 'produced no HTML'

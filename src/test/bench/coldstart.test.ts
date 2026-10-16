@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { gzipSync } from 'node:zlib';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchStartup, type BenchRunFilters } from '#lib/results_schema.ts';
 import type { HighlighterAdapter } from '../../../bench/adapter.ts';
@@ -339,7 +340,7 @@ describe('check_startup_output', () => {
 				sample: { ms: 31.5, rss_peak_bytes: 50_000 * 1024, output: null },
 				excluded: null
 			});
-			StartupResult.parse(result);
+			s.parse_or_throw(StartupResult, result);
 		}
 	});
 
@@ -350,7 +351,7 @@ describe('check_startup_output', () => {
 		);
 		assert.strictEqual(result.sample, null);
 		assert.match(result.excluded!, /exports nothing/);
-		StartupResult.parse(result);
+		s.parse_or_throw(StartupResult, result);
 	});
 
 	test('a first highlight passes the snippet gate on its HTML, or is excluded', () => {
@@ -375,16 +376,16 @@ describe('check_startup_output', () => {
 
 	test('a result is a sample or an exclusion, never both or neither', () => {
 		const sample = { ms: 1, rss_peak_bytes: 1, output: null };
-		assert.ok(!StartupResult.safeParse({ key: 'bare', sample, excluded: 'x' }).success);
-		assert.ok(!StartupResult.safeParse({ key: 'bare', sample: null, excluded: null }).success);
-		assert.ok(!StartupResult.safeParse({ key: 'bare', sample: { ...sample, ms: 0 } }).success);
+		assert.ok(!s.parse(StartupResult, { key: 'bare', sample, excluded: 'x' }).ok);
+		assert.ok(!s.parse(StartupResult, { key: 'bare', sample: null, excluded: null }).ok);
+		assert.ok(!s.parse(StartupResult, { key: 'bare', sample: { ...sample, ms: 0 } }).ok);
 	});
 
 	test('what a process prints is strict', () => {
-		StartupChildOutput.parse(create_output());
-		assert.ok(!StartupChildOutput.safeParse({ ...create_output(), extra: 1 }).success);
-		assert.ok(!StartupChildOutput.safeParse(create_output({ ms: 0 })).success);
-		assert.ok(!StartupChildOutput.safeParse(create_output({ max_rss_kb: 1.5 })).success);
+		s.parse_or_throw(StartupChildOutput, create_output());
+		assert.ok(!s.parse(StartupChildOutput, { ...create_output(), extra: 1 }).ok);
+		assert.ok(!s.parse(StartupChildOutput, create_output({ ms: 0 })).ok);
+		assert.ok(!s.parse(StartupChildOutput, create_output({ max_rss_kb: 1.5 })).ok);
 	});
 });
 
@@ -426,7 +427,7 @@ describe('summarize_startup', () => {
 		});
 		// with what names a scenario it is a results entry
 		const { scenario, library, lang, set, bundled } = find_scenario('prism:core:bundled');
-		BenchStartup.parse({ scenario, library, lang, set, bundled, ...summary });
+		s.parse_or_throw(BenchStartup, { scenario, library, lang, set, bundled, ...summary });
 	});
 });
 

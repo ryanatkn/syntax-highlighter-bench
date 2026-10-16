@@ -357,13 +357,11 @@ describe('diff_journal_header', () => {
 		// every field of a header is one of these, so a new field can't go uncompared
 		const compared = new Set(changes.flatMap(([field]) => [field, field.split('.')[0]]));
 		assert.deepStrictEqual(
-			Object.keys(JournalHeader.shape).filter((key) => !compared.has(key)),
+			Object.keys(JournalHeader.def).filter((key) => !compared.has(key)),
 			['type', 'journal', 'generated_at']
 		);
 		assert.deepStrictEqual(
-			Object.keys(JournalHeader.shape.machine.shape).filter(
-				(key) => !compared.has(`machine.${key}`)
-			),
+			Object.keys(JournalHeader.def.machine.def).filter((key) => !compared.has(`machine.${key}`)),
 			[]
 		);
 	});

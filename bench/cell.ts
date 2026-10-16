@@ -36,9 +36,20 @@
  * @module
  */
 
-import { z } from 'zod';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
-import { BenchCellOutput, BenchMode, to_bench_cell_id } from '../src/lib/results_schema.ts';
+import {
+	BenchCellOutput,
+	BenchMode,
+	keyed_record,
+	NonEmptyString,
+	NonnegativeNumber,
+	PositiveInt,
+	PositiveNumber,
+	refined,
+	to_bench_cell_id
+} from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
 import { check_output, check_snippet } from './check_output.ts';
 import { load_corpus_manifest, read_corpus_input } from './corpus.ts';
@@ -52,57 +63,59 @@ import {
 } from './measure.ts';
 
 /** What the parent asks a cell process to measure. */
-export const CellSpec = z.strictObject({
-	file: z.string().min(1).meta({ description: "The input's path within the corpus." }),
+export const CellSpec = s.object({
+	file: meta(NonEmptyString, { description: "The input's path within the corpus." }),
 	mode: BenchMode,
-	library: z
-		.string()
-		.regex(/^[a-z][a-z0-9_]*$/)
-		.meta({ description: 'The id of the library to measure.' }),
-	rounds: z.number().int().positive(),
-	target_ms: z.number().positive(),
-	warmup_ms: z.number().nonnegative(),
-	rewarm_ms: z.number().nonnegative()
+	library: meta(s.pipe(s.string, s.regex(/^[a-z][a-z0-9_]*$/)), {
+		description: 'The id of the library to measure.'
+	}),
+	rounds: PositiveInt,
+	target_ms: PositiveNumber,
+	warmup_ms: NonnegativeNumber,
+	rewarm_ms: NonnegativeNumber
 });
-export type CellSpec = z.infer<typeof CellSpec>;
+export type CellSpec = s.Infer<typeof CellSpec>;
 
 /** What a library measured in one process. */
-export const CellMeasurement = z.strictObject({
-	tokens: z.number().int().positive(),
+export const CellMeasurement = s.object({
+	tokens: PositiveInt,
 	output: BenchCellOutput,
-	iterations: z.number().int().positive(),
-	ns_per_op: z.array(z.number().positive()).min(1).meta({ description: 'One per round.' }),
-	rss_peak_bytes: z
-		.number()
-		.int()
-		.positive()
-		.meta({ description: "The process's peak resident size." })
+	iterations: PositiveInt,
+	ns_per_op: meta(s.pipe(s.array(PositiveNumber), s.min_length(1)), {
+		description: 'One per round.'
+	}),
+	rss_peak_bytes: meta(PositiveInt, { description: "The process's peak resident size." })
 });
-export type CellMeasurement = z.infer<typeof CellMeasurement>;
+export type CellMeasurement = s.Infer<typeof CellMeasurement>;
 
 /**
  * What a cell process reports: the library's measurement, or the reason it
  * failed the output check and was not timed.
  */
-export const CellResult = z
-	.strictObject({
-		cell: z.string().min(1).meta({ description: 'The id of the cell.' }),
-		library: z.string().min(1),
-		loaded_langs: z
-			.array(z.string().min(1))
-			.meta({ description: 'The languages the library was set up with.' }),
-		versions: z.record(z.string().min(1), z.string().min(1)).meta({
-			description:
-				"The installed version of the library's package and of each of its extra packages, by package name, as the process read them."
+export const CellResult = refined(
+	s.object({
+		cell: meta(NonEmptyString, { description: 'The id of the cell.' }),
+		library: NonEmptyString,
+		loaded_langs: meta(s.array(NonEmptyString), {
+			description: 'The languages the library was set up with.'
 		}),
-		measurement: CellMeasurement.nullable(),
-		excluded: z.string().min(1).nullable()
-	})
-	.refine(
-		(result) => (result.measurement === null) !== (result.excluded === null),
-		'a library is measured or excluded, and never both'
-	);
-export type CellResult = z.infer<typeof CellResult>;
+		versions: meta(
+			keyed_record((key) => key.length > 0, NonEmptyString),
+			{
+				description:
+					"The installed version of the library's package and of each of its extra packages, by package name, as the process read them."
+			}
+		),
+		measurement: s.nullable(CellMeasurement),
+		excluded: s.nullable(NonEmptyString)
+	}),
+	(result, issue) => {
+		if ((result.measurement === null) === (result.excluded === null)) {
+			issue([], 'a library is measured or excluded, and never both');
+		}
+	}
+);
+export type CellResult = s.Infer<typeof CellResult>;
 
 /**
  * Loads one library's adapter, and no other library: the process's memory and
@@ -225,7 +238,7 @@ export const run_cell = async (
 };
 
 if (import.meta.main) {
-	const spec = CellSpec.parse(JSON.parse(process.argv[2] ?? 'null'));
+	const spec = s.parse_or_throw(CellSpec, JSON.parse(process.argv[2] ?? 'null'));
 	const result = await run_cell(spec);
 	// exits once the line is written, so a handle the library leaves open can't keep the process
 	// alive; the callback waits for the write, which is asynchronous to a pipe

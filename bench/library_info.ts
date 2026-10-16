@@ -8,6 +8,7 @@
 
 import { readFileSync } from 'node:fs';
 import { createRequire, findPackageJSON } from 'node:module';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchCoverageEntry, BenchLibrary, type BenchResults } from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
@@ -138,7 +139,7 @@ export const resolve_theme_css = (adapter: HighlighterAdapter): Array<string> | 
  * @throws if the version can't be found or the entry doesn't match the schema
  */
 export const to_bench_library = (adapter: HighlighterAdapter): BenchLibrary =>
-	BenchLibrary.parse({
+	s.parse_or_throw(BenchLibrary, {
 		id: adapter.id,
 		label: adapter.label,
 		package: adapter.package,
@@ -147,12 +148,13 @@ export const to_bench_library = (adapter: HighlighterAdapter): BenchLibrary =>
 		engine: adapter.engine,
 		by_maintainer: adapter.by_maintainer,
 		note: adapter.note,
-		theme_schemes: [...adapter.theme_schemes],
+		// in the schema's order, which the results file is written in
 		...(adapter.extra_packages && {
 			extra_packages: Object.fromEntries(
 				adapter.extra_packages.map((name) => [name, resolve_package_version(name)])
 			)
-		})
+		}),
+		theme_schemes: [...adapter.theme_schemes]
 	} satisfies BenchLibrary);
 
 /**
@@ -191,7 +193,7 @@ export const to_bench_coverage = (
 		for (const lang of LANGS) {
 			if (!Object.hasOwn(adapter.langs, lang)) continue;
 			const via = adapter.via[lang];
-			entries[lang] = BenchCoverageEntry.parse(via === undefined ? true : { via });
+			entries[lang] = s.parse_or_throw(BenchCoverageEntry, via === undefined ? true : { via });
 		}
 		coverage[adapter.id] = entries;
 	}

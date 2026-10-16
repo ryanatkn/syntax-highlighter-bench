@@ -29,6 +29,7 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import type { BenchProvenance } from '../src/lib/results_schema.ts';
 import {
@@ -602,7 +603,10 @@ if (import.meta.main) {
 			writeFileSync(path, input.content);
 			console.log(`wrote ${input.file}: ${Buffer.byteLength(input.content)} bytes`);
 		}
-		const seed = CorpusManifestSeed.parse(JSON.parse(readFileSync(CORPUS_MANIFEST_PATH, 'utf8')));
+		const seed = s.parse_or_throw(
+			CorpusManifestSeed,
+			JSON.parse(readFileSync(CORPUS_MANIFEST_PATH, 'utf8'))
+		);
 		const { manifest: written, problems } = write_corpus_manifest(
 			to_stress_seed(seed.inputs, generated)
 		);

@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchCellValue } from '#lib/results_schema.ts';
 import {
@@ -193,7 +194,7 @@ describe('summarize_passes', () => {
 		assert.strictEqual(value.iterations, 50);
 		// the largest peak of any pass
 		assert.strictEqual(value.rss_peak_bytes, 123_456_789);
-		BenchCellValue.parse({ ...value, attempts: 1 });
+		s.parse_or_throw(BenchCellValue, { ...value, attempts: 1 });
 	});
 
 	test('one round of one pass has no spread', () => {
@@ -204,7 +205,7 @@ describe('summarize_passes', () => {
 		assert.strictEqual(value.spread, 1);
 		assert.strictEqual(value.p10_ns, 5000);
 		assert.strictEqual(value.p90_ns, 5000);
-		BenchCellValue.parse({ ...value, attempts: 1 });
+		s.parse_or_throw(BenchCellValue, { ...value, attempts: 1 });
 	});
 
 	test('an even number of passes still records a whole count', () => {
@@ -216,7 +217,7 @@ describe('summarize_passes', () => {
 			100
 		);
 		assert.ok(Number.isInteger(value.iterations));
-		BenchCellValue.parse({ ...value, attempts: 1 });
+		s.parse_or_throw(BenchCellValue, { ...value, attempts: 1 });
 	});
 });
 

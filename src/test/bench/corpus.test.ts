@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchInput } from '#lib/results_schema.ts';
 import {
@@ -49,7 +50,9 @@ const SHIKI_REPO = 'https://github.com/shikijs/textmate-grammars-themes';
 const SHIKI_COMMIT = '45e292ef67d3a55911dfd02a5039dc238a07040c';
 
 describe('the manifest and the disk', () => {
-	const built = build_corpus_manifest(CorpusManifestSeed.parse(JSON.parse(manifest_text)).inputs);
+	const built = build_corpus_manifest(
+		s.parse_or_throw(CorpusManifestSeed, JSON.parse(manifest_text)).inputs
+	);
 
 	test('the corpus has no problems', () => {
 		assert.deepStrictEqual(built.problems, []);
@@ -85,9 +88,9 @@ describe('the manifest and the disk', () => {
 
 describe('entries', () => {
 	test('every entry matches the schema and names a known lang', () => {
-		CorpusManifest.parse(JSON.parse(manifest_text));
+		s.parse_or_throw(CorpusManifest, JSON.parse(manifest_text));
 		for (const input of inputs) {
-			assert.deepStrictEqual(BenchInput.parse(input), input);
+			assert.deepStrictEqual(s.parse_or_throw(BenchInput, input), input);
 			assert.ok(is_lang(input.lang), input.file);
 		}
 	});
@@ -398,7 +401,7 @@ describe('build_corpus_manifest', () => {
 				derivation: null
 			}
 		]);
-		CorpusManifest.parse(built);
+		s.parse_or_throw(CorpusManifest, built);
 	});
 
 	test('reports a copied file that changed or has no pin', () => {
@@ -476,7 +479,7 @@ describe('build_corpus_manifest', () => {
 				[WRITTEN, 'stress', 0, null]
 			]
 		);
-		CorpusManifest.parse(built);
+		s.parse_or_throw(CorpusManifest, built);
 		// without its derivation it reads as a copy that changed
 		assert.match(
 			build({ [DERIVED]: 'b' }, [derived]).problems[0]!,

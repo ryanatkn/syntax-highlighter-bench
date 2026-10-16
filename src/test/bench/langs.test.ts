@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchLang } from '#lib/results_schema.ts';
 import {
@@ -17,7 +18,7 @@ describe('LANG_ROSTER', () => {
 
 	test('every entry matches the results schema', () => {
 		for (const lang of LANG_ROSTER) {
-			assert.deepStrictEqual(BenchLang.parse(lang), lang);
+			assert.deepStrictEqual(s.parse_or_throw(BenchLang, lang), lang);
 		}
 	});
 

@@ -89,7 +89,7 @@ bench/                       the Node harness; never imported by the site
   sets.ts                    the feature sets bundle size is measured over
 results/                     where runs are written; `deterministic.json` is committed; `scratch/` (git-ignored) holds smoke and filtered ones; a journal (git-ignored) sits beside an unfinished run
   README.md                  what each file is, and how a run is published: the machine, quieting it, the commands in order, the checks before a commit
-src/lib/results_schema.ts    zod strict schemas for a results file
+src/lib/results_schema.ts    fuz_schema strict schemas for a results file
 src/lib/bench_constants.ts   the id lists and thresholds the schema, the harness, and the pages share; imports nothing
 src/lib/                     the site's modules and components: see Site
 src/routes/                  the static SvelteKit site
@@ -126,8 +126,8 @@ no flags. Every module there must hold to:
 
 The site never imports from `bench/`. The harness may import the `src/lib/`
 modules that import nothing (`bench_constants.ts`, `bench_format.ts`,
-`ratio.ts`) and `src/lib/results_schema.ts`, which depends only on zod and
-`bench_constants.ts`.
+`ratio.ts`) and `src/lib/results_schema.ts`, which depends only on
+`@fuzdev/fuz_schema` and `bench_constants.ts`.
 
 `gro check` typechecks and lints `bench/`, but `gro format` sweeps only `src/`
 and the root config files. `src/test/bench/format.test.ts` fails when a harness
@@ -209,9 +209,17 @@ tuned to flatter a result. Adding a set is one line.
 
 ## Results schema
 
-`src/lib/results_schema.ts` exports zod `strictObject` schemas, each with a
-type of the same name. `BenchResults` is the whole file; `parse_bench_results`
-validates and throws one readable error. `BenchInput` is also the shape of a
+`src/lib/results_schema.ts` exports `@fuzdev/fuz_schema` schemas, strict
+objects that refuse unknown keys, each with a type of the same name. A rule
+across fields is a `refined` schema: the object, then a function that reports
+each problem at the path it is about. The harness's own schemas (`bench/`) use
+the same library and the shared pieces the module exports (`NonEmptyString`,
+`PositiveInt`, `BenchDatetime`, `keyed_record`, `refined`).
+`BenchResults` is the whole file; `parse_bench_results` validates and throws
+one readable error (`format_bench_issues`). A parse returns its input, not a
+copy in the schema's key order, so `serialize_results` orders the keys itself
+(`order_keys_by_schema`): a results file is the same bytes however the harness
+built its objects. `BenchInput` is also the shape of a
 corpus manifest entry. Its provenance rules are the ones
 `build_corpus_manifest` reports for the corpus: a harness input has no
 provenance and only `BENCH_WRITTEN_SOURCES` may have none; only a stress input
@@ -311,7 +319,7 @@ A cell value's `pass_medians_ns` is each pass's median over its own rounds, in
 pass order, exactly `meta.run.passes` of them (the schema checks the length),
 for the kept attempt (the first arm's in a calibration). From them comes
 `meta.process_noise` (`BenchProcessNoise`, fuz_util's `StatsPairwiseDeviation`
-restated so the schema depends on zod alone): `to_process_noise` runs
+restated so the schema depends on fuz_schema alone): `to_process_noise` runs
 `stats_pairwise_deviation` with each value's pass medians as one group, so
 pairs are only ever within one library on one cell, and records `pairs`,
 `median`, `p95`, and `max`. The schema requires `median ≤ p95 ≤ max`, `pairs`
@@ -364,7 +372,7 @@ the sections agree with each other:
 
 `BenchBundleEntry` is a union with an error of its own: an entry with an
 `unsupported` key is reported against that shape and anything else against the
-sizes shape, so a malformed entry never reads as a bare "Invalid input".
+sizes shape, so a malformed entry never reads as a bare union failure.
 
 Every number the site shows must come through this schema.
 
@@ -660,7 +668,7 @@ small harness snippet; larger inputs leave more, most of all for regexp and
 wasm engines.
 
 - **Not in `bench/bundle_check.ts`**: a TypeScript module that statically
-  imports zod, the corpus, and the adapter (every language, for fuz_code and
+  imports fuz_schema, the corpus, and the adapter (every language, for fuz_code and
   Twinkleplop) before any line runs, plus Node's type stripper. The generated
   module holds nothing of the harness, like a cold-start child.
 - **Flags, for this reading only** (`HEAP_NODE_FLAGS`): `--expose-gc`;
@@ -1169,7 +1177,7 @@ a results file, with `node:fs`, at build time: `+layout.server.ts` (the
 source, for the fixture banner), `(site)/+page.server.ts` (the rosters, the
 headline charts, the worked-out HTML rate, and the language weights), `(site)/results/+page.server.ts` (the file without its
 inputs), and `docs/+layout.server.ts` (`to_docs_data`: rosters, inputs, noise
-floor). So no results file, no fixture, and no zod schema is in the client
+floor). So no results file, no fixture, and no schema is in the client
 bundle: a page gets the validated data its load returns. Keep it that way:
 modules a page imports take `import type` from `results_schema.ts`, and
 `src/test/site_imports.test.ts` fails on a runtime import of the schema, of

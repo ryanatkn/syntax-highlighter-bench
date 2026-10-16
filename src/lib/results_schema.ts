@@ -26,7 +26,8 @@
  * @module
  */
 
-import { z } from 'zod';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import {
 	BENCH_MODES,
@@ -37,62 +38,218 @@ import {
 	HEAP_TOLERANCE_RATIO
 } from './bench_constants.ts';
 
+/** Reports an issue at `path` under the value a `refined` schema checks, with `message`. */
+export type BenchIssueReporter = (path: Array<string | number>, message: string) => void;
+
+// the value at `path` under `value`, which an issue names the type of
+const value_at = (value: unknown, path: Array<string | number>): unknown => {
+	let v: any = value;
+	for (const key of path) v = v === null || typeof v !== 'object' ? undefined : v[key];
+	return v;
+};
+
+/**
+ * `schema`, then `fn` on its output, which reports each problem it finds
+ * through `issue` at a path of its own: a rule across fields, which a `check`
+ * could only fail as a whole. It runs only when `schema` passed.
+ *
+ * @param schema - the schema whose output `fn` checks
+ * @param fn - reports every problem with the value, each at the path it is about
+ */
+export const refined = <T extends s.Schema>(
+	schema: T,
+	fn: (value: s.Infer<T>, issue: BenchIssueReporter) => void
+): s.PipeSchema<s.Infer<T>, T> => {
+	const action: s.SchemaAction<s.Infer<T>> = {
+		kind: 'refine',
+		def: fn,
+		run: (value, ctx) => {
+			fn(value, (path, message) => {
+				const count = ctx.fails;
+				s.fail(ctx, 'refine', value_at(value, path));
+				if (!ctx.probe) {
+					const added = ctx.issues![count]!;
+					added.path = [...path];
+					added.message = message;
+				}
+			});
+			return value;
+		}
+	};
+	return s.pipe<T, s.Infer<T>>(schema, action);
+};
+
+/**
+ * Formats issues one to a line pair, `✖ message` and then `  → at path` when
+ * the issue has one: the form `cap_issues` in the harness splits on.
+ */
+export const format_bench_issues = (issues: Array<s.SchemaIssue>): string =>
+	issues
+		.map(
+			(issue) =>
+				`✖ ${issue.message ?? `expected ${issue.expected}, received ${issue.received}`}` +
+				(issue.path.length ? `\n  → at ${issue.path.map(String).join('.')}` : '')
+		)
+		.join('\n');
+
+/**
+ * A copy of `value`, which `schema` accepts, with every object's keys in the
+ * order `schema` names them, so a file serializes the same however its
+ * objects were built. A record keeps its own order, and a union takes the
+ * order of the first option that accepts the value.
+ *
+ * @param schema - a schema that accepts `value`
+ * @param value - the value to copy
+ */
+export const order_keys_by_schema = (schema: s.AnySchema, value: unknown): unknown => {
+	const node = schema as s.SchemaNode;
+	if (value === null || value === undefined || typeof value !== 'object') return value;
+	switch (node.kind) {
+		case 'object':
+		case 'loose_object':
+		case 'strip_object': {
+			const input = value as Record<string, unknown>;
+			const output: Record<string, unknown> = {};
+			for (const [key, entry] of Object.entries(node.def)) {
+				if (Object.hasOwn(input, key)) output[key] = order_keys_by_schema(entry, input[key]);
+			}
+			for (const key of Object.keys(input))
+				if (!Object.hasOwn(output, key)) output[key] = input[key];
+			return output;
+		}
+		case 'record':
+			return Object.fromEntries(
+				Object.entries(value).map(([key, v]) => [key, order_keys_by_schema(node.def, v)])
+			);
+		case 'array':
+			return (value as Array<unknown>).map((v) => order_keys_by_schema(node.def, v));
+		case 'optional':
+		case 'nullable':
+			return order_keys_by_schema(node.def.schema, value);
+		case 'pipe':
+			// every step, since a pipe may start with `unknown` and hold its shape later
+			return node.def.reduce((v: unknown, step) => order_keys_by_schema(step, v), value);
+		case 'union': {
+			const option = node.def.find((o) => s.is(o, value));
+			return option ? order_keys_by_schema(option, value) : value;
+		}
+		default:
+			return value;
+	}
+};
+
+// an issue on one line, with its path when it has one, for a union's message
+const format_issue_inline = (issue: s.SchemaIssue): string => {
+	const message = issue.message ?? `expected ${issue.expected}, received ${issue.received}`;
+	return issue.path.length === 0 ? message : `${issue.path.map(String).join('.')}: ${message}`;
+};
+
+/** A number above zero. */
+const positive = s.check((v: number) => v > 0, '> 0');
+
+/** A number at least zero. */
+const nonnegative = s.check((v: number) => v >= 0, '>= 0');
+
+/** A string with at least one character. */
+export const NonEmptyString = s.pipe(s.string, s.min_length(1));
+
+/** A number above zero. */
+export const PositiveNumber = s.pipe(s.number, positive);
+
+/** A number at least zero. */
+export const NonnegativeNumber = s.pipe(s.number, nonnegative);
+
+/** A safe integer above zero. */
+export const PositiveInt = s.pipe(s.number, s.safe_integer, positive);
+
+/** A safe integer at least zero. */
+export const NonnegativeInt = s.pipe(s.number, s.safe_integer, nonnegative);
+
 /** An id used as a key or a cross-reference: a set or a cell. */
-const Id = z.string().min(1);
+const Id = NonEmptyString;
 
 /** A SHA-256 digest in lowercase hex. */
-const Sha256 = z.string().regex(/^[0-9a-f]{64}$/);
+const Sha256 = s.pipe(s.string, s.regex(/^[0-9a-f]{64}$/));
 
 /** The shape of a library id and a language id: lowercase, safe as a key and in a path. */
 const NAME_MATCHER = /^[a-z][a-z0-9_]*$/;
 
 /** A library id. */
-const LibraryId = z.string().regex(NAME_MATCHER);
+const LibraryId = s.pipe(s.string, s.regex(NAME_MATCHER));
 
 /** A language id. */
-const LangId = z.string().regex(NAME_MATCHER);
+const LangId = s.pipe(s.string, s.regex(NAME_MATCHER));
 
 /**
- * A record that rejects an own `__proto__` key, which `z.record` would otherwise
- * drop without an issue.
+ * The pattern of an ISO 8601 datetime in UTC: a date that exists, then the
+ * hours and minutes, the seconds and their fraction optional, then `Z`.
  */
-const strict_record = <TKey extends z.ZodType<string, string>, TValue extends z.ZodType>(
-	key: TKey,
-	value: TValue
-) =>
-	z
-		.custom<unknown>(
-			(v) => typeof v !== 'object' || v === null || !Object.hasOwn(v, '__proto__'),
+const DATETIME_MATCHER =
+	/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|02-(?:0[1-9]|1\d|2[0-8])))T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?Z$/;
+
+/** An ISO 8601 datetime in UTC, as `Date.prototype.toISOString` writes one. */
+export const BenchDatetime = s.pipe(s.string, s.regex(DATETIME_MATCHER, 'an ISO datetime'));
+
+/**
+ * A record whose every key passes `key`, with a message for one that doesn't.
+ * `record` alone takes any key.
+ */
+export const keyed_record = <T extends s.Schema>(
+	key: (key: string) => boolean,
+	value: T
+): s.PipeSchema<Record<string, s.Infer<T>>, s.Schema> =>
+	refined(s.record(value), (record, issue) => {
+		for (const k of Object.keys(record)) if (!key(k)) issue([k], `invalid key "${k}"`);
+	}) as s.AnySchema as s.PipeSchema<Record<string, s.Infer<T>>, s.Schema>;
+
+/**
+ * A record whose keys pass `key` that rejects an own `__proto__` key, which
+ * `record` would otherwise drop from its output.
+ */
+const strict_record = <T extends s.Schema>(
+	key: (key: string) => boolean,
+	value: T
+): s.PipeSchema<Record<string, s.Infer<T>>, s.Schema> =>
+	s.pipe(
+		s.unknown,
+		s.message(
+			s.check(
+				(v: unknown) => typeof v !== 'object' || v === null || !Object.hasOwn(v, '__proto__')
+			),
 			'a "__proto__" key is not allowed'
-		)
-		.pipe(z.record(key, value));
+		),
+		keyed_record(key, value)
+	) as s.AnySchema as s.PipeSchema<Record<string, s.Infer<T>>, s.Schema>;
+
+/** Whether a key is a library id or a language id. */
+const is_name = (key: string): boolean => NAME_MATCHER.test(key);
+
+/** Whether a key is an `Id`. */
+const is_id = (key: string): boolean => key.length > 0;
 
 /** The machine a run's timed numbers came from. */
-export const BenchMachine = z.strictObject({
-	name: Id.meta({ description: 'The name the machine is published under.' }),
-	cpu: z.string().min(1).meta({ description: 'The CPU model.' }),
-	threads: z
-		.number()
-		.int()
-		.positive()
-		.nullable()
-		.meta({ description: 'Logical CPUs, or null where the OS reports none.' }),
-	governor: z.string().min(1).nullable().meta({
+export const BenchMachine = s.object({
+	name: meta(Id, { description: 'The name the machine is published under.' }),
+	cpu: meta(NonEmptyString, { description: 'The CPU model.' }),
+	threads: meta(s.nullable(PositiveInt), {
+		description: 'Logical CPUs, or null where the OS reports none.'
+	}),
+	governor: meta(s.nullable(NonEmptyString), {
 		description: "The first CPU's frequency governor, or null where the OS exposes none."
 	}),
-	cpufreq_driver: z.string().min(1).nullable().meta({
+	cpufreq_driver: meta(s.nullable(NonEmptyString), {
 		description: "The first CPU's frequency scaling driver, or null where the OS exposes none."
 	}),
-	epp: z.string().min(1).nullable().meta({
+	epp: meta(s.nullable(NonEmptyString), {
 		description: "The first CPU's energy-performance preference, or null where the driver has none."
 	}),
-	boost: z.boolean().nullable().meta({
+	boost: meta(s.nullable(s.boolean), {
 		description: 'Whether frequency boost is on, or null where the OS exposes no switch.'
 	}),
-	memory_gb: z.number().positive().meta({ description: 'Installed memory in gigabytes.' }),
-	os_release: z.string().min(1).meta({ description: 'The OS release, as `os.release()` gives it.' })
+	memory_gb: meta(PositiveNumber, { description: 'Installed memory in gigabytes.' }),
+	os_release: meta(NonEmptyString, { description: 'The OS release, as `os.release()` gives it.' })
 });
-export type BenchMachine = z.infer<typeof BenchMachine>;
+export type BenchMachine = s.Infer<typeof BenchMachine>;
 
 /**
  * The anchor drift under which a run counts as stable; 0.03 is 3%. Past it the
@@ -106,157 +263,165 @@ export const BENCH_ANCHOR_STABLE_BELOW = 0.03;
  * segment of a run that was stopped and resumed. Its drift says whether the
  * machine changed state while the run was in progress.
  */
-export const BenchAnchor = z
-	.strictObject({
-		drift: z.number().meta({
+export const BenchAnchor = refined(
+	s.object({
+		drift: meta(s.number, {
 			description:
 				'Relative change between the two readings that differ most, from the earlier to the later; 0.01 is 1%. An uninterrupted run has two readings.'
 		}),
-		stable: z.boolean().meta({
+		stable: meta(s.boolean, {
 			description: 'Whether the drift stayed under `BENCH_ANCHOR_STABLE_BELOW`, either way.'
 		})
-	})
-	.refine((anchor) => anchor.stable === Math.abs(anchor.drift) < BENCH_ANCHOR_STABLE_BELOW, {
-		path: ['stable'],
-		message: `stable is exactly a drift under ${BENCH_ANCHOR_STABLE_BELOW}, either way`
-	});
-export type BenchAnchor = z.infer<typeof BenchAnchor>;
+	}),
+	(anchor, issue) => {
+		if (anchor.stable !== Math.abs(anchor.drift) < BENCH_ANCHOR_STABLE_BELOW) {
+			issue(['stable'], `stable is exactly a drift under ${BENCH_ANCHOR_STABLE_BELOW}, either way`);
+		}
+	}
+);
+export type BenchAnchor = s.Infer<typeof BenchAnchor>;
 
 /** What a library's `html` output carries its colors in. */
-export const BenchOutputKind = z.enum(['classes', 'inline_styles']);
-export type BenchOutputKind = z.infer<typeof BenchOutputKind>;
+export const BenchOutputKind = s.one_of(['classes', 'inline_styles']);
+export type BenchOutputKind = s.Infer<typeof BenchOutputKind>;
 
 /** A color scheme a theme covers. */
-export const BenchColorScheme = z.enum(['light', 'dark']);
-export type BenchColorScheme = z.infer<typeof BenchColorScheme>;
+export const BenchColorScheme = s.one_of(['light', 'dark']);
+export type BenchColorScheme = s.Infer<typeof BenchColorScheme>;
 
 /** How a library lexes. A filterable tag, not a ranking. */
-export const BenchEngineKind = z.enum(['scanner', 'grammar_vm', 'regex', 'textmate']);
-export type BenchEngineKind = z.infer<typeof BenchEngineKind>;
+export const BenchEngineKind = s.one_of(['scanner', 'grammar_vm', 'regex', 'textmate']);
+export type BenchEngineKind = s.Infer<typeof BenchEngineKind>;
 
 /** One measured library. The roster of these drives every page of the site. */
-export const BenchLibrary = z.strictObject({
-	id: LibraryId.meta({ description: 'The key this library has in every per-library map.' }),
-	label: z.string().min(1).meta({ description: 'The display name.' }),
-	package: z.string().min(1).meta({ description: 'The npm package the version was read from.' }),
-	version: z
-		.string()
-		.min(1)
-		.refine((v) => v !== 'unknown', 'a run must know which version it measured')
-		.meta({ description: 'The installed version of the package.' }),
-	output: BenchOutputKind.meta({ description: 'What the HTML output carries its colors in.' }),
-	engine: BenchEngineKind.meta({ description: 'How the library lexes.' }),
-	by_maintainer: z.boolean().meta({
+export const BenchLibrary = s.object({
+	id: meta(LibraryId, { description: 'The key this library has in every per-library map.' }),
+	label: meta(NonEmptyString, { description: 'The display name.' }),
+	package: meta(NonEmptyString, { description: 'The npm package the version was read from.' }),
+	version: meta(
+		s.pipe(
+			s.string,
+			s.min_length(1),
+			s.message(
+				s.check((v: string) => v !== 'unknown'),
+				'a run must know which version it measured'
+			)
+		),
+		{ description: 'The installed version of the package.' }
+	),
+	output: meta(BenchOutputKind, { description: 'What the HTML output carries its colors in.' }),
+	engine: meta(BenchEngineKind, { description: 'How the library lexes.' }),
+	by_maintainer: meta(s.boolean, {
 		description:
 			"Whether this benchmark's maintainer also maintains the library. The site flags it."
 	}),
-	note: z
-		.string()
-		.min(1)
-		.nullable()
-		.meta({ description: 'What was measured and any caveat, shown beside the library.' }),
-	extra_packages: z.record(z.string().min(1), z.string().min(1)).optional().meta({
+	note: meta(s.nullable(NonEmptyString), {
+		description: 'What was measured and any caveat, shown beside the library.'
+	}),
+	extra_packages: meta(s.optional(keyed_record(is_id, NonEmptyString)), {
 		description:
 			'The installed versions of packages the library was measured with that are versioned apart from `package`, by name.'
 	}),
-	theme_schemes: z.array(BenchColorScheme).min(1).meta({
+	theme_schemes: meta(s.pipe(s.array(BenchColorScheme), s.min_length(1)), {
 		description:
 			'The color schemes the measured default theme covers: its stylesheets for class-based output, and the theme bundled in the JS for inline styles. A theme with two schemes is larger than one with one, which the theme CSS sizes should be read beside.'
 	})
 });
-export type BenchLibrary = z.infer<typeof BenchLibrary>;
+export type BenchLibrary = s.Infer<typeof BenchLibrary>;
 
 /**
  * A library that claims a cell's language but failed the pre-measurement output
  * check there, so it was not measured. Distinct from unsupported, which is a
  * language missing from the library's `coverage`.
  */
-export const BenchExcluded = z.strictObject({
-	cell: Id.meta({ description: 'The id of the cell.' }),
-	library: LibraryId.meta({ description: 'The id of the library.' }),
-	reason: z.string().min(1).meta({ description: 'What the check found.' })
+export const BenchExcluded = s.object({
+	cell: meta(Id, { description: 'The id of the cell.' }),
+	library: meta(LibraryId, { description: 'The id of the library.' }),
+	reason: meta(NonEmptyString, { description: 'What the check found.' })
 });
-export type BenchExcluded = z.infer<typeof BenchExcluded>;
+export type BenchExcluded = s.Infer<typeof BenchExcluded>;
 
 /**
  * The machine's noise floor, from a calibration run: every library is measured
  * as two, in separate processes, which should come out equal. A difference
  * smaller than this is not a result.
  */
-export const BenchNoiseFloor = z.strictObject({
-	per_cell: z.number().nonnegative().meta({
+export const BenchNoiseFloor = s.object({
+	per_cell: meta(NonnegativeNumber, {
 		description:
 			'The deviation a single cell can show by chance: the 95th percentile, over cells and libraries, of how far two measurements of the same library were apart, as the larger over the smaller less one; 0.01 is 1%.'
 	}),
-	geomean: z.number().nonnegative().meta({
+	geomean: meta(NonnegativeNumber, {
 		description:
 			"The deviation of a geometric mean across cells: how far apart the two measurements' geometric means were, for the library where they differed most; 0.01 is 1%."
 	}),
-	per_process: z.number().nonnegative().nullable().meta({
+	per_process: meta(s.nullable(NonnegativeNumber), {
 		description:
 			"The deviation two processes of one library on one cell can show by chance: the 95th percentile, over every pair of passes within an arm, of how far their medians were apart. It is what a run's `process_noise.p95` is compared with, since `per_cell` compares values that each pool several processes and so reads lower. Null when each arm measured one pass."
 	})
 });
-export type BenchNoiseFloor = z.infer<typeof BenchNoiseFloor>;
+export type BenchNoiseFloor = s.Infer<typeof BenchNoiseFloor>;
 
 /**
  * How far apart a run's own processes came out: an A/A figure from the run
  * itself. Each library on each cell was measured by several processes, which
  * should agree, and every pair of them gives a deviation. It is fuz_util's
- * `StatsPairwiseDeviation`, restated here so the schema depends on zod alone.
+ * `StatsPairwiseDeviation`, restated here so the schema depends on fuz_schema alone.
  */
-export const BenchProcessNoise = z
-	.strictObject({
-		pairs: z.number().int().positive().meta({
+export const BenchProcessNoise = refined(
+	s.object({
+		pairs: meta(PositiveInt, {
 			description:
 				"How many pairs of processes the figures are taken over: every pair of a value's `pass_medians_ns`, over every cell and library."
 		}),
-		median: z.number().nonnegative().meta({
+		median: meta(NonnegativeNumber, {
 			description:
 				'The median deviation of a pair, as the larger median over the smaller less one; 0.01 is 1%.'
 		}),
-		p95: z.number().nonnegative().meta({
+		p95: meta(NonnegativeNumber, {
 			description:
 				"The 95th percentile deviation of a pair: the run's own counterpart of the noise floor's `per_process`."
 		}),
-		max: z.number().nonnegative().meta({ description: 'The largest deviation of a pair.' })
-	})
-	.refine((noise) => noise.median <= noise.p95 && noise.p95 <= noise.max, {
-		path: ['p95'],
-		message: 'the median is at most the 95th percentile, which is at most the largest'
-	});
-export type BenchProcessNoise = z.infer<typeof BenchProcessNoise>;
+		max: meta(NonnegativeNumber, { description: 'The largest deviation of a pair.' })
+	}),
+	(noise, issue) => {
+		if (!(noise.median <= noise.p95 && noise.p95 <= noise.max)) {
+			issue(['p95'], 'the median is at most the 95th percentile, which is at most the largest');
+		}
+	}
+);
+export type BenchProcessNoise = s.Infer<typeof BenchProcessNoise>;
 
 /** An input's size tier, by real file size. */
-export const BenchSize = z.enum(BENCH_SIZES);
-export type BenchSize = z.infer<typeof BenchSize>;
+export const BenchSize = s.one_of(BENCH_SIZES);
+export type BenchSize = s.Infer<typeof BenchSize>;
 
 /** The stage a cell runs: tokens out, or the HTML string consumers ship. */
-export const BenchMode = z.enum(BENCH_MODES);
-export type BenchMode = z.infer<typeof BenchMode>;
+export const BenchMode = s.one_of(BENCH_MODES);
+export type BenchMode = s.Infer<typeof BenchMode>;
 
 /**
  * Who an input came from: `neutral` is real code no measured library authored,
  * `shiki` is Shiki's upstream benchmark samples, `home` is one library's own
  * samples, and `harness` is a snippet written for this benchmark.
  */
-export const BenchSource = z.enum(BENCH_SOURCES);
-export type BenchSource = z.infer<typeof BenchSource>;
+export const BenchSource = s.one_of(BENCH_SOURCES);
+export type BenchSource = s.Infer<typeof BenchSource>;
 
 /**
  * What a run is: `full` measures with the published parameters, `smoke` runs
  * every cell once to prove the harness works and its numbers mean nothing, and
  * `calibrate` measures every library twice in every cell to find the noise floor.
  */
-export const BenchRunKind = z.enum(['full', 'smoke', 'calibrate']);
-export type BenchRunKind = z.infer<typeof BenchRunKind>;
+export const BenchRunKind = s.one_of(['full', 'smoke', 'calibrate']);
+export type BenchRunKind = s.Infer<typeof BenchRunKind>;
 
 /**
  * A machine-dependent measurement a run makes: `throughput` is the timed cells,
  * and `startup` is cold start.
  */
-export const BenchRunMetric = z.enum(['throughput', 'startup']);
-export type BenchRunMetric = z.infer<typeof BenchRunMetric>;
+export const BenchRunMetric = s.one_of(['throughput', 'startup']);
+export type BenchRunMetric = s.Infer<typeof BenchRunMetric>;
 
 /**
  * The filters a run was restricted by. Each is null when the run was not
@@ -264,76 +429,75 @@ export type BenchRunMetric = z.infer<typeof BenchRunMetric>;
  * cold-start scenarios alike; `sizes`, `modes`, and `sources` select inputs, so
  * they narrow the cells only.
  */
-export const BenchRunFilters = z.strictObject({
-	libraries: z.array(LibraryId).min(1).nullable(),
-	langs: z.array(LangId).min(1).nullable(),
-	sizes: z.array(BenchSize).min(1).nullable(),
-	modes: z.array(BenchMode).min(1).nullable(),
-	sources: z.array(BenchSource).min(1).nullable(),
-	metrics: z.array(BenchRunMetric).min(1).nullable()
+export const BenchRunFilters = s.object({
+	libraries: s.nullable(s.pipe(s.array(LibraryId), s.min_length(1))),
+	langs: s.nullable(s.pipe(s.array(LangId), s.min_length(1))),
+	sizes: s.nullable(s.pipe(s.array(BenchSize), s.min_length(1))),
+	modes: s.nullable(s.pipe(s.array(BenchMode), s.min_length(1))),
+	sources: s.nullable(s.pipe(s.array(BenchSource), s.min_length(1))),
+	metrics: s.nullable(s.pipe(s.array(BenchRunMetric), s.min_length(1)))
 });
-export type BenchRunFilters = z.infer<typeof BenchRunFilters>;
+export type BenchRunFilters = s.Infer<typeof BenchRunFilters>;
 
 /**
  * How the timed numbers of a run were measured: its cells and its cold-start
  * scenarios. It tells a complete `full` run from a smoke, calibration, or
  * partial run: see `bench_results_is_publishable`.
  */
-export const BenchRun = z.strictObject({
+export const BenchRun = s.object({
 	kind: BenchRunKind,
-	passes: z.number().int().positive().meta({
+	passes: meta(PositiveInt, {
 		description: 'How many processes measured each library in each cell. Their rounds are pooled.'
 	}),
-	rounds: z.number().int().positive().meta({ description: 'How many batches each process timed.' }),
-	target_ms: z
-		.number()
-		.positive()
-		.meta({ description: 'How long one timed batch aimed to run, in milliseconds.' }),
-	warmup_ms: z.number().nonnegative().meta({
+	rounds: meta(PositiveInt, { description: 'How many batches each process timed.' }),
+	target_ms: meta(PositiveNumber, {
+		description: 'How long one timed batch aimed to run, in milliseconds.'
+	}),
+	warmup_ms: meta(NonnegativeNumber, {
 		description: 'How long each library ran untimed before calibration, in milliseconds.'
 	}),
-	rewarm_ms: z.number().nonnegative().meta({
+	rewarm_ms: meta(NonnegativeNumber, {
 		description: 'How long each library ran untimed before each timed batch, in milliseconds.'
 	}),
-	retries: z.number().int().nonnegative().meta({
+	retries: meta(NonnegativeInt, {
 		description:
 			'How many times a library whose rounds on a cell disagreed could be measured again there. 0 is never.'
 	}),
-	loaded_langs: z.literal('cell').meta({
+	loaded_langs: meta(s.literal('cell'), {
 		description:
 			"Which languages each cell's process set up in every library: `cell` is exactly the cell's language."
 	}),
-	collection: z.literal('minor').meta({
+	collection: meta(s.literal('minor'), {
 		description:
 			'What each process collected before each timed batch, after its rewarm: `minor` is the young generation only. No full collection was forced between batches.'
 	}),
-	startup_samples: z.number().int().positive().nullable().meta({
+	startup_samples: meta(s.nullable(PositiveInt), {
 		description:
 			'How many samples each cold-start scenario kept, each a fresh process. Null, like the two fields after it, exactly when the run measured no cold start: a calibration, or a run whose metrics filter leaves it out.'
 	}),
-	startup_discard: z.number().int().nonnegative().nullable().meta({
+	startup_discard: meta(s.nullable(NonnegativeInt), {
 		description:
 			'How many rounds of cold-start processes ran before the kept ones and were thrown away: they warm the page cache.'
 	}),
-	startup_compile_cache: z.literal('disabled').nullable().meta({
+	startup_compile_cache: meta(s.nullable(s.literal('disabled')), {
 		description:
 			"Whether V8's compile cache could serve a cold-start process: `disabled` is `NODE_DISABLE_COMPILE_CACHE=1` with no `NODE_COMPILE_CACHE`, so every sample compiles what it loads."
 	}),
 	filters: BenchRunFilters,
-	segments: z.number().int().positive().meta({
+	segments: meta(PositiveInt, {
 		description:
 			'How many stretches the run was measured in. 1 is an uninterrupted run, and more means it was stopped and resumed.'
 	}),
-	duration_ms: z.number().int().nonnegative().meta({
+	duration_ms: meta(NonnegativeInt, {
 		description:
 			'How long the run measured for, anchor readings included: the sum of its segments, without the time between them.'
 	}),
-	load_at_start: z.number().nonnegative().meta({
+	load_at_start: meta(NonnegativeNumber, {
 		description:
 			"The machine's 1-minute load average when the run was planned, before it spawned anything; for a resumed run, the highest of its segments'. Something else was running when it is well above 0."
 	})
 });
-export type BenchRun = z.infer<typeof BenchRun>;
+export type BenchRun = s.Infer<typeof BenchRun>;
 
 /**
  * Whether a run set out to cover everything: every library on every cell, and
@@ -345,36 +509,34 @@ export const bench_run_is_complete = (run: Pick<BenchRun, 'kind' | 'filters'>): 
 	run.kind !== 'smoke' && Object.values(run.filters).every((filter) => filter === null);
 
 /** The version of Vite that bundled, first in either bundler's keys. */
-const bundler_vite = z.string().min(1).meta({ description: 'The version of Vite that bundled.' });
+const bundler_vite = meta(NonEmptyString, { description: 'The version of Vite that bundled.' });
 
 /** What every bundler records after the one inside Vite, whichever it is. */
 const bundler_shape = {
-	esbuild: z.string().min(1).meta({ description: 'The version of esbuild that minified.' }),
-	gzip_level: z.number().int().min(1).max(9),
-	brotli_quality: z.number().int().min(0).max(11)
+	esbuild: meta(NonEmptyString, { description: 'The version of esbuild that minified.' }),
+	gzip_level: s.pipe(s.number, s.safe_integer, s.min_value(1), s.max_value(9)),
+	brotli_quality: s.pipe(s.number, s.safe_integer, s.min_value(0), s.max_value(11))
 };
 
 /** What bundles from Vite 8 on: Vite with the Rolldown inside it. */
-export const BenchBundlerRolldown = z.strictObject({
+export const BenchBundlerRolldown = s.object({
 	vite: bundler_vite,
-	rolldown: z
-		.string()
-		.min(1)
-		.meta({ description: 'The version of Rolldown inside that Vite, which bundled.' }),
+	rolldown: meta(NonEmptyString, {
+		description: 'The version of Rolldown inside that Vite, which bundled.'
+	}),
 	...bundler_shape
 });
-export type BenchBundlerRolldown = z.infer<typeof BenchBundlerRolldown>;
+export type BenchBundlerRolldown = s.Infer<typeof BenchBundlerRolldown>;
 
 /** What bundled up to Vite 7, which files measured then record: Vite with the Rollup inside it. */
-export const BenchBundlerRollup = z.strictObject({
+export const BenchBundlerRollup = s.object({
 	vite: bundler_vite,
-	rollup: z
-		.string()
-		.min(1)
-		.meta({ description: 'The version of Rollup inside that Vite, which bundled.' }),
+	rollup: meta(NonEmptyString, {
+		description: 'The version of Rollup inside that Vite, which bundled.'
+	}),
 	...bundler_shape
 });
-export type BenchBundlerRollup = z.infer<typeof BenchBundlerRollup>;
+export type BenchBundlerRollup = s.Infer<typeof BenchBundlerRollup>;
 
 /** The two keys a bundler is told apart by. */
 const BUNDLER_KEYS = ['rolldown', 'rollup'] as const;
@@ -385,26 +547,23 @@ const BUNDLER_KEYS = ['rolldown', 'rollup'] as const;
  * brotli inside the Node that compressed them. The compression levels are also
  * the ones the HTML's compressed sizes (`BenchCell.compressed`) are taken at.
  * It names exactly one of `rolldown` and `rollup`, and is reported against the
- * shape it names, so a malformed one never reads as a bare "Invalid input".
+ * shape it names, so a malformed one never reads as a bare union failure.
  */
-export const BenchBundler = z.union([BenchBundlerRolldown, BenchBundlerRollup], {
-	error: (issue) => {
-		const { input } = issue;
+export const BenchBundler = s.message(
+	s.union([BenchBundlerRolldown, BenchBundlerRollup]),
+	(_issue, input) => {
 		const named =
 			typeof input === 'object' && input !== null ? BUNDLER_KEYS.filter((k) => k in input) : [];
 		if (named.length !== 1) return 'a bundler names exactly one of rolldown and rollup';
-		const parsed = (named[0] === 'rolldown' ? BenchBundlerRolldown : BenchBundlerRollup).safeParse(
+		const parsed = s.parse(
+			named[0] === 'rolldown' ? BenchBundlerRolldown : BenchBundlerRollup,
 			input
 		);
-		const problems = parsed.success
-			? []
-			: parsed.error.issues.map((i) =>
-					i.path.length === 0 ? i.message : `${i.path.join('.')}: ${i.message}`
-				);
+		const problems = parsed.ok ? [] : parsed.issues.map(format_issue_inline);
 		return `a bundler built with ${named[0]}: ${problems.join('; ')}`;
 	}
-});
-export type BenchBundler = z.infer<typeof BenchBundler>;
+);
+export type BenchBundler = s.Infer<typeof BenchBundler>;
 
 /**
  * What a cold-start sample does before it stops the clock: `bare` is Node alone,
@@ -412,21 +571,21 @@ export type BenchBundler = z.infer<typeof BenchBundler>;
  * language, `set` imports it with a feature set's languages, and
  * `first_highlight` imports it with one language and highlights once.
  */
-export const BenchStartupScenario = z.enum(['bare', 'core', 'lang', 'set', 'first_highlight']);
-export type BenchStartupScenario = z.infer<typeof BenchStartupScenario>;
+export const BenchStartupScenario = s.one_of(['bare', 'core', 'lang', 'set', 'first_highlight']);
+export type BenchStartupScenario = s.Infer<typeof BenchStartupScenario>;
 
 /** What names a cold-start scenario: what is loaded, by which library, in which form. */
 const startup_key_shape = {
 	scenario: BenchStartupScenario,
-	library: LibraryId.nullable().meta({ description: 'Null exactly for the bare Node baseline.' }),
-	lang: LangId.nullable().meta({
+	library: meta(s.nullable(LibraryId), { description: 'Null exactly for the bare Node baseline.' }),
+	lang: meta(s.nullable(LangId), {
 		description:
 			'The language loaded, a timed one. Set exactly for the lang and first_highlight scenarios.'
 	}),
-	set: Id.nullable().meta({
+	set: meta(s.nullable(Id), {
 		description: 'The feature set loaded. Set exactly for the set scenario.'
 	}),
-	bundled: z.boolean().meta({
+	bundled: meta(s.boolean, {
 		description:
 			'Whether the library was loaded as one bundled chunk, the one its bundle size is measured on. Otherwise the same module was imported unbundled, resolving from `node_modules`.'
 	})
@@ -445,33 +604,33 @@ export type BenchStartupKey = Pick<
  * time includes Node starting up, and the `bare` entry is that part alone.
  * Machine-dependent.
  */
-export const BenchStartup = z
-	.strictObject({
+export const BenchStartup = refined(
+	s.object({
 		...startup_key_shape,
-		samples: z
-			.number()
-			.int()
-			.positive()
-			.meta({ description: 'How many processes were kept, after the discarded rounds.' }),
-		median_ms: z.number().positive().meta({
+		samples: meta(PositiveInt, {
+			description: 'How many processes were kept, after the discarded rounds.'
+		}),
+		median_ms: meta(PositiveNumber, {
 			description: 'The median, in milliseconds since the process started.'
 		}),
-		p10_ms: z.number().positive().meta({ description: '10th percentile across the samples.' }),
-		p90_ms: z.number().positive().meta({ description: '90th percentile across the samples.' }),
-		spread: z.number().min(1).meta({
+		p10_ms: meta(PositiveNumber, { description: '10th percentile across the samples.' }),
+		p90_ms: meta(PositiveNumber, { description: '90th percentile across the samples.' }),
+		spread: meta(s.pipe(s.number, s.min_value(1)), {
 			description:
 				"Slowest sample over fastest. A process start has a long slow tail, so this is wider than a cell's spread, and the percentiles say more."
 		}),
-		rss_peak_bytes: z.number().int().positive().meta({
+		rss_peak_bytes: meta(PositiveInt, {
 			description:
 				"The median peak resident set size of the samples' processes, read when the clock stopped. A whole process: the `bare` entry's is Node's own, to subtract."
 		})
-	})
-	.refine((entry) => entry.p10_ms <= entry.median_ms && entry.median_ms <= entry.p90_ms, {
-		path: ['median_ms'],
-		message: 'the median is between the 10th and the 90th percentile'
-	});
-export type BenchStartup = z.infer<typeof BenchStartup>;
+	}),
+	(entry, issue) => {
+		if (!(entry.p10_ms <= entry.median_ms && entry.median_ms <= entry.p90_ms)) {
+			issue(['median_ms'], 'the median is between the 10th and the 90th percentile');
+		}
+	}
+);
+export type BenchStartup = s.Infer<typeof BenchStartup>;
 
 /**
  * A cold-start scenario a library was not sampled in: its first process there
@@ -479,12 +638,12 @@ export type BenchStartup = z.infer<typeof BenchStartup>;
  * span. Distinct from unsupported, which is a scenario whose languages the
  * library doesn't claim, and which has no entry anywhere.
  */
-export const BenchStartupExcluded = z.strictObject({
+export const BenchStartupExcluded = s.object({
 	...startup_key_shape,
-	library: LibraryId.meta({ description: 'The id of the library.' }),
-	reason: z.string().min(1).meta({ description: 'What the check found.' })
+	library: meta(LibraryId, { description: 'The id of the library.' }),
+	reason: meta(NonEmptyString, { description: 'What the check found.' })
 });
-export type BenchStartupExcluded = z.infer<typeof BenchStartupExcluded>;
+export type BenchStartupExcluded = s.Infer<typeof BenchStartupExcluded>;
 
 /** The string a cold-start scenario is told apart by. */
 export const to_bench_startup_key = (entry: BenchStartupKey): string =>
@@ -496,264 +655,240 @@ export const to_bench_startup_key = (entry: BenchStartupKey): string =>
  * a file that has none: its numbers are the same on any machine, at any time,
  * and a commit can't name the tree it is itself committed in.
  */
-export const BenchMeta = z.strictObject({
-	generated_at: z.iso.datetime().nullable().meta({
+export const BenchMeta = s.object({
+	generated_at: meta(s.nullable(BenchDatetime), {
 		description:
 			'When the run started: its first segment, for a run that was resumed. Null only when nothing was timed.'
 	}),
-	machine: BenchMachine.nullable().meta({ description: 'Null only when nothing was timed.' }),
-	node: z.string().min(1).nullable().meta({
+	machine: meta(s.nullable(BenchMachine), { description: 'Null only when nothing was timed.' }),
+	node: meta(s.nullable(NonEmptyString), {
 		description:
 			'The Node version, as `process.version` prints it. Null only when nothing was timed.'
 	}),
-	commit: z
-		.string()
-		.regex(/^[0-9a-f]{40}(-dirty)?$/)
-		.nullable()
-		.meta({
-			description:
-				'The harness commit that ran, with `-dirty` appended when the working tree had changes it does not record. Null only when nothing was timed.'
-		}),
-	corpus_hash: Sha256.meta({
+	commit: meta(s.nullable(s.pipe(s.string, s.regex(/^[0-9a-f]{40}(-dirty)?$/))), {
+		description:
+			'The harness commit that ran, with `-dirty` appended when the working tree had changes it does not record. Null only when nothing was timed.'
+	}),
+	corpus_hash: meta(Sha256, {
 		description: 'A hash over the corpus manifest. Runs with different hashes are not comparable.'
 	}),
-	run: BenchRun.nullable().meta({ description: 'Null when nothing was timed.' }),
-	anchor: BenchAnchor.nullable().meta({ description: 'Null when nothing was timed.' }),
-	libraries: z.array(BenchLibrary),
-	excluded: z.array(BenchExcluded),
-	startup_excluded: z.array(BenchStartupExcluded).meta({
+	run: meta(s.nullable(BenchRun), { description: 'Null when nothing was timed.' }),
+	anchor: meta(s.nullable(BenchAnchor), { description: 'Null when nothing was timed.' }),
+	libraries: s.array(BenchLibrary),
+	excluded: s.array(BenchExcluded),
+	startup_excluded: meta(s.array(BenchStartupExcluded), {
 		description:
 			'The cold-start scenarios a library was not sampled in, because its first process there failed its check.'
 	}),
-	noise_floor: BenchNoiseFloor.nullable().meta({
+	noise_floor: meta(s.nullable(BenchNoiseFloor), {
 		description:
 			'Null until the machine has been calibrated with the parameters of this run. A calibration run carries the floor it measured.'
 	}),
-	process_noise: BenchProcessNoise.nullable().meta({
+	process_noise: meta(s.nullable(BenchProcessNoise), {
 		description:
 			"How far apart this run's processes came out on the same library and cell, from every value's `pass_medians_ns`. Null exactly when no cell has a value or the run measured one pass. In a calibration file it is the first arm's."
 	}),
-	bundler: BenchBundler.nullable().meta({
+	bundler: meta(s.nullable(BenchBundler), {
 		description:
 			"Null exactly when `bundle` is empty: no sizes were measured. The sizes of the deterministic pass come together, so it is also null exactly when `install` and every cell's `compressed` are empty."
 	})
 });
-export type BenchMeta = z.infer<typeof BenchMeta>;
+export type BenchMeta = s.Infer<typeof BenchMeta>;
 
 /** One language id of the run, as the harness declares it in `bench/langs.ts`. */
-export const BenchLang = z.strictObject({
+export const BenchLang = s.object({
 	id: LangId,
-	label: z.string().min(1),
-	timed: z.boolean().meta({ description: 'Whether timed cells cover the language.' })
+	label: NonEmptyString,
+	timed: meta(s.boolean, { description: 'Whether timed cells cover the language.' })
 });
-export type BenchLang = z.infer<typeof BenchLang>;
+export type BenchLang = s.Infer<typeof BenchLang>;
 
 /** A named list of languages that bundle size is measured over. */
-export const BenchSet = z.strictObject({
+export const BenchSet = s.object({
 	id: Id,
-	label: z.string().min(1),
-	langs: z.array(LangId),
-	footnote: z.string().min(1).nullable()
+	label: NonEmptyString,
+	langs: s.array(LangId),
+	footnote: s.nullable(NonEmptyString)
 });
-export type BenchSet = z.infer<typeof BenchSet>;
+export type BenchSet = s.Infer<typeof BenchSet>;
 
 /** What a cell measures. */
-export const BenchMetric = z.enum(['throughput']);
-export type BenchMetric = z.infer<typeof BenchMetric>;
+export const BenchMetric = s.one_of(['throughput']);
+export type BenchMetric = s.Infer<typeof BenchMetric>;
 
 /** One file an input came from, pinned so the input can be rebuilt and checked. */
-export const BenchProvenance = z.strictObject({
-	repo: z
-		.string()
-		.regex(/^https:\/\/[^\s/?#@]+(\/[^\s/?#@]+)+$/)
-		.meta({
-			description:
-				'The repository the file came from, as an https URL with a path and no userinfo, query, fragment, or trailing slash.'
-		}),
-	commit: z
-		.string()
-		.regex(/^[0-9a-f]{40}$/)
-		.meta({ description: 'The commit the file was read at.' }),
-	path: z
-		.string()
-		.min(1)
-		.refine(
-			(path) => path.split('/').every((segment) => segment !== '.' && segment !== '..'),
-			'a path has no "." or ".." segment'
-		)
-		.meta({ description: "The file's path in that repository." }),
-	sha256: Sha256.meta({ description: 'The hash of the file at that commit.' }),
-	license: z
-		.string()
-		.min(1)
-		.meta({ description: 'The SPDX expression of the license it is under.' }),
-	note: z
-		.string()
-		.min(1)
-		.nullable()
-		.meta({ description: 'How the upstream describes or built the file, when it says.' })
+export const BenchProvenance = s.object({
+	repo: meta(s.pipe(s.string, s.regex(/^https:\/\/[^\s/?#@]+(\/[^\s/?#@]+)+$/)), {
+		description:
+			'The repository the file came from, as an https URL with a path and no userinfo, query, fragment, or trailing slash.'
+	}),
+	commit: meta(s.pipe(s.string, s.regex(/^[0-9a-f]{40}$/)), {
+		description: 'The commit the file was read at.'
+	}),
+	path: meta(
+		s.pipe(
+			s.string,
+			s.min_length(1),
+			s.message(
+				s.check((path: string) =>
+					path.split('/').every((segment) => segment !== '.' && segment !== '..')
+				),
+				'a path has no "." or ".." segment'
+			)
+		),
+		{ description: "The file's path in that repository." }
+	),
+	sha256: meta(Sha256, { description: 'The hash of the file at that commit.' }),
+	license: meta(NonEmptyString, { description: 'The SPDX expression of the license it is under.' }),
+	note: meta(s.nullable(NonEmptyString), {
+		description: 'How the upstream describes or built the file, when it says.'
+	})
 });
-export type BenchProvenance = z.infer<typeof BenchProvenance>;
+export type BenchProvenance = s.Infer<typeof BenchProvenance>;
 
 /**
  * One input of the corpus: a file, what it is, and where it came from. The
  * corpus manifest is a list of these, and a results file carries the ones its
  * cells measured.
  */
-export const BenchInput = z
-	.strictObject({
-		file: z
-			.string()
-			.min(1)
-			.refine(
-				(file) =>
-					file.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..'),
-				'a file is a relative path with no empty, "." or ".." segment'
-			)
-			.meta({ description: "The input's path within the corpus, which identifies it." }),
+export const BenchInput = refined(
+	s.object({
+		file: meta(
+			s.pipe(
+				s.string,
+				s.min_length(1),
+				s.message(
+					s.check((file: string) =>
+						file
+							.split('/')
+							.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+					),
+					'a file is a relative path with no empty, "." or ".." segment'
+				)
+			),
+			{ description: "The input's path within the corpus, which identifies it." }
+		),
 		source: BenchSource,
-		home: LibraryId.nullable().meta({
+		home: meta(s.nullable(LibraryId), {
 			description:
 				"The library whose samples the input came from, set exactly when the source is home. It may name a library outside a run's roster."
 		}),
 		lang: LangId,
 		size: BenchSize,
-		bytes: z.number().int().positive(),
-		lines: z.number().int().positive(),
-		sha256: Sha256.meta({ description: "The hash of the input's bytes." }),
-		synthetic: z.boolean().meta({
+		bytes: PositiveInt,
+		lines: PositiveInt,
+		sha256: meta(Sha256, { description: "The hash of the input's bytes." }),
+		synthetic: meta(s.boolean, {
 			description:
 				'Whether the input is not one real file as published: built by joining or repeating files to reach its size, or derived from a file by a transformation.'
 		}),
-		provenance: z.array(BenchProvenance).meta({
+		provenance: meta(s.array(BenchProvenance), {
 			description:
 				'The upstream files the input came from. Empty for an input written here, which only the harness and stress sources hold, and always for harness. One entry without a derivation is a verbatim copy with the same hash. Several are the files a synthetic input was built from.'
 		}),
-		derivation: z.string().min(1).nullable().meta({
+		derivation: meta(s.nullable(NonEmptyString), {
 			description:
 				'How the input was made from its provenance by a transformation, naming the tool and its version, so its hash differs from the upstream file. Null for a copy, a join, or an input written here.'
 		})
-	})
-	.superRefine((input, ctx) => {
+	}),
+	(input, issue) => {
 		if ((input.source === 'home') !== (input.home !== null)) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['home'],
-				message: 'home is set exactly when the source is home'
-			});
+			issue(['home'], 'home is set exactly when the source is home');
 		}
 		if (input.source === 'harness' && input.provenance.length > 0) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['provenance'],
-				message: 'a harness input is written here, so it has no provenance'
-			});
+			issue(['provenance'], 'a harness input is written here, so it has no provenance');
 		}
 		if (
 			input.provenance.length === 0 &&
 			!(BENCH_WRITTEN_SOURCES as ReadonlyArray<string>).includes(input.source)
 		) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['provenance'],
-				message: `only a ${BENCH_WRITTEN_SOURCES.join(' or ')} input may be written here, without provenance`
-			});
+			issue(
+				['provenance'],
+				`only a ${BENCH_WRITTEN_SOURCES.join(' or ')} input may be written here, without provenance`
+			);
 		}
 		if (input.derivation !== null && input.source !== 'stress') {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['derivation'],
-				message: 'only a stress input is derived'
-			});
+			issue(['derivation'], 'only a stress input is derived');
 		}
 		if (input.source === 'stress' && input.provenance.length === 0 && input.synthetic) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['synthetic'],
-				message: 'a stress input written here comes from no upstream file, so it is not synthetic'
-			});
+			issue(
+				['synthetic'],
+				'a stress input written here comes from no upstream file, so it is not synthetic'
+			);
 		}
 		if (input.derivation !== null && (input.provenance.length === 0 || !input.synthetic)) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['derivation'],
-				message: 'a derived input names what it was derived from, and is synthetic'
-			});
+			issue(['derivation'], 'a derived input names what it was derived from, and is synthetic');
 		}
 		if (
 			input.derivation === null &&
 			input.provenance.length === 1 &&
 			input.provenance[0]!.sha256 !== input.sha256
 		) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['provenance', 0, 'sha256'],
-				message:
-					'an input with one upstream file and no derivation is a verbatim copy, so the hashes match'
-			});
+			issue(
+				['provenance', 0, 'sha256'],
+				'an input with one upstream file and no derivation is a verbatim copy, so the hashes match'
+			);
 		}
 		if (input.provenance.length > 1 && !input.synthetic) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['synthetic'],
-				message: 'an input built from several upstream files is synthetic'
-			});
+			issue(['synthetic'], 'an input built from several upstream files is synthetic');
 		}
-	});
-export type BenchInput = z.infer<typeof BenchInput>;
+	}
+);
+export type BenchInput = s.Infer<typeof BenchInput>;
 
 /** One library's timing and memory in one cell. Machine-dependent. */
-export const BenchCellValue = z
-	.strictObject({
-		ns_per_op: z.number().positive().meta({ description: 'Median nanoseconds per call.' }),
-		ops_per_sec: z.number().positive(),
-		mb_per_sec: z.number().positive().meta({ description: 'Input megabytes per second.' }),
-		p10_ns: z.number().positive().meta({ description: '10th percentile across rounds.' }),
-		p90_ns: z.number().positive().meta({ description: '90th percentile across rounds.' }),
-		spread: z
-			.number()
-			.min(1)
-			.meta({ description: 'Slowest round over fastest. Near 1 means the rounds agreed.' }),
-		pass_medians_ns: z.array(z.number().positive()).min(1).meta({
+export const BenchCellValue = refined(
+	s.object({
+		ns_per_op: meta(PositiveNumber, { description: 'Median nanoseconds per call.' }),
+		ops_per_sec: PositiveNumber,
+		mb_per_sec: meta(PositiveNumber, { description: 'Input megabytes per second.' }),
+		p10_ns: meta(PositiveNumber, { description: '10th percentile across rounds.' }),
+		p90_ns: meta(PositiveNumber, { description: '90th percentile across rounds.' }),
+		spread: meta(s.pipe(s.number, s.min_value(1)), {
+			description: 'Slowest round over fastest. Near 1 means the rounds agreed.'
+		}),
+		pass_medians_ns: meta(s.pipe(s.array(PositiveNumber), s.min_length(1)), {
 			description:
 				"Each pass's median nanoseconds per call over its own rounds, in pass order: one number per process, `meta.run.passes` of them, so the disagreement between processes can be read apart from the rounds. Of the kept attempt, and in a calibration file of the first arm."
 		}),
-		iterations: z.number().int().positive().meta({
+		iterations: meta(PositiveInt, {
 			description:
 				'Calls per timed batch, calibrated for this library. Each process calibrates for itself, and this is the median across them.'
 		}),
-		rss_peak_bytes: z.number().int().positive().meta({
+		rss_peak_bytes: meta(PositiveInt, {
 			description:
 				"The peak resident set size of the library's process, the largest across its passes. The process holds this library alone, with Node itself and the input, so it is a whole-process peak and not what the library adds. The process warms up and is timed for a fixed duration, so on a small input the peak follows how much the library allocated in that time more than what it holds: a cold-start entry's `rss_peak_bytes` is the figure to compare footprints by."
 		}),
-		attempts: z.number().int().positive().meta({
+		attempts: meta(PositiveInt, {
 			description:
 				'How many times the library was measured on this cell. 1 is once. More means its rounds disagreed and it was measured again: every other number here, the spread and the percentiles included, is from the attempt whose rounds agreed best, whichever was faster, so they describe its calmest attempt. In a calibration file it counts the attempts of the first arm, which the value is from.'
 		})
-	})
-	.refine((value) => value.p10_ns <= value.p90_ns, {
-		path: ['p10_ns'],
-		message: 'the 10th percentile is at most the 90th'
-	});
-export type BenchCellValue = z.infer<typeof BenchCellValue>;
+	}),
+	(value, issue) => {
+		if (!(value.p10_ns <= value.p90_ns)) {
+			issue(['p10_ns'], 'the 10th percentile is at most the 90th');
+		}
+	}
+);
+export type BenchCellValue = s.Infer<typeof BenchCellValue>;
 
 /** The size of one library's HTML for a cell's input. Deterministic. */
-export const BenchCellOutput = z.strictObject({
-	html_bytes: z.number().int().positive(),
-	spans: z.number().int().nonnegative().meta({ description: 'How many elements the HTML has.' })
+export const BenchCellOutput = s.object({
+	html_bytes: PositiveInt,
+	spans: meta(NonnegativeInt, { description: 'How many elements the HTML has.' })
 });
-export type BenchCellOutput = z.infer<typeof BenchCellOutput>;
+export type BenchCellOutput = s.Infer<typeof BenchCellOutput>;
 
 /**
  * The size of one library's HTML for a cell's input once compressed, at the
  * levels `BenchBundler` records: what a server sends for a page that renders the
  * highlighted input. Its raw size is `BenchCellOutput.html_bytes`. Deterministic.
  */
-export const BenchCellCompressed = z.strictObject({
-	gzip: z.number().int().positive().meta({ description: 'The HTML, gzipped.' }),
-	brotli: z.number().int().positive().meta({ description: 'The HTML, brotli-compressed.' })
+export const BenchCellCompressed = s.object({
+	gzip: meta(PositiveInt, { description: 'The HTML, gzipped.' }),
+	brotli: meta(PositiveInt, { description: 'The HTML, brotli-compressed.' })
 });
-export type BenchCellCompressed = z.infer<typeof BenchCellCompressed>;
+export type BenchCellCompressed = s.Infer<typeof BenchCellCompressed>;
 
 /**
  * The id of a cell: its input's file and its mode, which together are unique in
@@ -770,8 +905,8 @@ export const to_bench_cell_id = (file: string, mode: BenchMode): string => `${fi
  * returns it: `tokens` on the `tokenize` cell, since it counts what `tokenize`
  * returned, and `output` on the `html` cell. The other is empty there.
  */
-export const BenchCell = z.strictObject({
-	id: Id.meta({
+export const BenchCell = s.object({
+	id: meta(Id, {
 		description:
 			'The file and the mode, as `<file>:<mode>`. Unique within the run, and `meta.excluded` refers to it.'
 	}),
@@ -780,34 +915,34 @@ export const BenchCell = z.strictObject({
 	size: BenchSize,
 	mode: BenchMode,
 	source: BenchSource,
-	home: LibraryId.nullable().meta({
+	home: meta(s.nullable(LibraryId), {
 		description:
 			"The library whose samples the input came from, set exactly when the source is home. It may name a library outside this run's roster."
 	}),
-	file: z.string().min(1).meta({ description: "The input's path within the corpus." }),
-	bytes: z.number().int().positive(),
-	lines: z.number().int().positive(),
-	synthetic: z.boolean().meta({
+	file: meta(NonEmptyString, { description: "The input's path within the corpus." }),
+	bytes: PositiveInt,
+	lines: PositiveInt,
+	synthetic: meta(s.boolean, {
 		description:
 			'Whether the input was built by joining or repeating files to reach its size, rather than being one real file.'
 	}),
-	values: strict_record(LibraryId, BenchCellValue).meta({
+	values: meta(strict_record(is_name, BenchCellValue), {
 		description: 'Machine-dependent: timing and memory by library id.'
 	}),
-	tokens: strict_record(LibraryId, z.number().int().positive()).meta({
+	tokens: meta(strict_record(is_name, PositiveInt), {
 		description:
 			"Deterministic: each library's own token count, by library id. Stated on the `tokenize` cell and empty on any other."
 	}),
-	output: strict_record(LibraryId, BenchCellOutput).meta({
+	output: meta(strict_record(is_name, BenchCellOutput), {
 		description:
 			'Deterministic: HTML size by library id. Stated on the `html` cell and empty on any other.'
 	}),
-	compressed: strict_record(LibraryId, BenchCellCompressed).meta({
+	compressed: meta(strict_record(is_name, BenchCellCompressed), {
 		description:
 			"Deterministic: the HTML's compressed sizes by library id, from the deterministic pass. Stated on the `html` cell for exactly the libraries of `output` when the file holds that pass's sizes (`meta.bundler` is set), and empty otherwise and on any other cell."
 	})
 });
-export type BenchCell = z.infer<typeof BenchCell>;
+export type BenchCell = s.Infer<typeof BenchCell>;
 
 /**
  * The most a compressed size may exceed the raw one by: a compression format
@@ -818,75 +953,72 @@ export const to_max_compressed_bytes = (raw: number): number => raw + 64 + Math.
 
 /** The shape of some bytes measured raw and compressed. */
 const byte_sizes_shape = {
-	raw: z.number().int().positive().meta({ description: 'The bytes as served uncompressed.' }),
-	gzip: z.number().int().positive().meta({ description: 'Those bytes, gzipped.' }),
-	brotli: z.number().int().positive().meta({ description: 'Those bytes, brotli-compressed.' })
+	raw: meta(PositiveInt, { description: 'The bytes as served uncompressed.' }),
+	gzip: meta(PositiveInt, { description: 'Those bytes, gzipped.' }),
+	brotli: meta(PositiveInt, { description: 'Those bytes, brotli-compressed.' })
 };
 
 /** Rejects a compressed size implausibly larger than the raw one. */
 const refine_byte_sizes = (
 	sizes: { raw: number; gzip: number; brotli: number },
-	ctx: z.RefinementCtx
+	issue: BenchIssueReporter
 ): void => {
 	for (const key of ['gzip', 'brotli'] as const) {
 		if (sizes[key] > to_max_compressed_bytes(sizes.raw)) {
-			ctx.addIssue({
-				code: 'custom',
-				path: [key],
-				message: `${key} is larger than raw by more than a compression format's own overhead`
-			});
+			issue([key], `${key} is larger than raw by more than a compression format's own overhead`);
 		}
 	}
 };
 
 /** Some bytes a page loads, measured raw and compressed. Deterministic. */
-export const BenchByteSizes = z.strictObject(byte_sizes_shape).superRefine(refine_byte_sizes);
-export type BenchByteSizes = z.infer<typeof BenchByteSizes>;
+export const BenchByteSizes = refined(s.object(byte_sizes_shape), refine_byte_sizes);
+export type BenchByteSizes = s.Infer<typeof BenchByteSizes>;
 
 /**
  * The bundled size of one library over one feature set: `raw`, `gzip`, and
  * `brotli` are the minified JS, and what else a page loads for the
  * library has a section of its own. Deterministic.
  */
-export const BenchBundleSizes = z
-	.strictObject({
+export const BenchBundleSizes = refined(
+	s.object({
 		...byte_sizes_shape,
-		wasm: BenchByteSizes.nullable().meta({
+		wasm: meta(s.nullable(BenchByteSizes), {
 			description:
 				'The WebAssembly binaries the library loads, kept out of the JS figures. Null when it loads none.'
 		}),
-		css: BenchByteSizes.nullable().meta({
+		css: meta(s.nullable(BenchByteSizes), {
 			description:
 				'The default theme stylesheets, minified, each compressed on its own and summed, kept out of the JS figures. Null exactly when the library writes its styles inline: its theme is then in the JS figures.'
 		})
-	})
-	.superRefine(refine_byte_sizes);
-export type BenchBundleSizes = z.infer<typeof BenchBundleSizes>;
+	}),
+	refine_byte_sizes
+);
+export type BenchBundleSizes = s.Infer<typeof BenchBundleSizes>;
 
 /**
  * What `npm install` of a library adds: the runtime dependency closure of its
  * package and its extra packages, each package counted once, as this
  * repository's lockfile installs them. Deterministic.
  */
-export const BenchInstall = z
-	.strictObject({
-		packages: z.number().int().positive().meta({ description: 'The packages in the closure.' }),
-		files: z.number().int().positive().meta({ description: 'The files those packages hold.' }),
-		bytes: z
-			.number()
-			.int()
-			.positive()
-			.meta({ description: "The sum of those files' sizes, as stored, not as disk blocks." }),
-		closure: Sha256.meta({
+export const BenchInstall = refined(
+	s.object({
+		packages: meta(PositiveInt, { description: 'The packages in the closure.' }),
+		files: meta(PositiveInt, { description: 'The files those packages hold.' }),
+		bytes: meta(PositiveInt, {
+			description: "The sum of those files' sizes, as stored, not as disk blocks."
+		}),
+		closure: meta(Sha256, {
 			description:
 				'SHA-256 over the sorted `name@version` list of the closure: what pins the figures, transitive versions included, so two files can be compared on it.'
 		})
-	})
-	.refine((install) => install.files >= install.packages, {
-		path: ['files'],
-		message: 'every package has at least its manifest'
-	});
-export type BenchInstall = z.infer<typeof BenchInstall>;
+	}),
+	(install, issue) => {
+		if (!(install.files >= install.packages)) {
+			issue(['files'], 'every package has at least its manifest');
+		}
+	}
+);
+export type BenchInstall = s.Infer<typeof BenchInstall>;
 
 /**
  * What a library holds once one language is loaded and highlighted once, over a
@@ -896,20 +1028,20 @@ export type BenchInstall = z.infer<typeof BenchInstall>;
  * for regexp and wasm engines. Deterministic for a Node version and platform
  * (the one the check workflow pins, on x64), within `heap_readings_agree`.
  */
-export const BenchHeap = z.strictObject({
-	retained_kb: z.number().int().nonnegative().meta({
+export const BenchHeap = s.object({
+	retained_kb: meta(NonnegativeInt, {
 		description: "V8's heap in use, in KiB, less the spaces of machine code (`code_kb`)."
 	}),
-	code_kb: z.number().int().nonnegative().meta({
+	code_kb: meta(NonnegativeInt, {
 		description:
 			"V8's code spaces in use, in KiB: the regular expressions compiled to native code as well as optimized functions. Machine code is the architecture's, and the figure is x64's."
 	}),
-	external_kb: z.number().int().nonnegative().meta({
+	external_kb: meta(NonnegativeInt, {
 		description:
 			"`process.memoryUsage().external` in KiB: memory outside V8's heap that V8 is told about, like array buffers, and a WebAssembly engine's linear memory, counted at the size it has grown to, which it never gives back. The OS backs only the pages it has touched, so resident memory can be lower."
 	})
 });
-export type BenchHeap = z.infer<typeof BenchHeap>;
+export type BenchHeap = s.Infer<typeof BenchHeap>;
 
 /**
  * Whether two heap readings, in KiB, are the same reading: within
@@ -937,40 +1069,33 @@ export const bench_heaps_agree = (a: BenchResults['heap'], b: BenchResults['heap
 };
 
 /** A feature set a library can't be measured over, naming the languages it lacks. */
-export const BenchBundleUnsupported = z.strictObject({
-	unsupported: z.array(LangId).min(1)
+export const BenchBundleUnsupported = s.object({
+	unsupported: s.pipe(s.array(LangId), s.min_length(1))
 });
-export type BenchBundleUnsupported = z.infer<typeof BenchBundleUnsupported>;
+export type BenchBundleUnsupported = s.Infer<typeof BenchBundleUnsupported>;
 
 /**
  * One library's result for one feature set: its sizes, or why there are none.
  * An entry with an `unsupported` key is read as the latter and anything else as
  * sizes, so a malformed entry is reported against the shape it was meant to be.
  */
-export const BenchBundleEntry = z.union([BenchBundleSizes, BenchBundleUnsupported], {
-	error: (issue) => {
-		const { input } = issue;
+export const BenchBundleEntry = s.message(
+	s.union([BenchBundleSizes, BenchBundleUnsupported]),
+	(_issue, input) => {
 		const unsupported = typeof input === 'object' && input !== null && 'unsupported' in input;
-		const parsed = (unsupported ? BenchBundleUnsupported : BenchBundleSizes).safeParse(input);
-		const problems = parsed.success
-			? []
-			: parsed.error.issues.map((i) =>
-					i.path.length === 0 ? i.message : `${i.path.join('.')}: ${i.message}`
-				);
+		const parsed = s.parse(unsupported ? BenchBundleUnsupported : BenchBundleSizes, input);
+		const problems = parsed.ok ? [] : parsed.issues.map(format_issue_inline);
 		return `a bundle entry is sizes {raw, gzip, brotli, wasm, css} or {unsupported: [langs]}; read as ${unsupported ? 'unsupported' : 'sizes'}: ${problems.join('; ')}`;
 	}
-});
-export type BenchBundleEntry = z.infer<typeof BenchBundleEntry>;
+);
+export type BenchBundleEntry = s.Infer<typeof BenchBundleEntry>;
 
 /**
  * How a library supports a language it claims: `true` for directly, or a
  * footnote for anything a reader should know, like a third-party grammar.
  */
-export const BenchCoverageEntry = z.union([
-	z.literal(true),
-	z.strictObject({ via: z.string().min(1) })
-]);
-export type BenchCoverageEntry = z.infer<typeof BenchCoverageEntry>;
+export const BenchCoverageEntry = s.union([s.literal(true), s.object({ via: NonEmptyString })]);
+export type BenchCoverageEntry = s.Infer<typeof BenchCoverageEntry>;
 
 /** What a cell repeats from its input, which must agree with the `inputs` roster. */
 const INPUT_KEYS_ON_CELL = [
@@ -1138,38 +1263,35 @@ export const bench_results_find_startup_gaps = (
  * the install footprints cover every library and the compressed HTML sizes every
  * library with an HTML size.
  */
-export const BenchResults = z
-	.strictObject({
+export const BenchResults = refined(
+	s.object({
 		meta: BenchMeta,
-		langs: z.array(BenchLang),
-		sets: z.array(BenchSet),
-		inputs: z.array(BenchInput).meta({
+		langs: s.array(BenchLang),
+		sets: s.array(BenchSet),
+		inputs: meta(s.array(BenchInput), {
 			description: 'The corpus inputs the cells measured, with where each came from.'
 		}),
-		cells: z.array(BenchCell),
-		startup: z
-			.array(BenchStartup)
-			.meta({ description: 'Machine-dependent. Empty when cold start was not measured.' }),
-		bundle: strict_record(LibraryId, strict_record(Id, BenchBundleEntry)).meta({
+		cells: s.array(BenchCell),
+		startup: meta(s.array(BenchStartup), {
+			description: 'Machine-dependent. Empty when cold start was not measured.'
+		}),
+		bundle: meta(strict_record(is_name, strict_record(is_id, BenchBundleEntry)), {
 			description: 'Deterministic: library id, then set id. Empty when sizes were not measured.'
 		}),
-		install: strict_record(LibraryId, BenchInstall).meta({
+		install: meta(strict_record(is_name, BenchInstall), {
 			description:
 				'Deterministic: the install footprint by library id. Every library of the roster, or empty when sizes were not measured.'
 		}),
-		heap: strict_record(LibraryId, strict_record(LangId, BenchHeap)).meta({
+		heap: meta(strict_record(is_name, strict_record(is_name, BenchHeap)), {
 			description:
 				'Deterministic within a few KiB: the retained heap by library id, then every timed language it claims. Empty when sizes were not measured.'
 		}),
-		coverage: strict_record(LibraryId, strict_record(LangId, BenchCoverageEntry)).meta({
+		coverage: meta(strict_record(is_name, strict_record(is_name, BenchCoverageEntry)), {
 			description:
 				'Deterministic: library id, then the languages it claims. An absent language is unsupported.'
 		})
-	})
-	.superRefine((results, ctx) => {
-		const issue = (path: Array<string | number>, message: string): void => {
-			ctx.addIssue({ code: 'custom', path, message });
-		};
+	}),
+	(results, issue) => {
 		const unique = (
 			ids: Array<string>,
 			path: Array<string | number>,
@@ -1647,8 +1769,9 @@ export const BenchResults = z
 				}
 			}
 		}
-	});
-export type BenchResults = z.infer<typeof BenchResults>;
+	}
+);
+export type BenchResults = s.Infer<typeof BenchResults>;
 
 /**
  * Whether a run's numbers can be published as results: a complete `full` run
@@ -1683,9 +1806,9 @@ export const bench_results_is_publishable = (results: BenchResults): boolean => 
  * @throws if the data doesn't match `BenchResults`
  */
 export const parse_bench_results = (data: unknown): BenchResults => {
-	const parsed = BenchResults.safeParse(data);
-	if (!parsed.success) throw new Error(`invalid bench results: ${z.prettifyError(parsed.error)}`);
-	return parsed.data;
+	const parsed = s.parse(BenchResults, data);
+	if (!parsed.ok) throw new Error(`invalid bench results: ${format_bench_issues(parsed.issues)}`);
+	return parsed.value;
 };
 
 /** The facts of a run that decide whether it is publishable, as one line for an error. */

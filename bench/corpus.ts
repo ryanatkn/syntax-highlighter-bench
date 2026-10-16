@@ -26,9 +26,16 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { z } from 'zod';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
 
-import { BenchInput, BenchProvenance, type BenchSize } from '../src/lib/results_schema.ts';
+import {
+	BenchInput,
+	BenchProvenance,
+	format_bench_issues,
+	NonEmptyString,
+	type BenchSize
+} from '../src/lib/results_schema.ts';
 import { is_lang, type Lang } from './langs.ts';
 
 /** The directory holding the corpus. */
@@ -38,34 +45,31 @@ export const CORPUS_DIR = fileURLToPath(new URL('./corpus/', import.meta.url));
 export const CORPUS_MANIFEST_PATH = CORPUS_DIR + 'manifest.json';
 
 /** The corpus manifest: every input, and a hash over them all. */
-export const CorpusManifest = z.strictObject({
-	corpus_hash: z
-		.string()
-		.regex(/^[0-9a-f]{64}$/)
-		.meta({
-			description:
-				'Derived from every input. A run records it, so runs over different corpora are told apart.'
-		}),
-	inputs: z.array(BenchInput)
+export const CorpusManifest = s.object({
+	corpus_hash: meta(s.pipe(s.string, s.regex(/^[0-9a-f]{64}$/)), {
+		description:
+			'Derived from every input. A run records it, so runs over different corpora are told apart.'
+	}),
+	inputs: s.array(BenchInput)
 });
-export type CorpusManifest = z.infer<typeof CorpusManifest>;
+export type CorpusManifest = s.Infer<typeof CorpusManifest>;
 
 /**
  * What regenerating the manifest reads from the one on disk: only the fields
  * written by hand. Loose, so a new input is added as just its `file` and
  * `provenance` and the rest is derived.
  */
-export const CorpusManifestSeed = z.looseObject({
-	inputs: z.array(
-		z.looseObject({
-			file: z.string().min(1),
-			synthetic: z.boolean().optional(),
-			provenance: z.array(BenchProvenance).optional(),
-			derivation: z.string().min(1).nullable().optional()
+export const CorpusManifestSeed = s.loose_object({
+	inputs: s.array(
+		s.loose_object({
+			file: NonEmptyString,
+			synthetic: s.optional(s.boolean),
+			provenance: s.optional(s.array(BenchProvenance)),
+			derivation: s.optional(s.nullable(NonEmptyString))
 		})
 	)
 });
-export type CorpusManifestSeed = z.infer<typeof CorpusManifestSeed>;
+export type CorpusManifestSeed = s.Infer<typeof CorpusManifestSeed>;
 
 /** An input of this corpus: its language is one of the harness's ids. */
 export type CorpusInput = BenchInput & { lang: Lang };
@@ -339,14 +343,14 @@ export interface LoadedCorpusManifest {
  * @throws if the manifest doesn't match its schema or names an unknown language
  */
 export const load_corpus_manifest = (path: string = CORPUS_MANIFEST_PATH): LoadedCorpusManifest => {
-	const parsed = CorpusManifest.safeParse(JSON.parse(readFileSync(path, 'utf8')));
-	if (!parsed.success) throw new Error(`invalid corpus manifest: ${z.prettifyError(parsed.error)}`);
-	const inputs = parsed.data.inputs.map((input): CorpusInput => {
+	const parsed = s.parse(CorpusManifest, JSON.parse(readFileSync(path, 'utf8')));
+	if (!parsed.ok) throw new Error(`invalid corpus manifest: ${format_bench_issues(parsed.issues)}`);
+	const inputs = parsed.value.inputs.map((input): CorpusInput => {
 		const { lang } = input;
 		if (!is_lang(lang)) throw new Error(`invalid corpus manifest: unknown lang "${lang}"`);
 		return { ...input, lang };
 	});
-	return { corpus_hash: parsed.data.corpus_hash, inputs };
+	return { corpus_hash: parsed.value.corpus_hash, inputs };
 };
 
 /** Reads an input's text. */

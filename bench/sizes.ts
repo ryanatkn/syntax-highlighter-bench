@@ -50,6 +50,7 @@ import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import { map_concurrent } from '@fuzdev/fuz_util/async.js';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import {
 	BenchBundleEntry,
@@ -304,7 +305,7 @@ export const measure_wasm = (adapter: Pick<HighlighterAdapter, 'wasm'>): BenchBy
 /** What the sizes are built and compressed with. */
 export const read_bundler = async (): Promise<BenchBundler> => {
 	const [vite, esbuild] = await Promise.all([import('vite'), import('esbuild')]);
-	return BenchBundler.parse({
+	return s.parse_or_throw(BenchBundler, {
 		vite: vite.version,
 		rolldown: vite.rolldownVersion,
 		esbuild: esbuild.version,
@@ -351,21 +352,28 @@ export const measure_bundles = async (
 		for (const set of sets) {
 			const unsupported = find_missing_langs(adapter, set);
 			if (unsupported.length > 0) {
-				by_set[set.id] = BenchBundleEntry.parse({ unsupported });
+				by_set[set.id] = s.parse_or_throw(BenchBundleEntry, { unsupported });
 				continue;
 			}
 			const code = await build_bundle(adapter.bundle_entry(set.langs), external);
 			const path = join(dir, to_bundle_file_name(set.id));
 			write_if_changed(path, code);
 			checks.push({ library: adapter.id, langs: [...set.langs], path });
-			by_set[set.id] = BenchBundleEntry.parse({ ...measure_compressed(code), wasm, css });
+			by_set[set.id] = s.parse_or_throw(BenchBundleEntry, {
+				...measure_compressed(code),
+				wasm,
+				css
+			});
 		}
 		bundle[adapter.id] = by_set;
 		log?.(`built ${adapter.id}`);
 	}
 	await map_concurrent(checks, concurrency, async (spec) => {
 		const label = `the check of ${spec.path}`;
-		const result = BundleCheckResult.parse(await run_node_json(BUNDLE_CHECK_PATH, spec, label));
+		const result = s.parse_or_throw(
+			BundleCheckResult,
+			await run_node_json(BUNDLE_CHECK_PATH, spec, label)
+		);
 		const missing = spec.langs.filter((lang) => !Object.hasOwn(result.span_kinds, lang));
 		if (result.library !== spec.library || missing.length > 0) {
 			throw new Error(`${label} did not cover ${missing.join(', ') || spec.library}`);

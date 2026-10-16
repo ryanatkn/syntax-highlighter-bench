@@ -24,12 +24,15 @@
 
 import { fileURLToPath } from 'node:url';
 import { map_concurrent } from '@fuzdev/fuz_util/async.js';
-import { z } from 'zod';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
+import { meta } from '@fuzdev/fuz_schema/meta.ts';
 
 import {
 	BenchCellCompressed,
 	BenchCellOutput,
 	BenchMode,
+	NonEmptyString,
+	PositiveInt,
 	to_bench_cell_id,
 	type BenchCell,
 	type BenchExcluded,
@@ -46,35 +49,35 @@ import { measure_compressed } from './sizes.ts';
 const OUTPUTS_PATH = fileURLToPath(import.meta.url);
 
 /** What one process of the pass is asked for: one library on one language. */
-export const OutputsSpec = z.strictObject({
-	library: z.string().regex(/^[a-z][a-z0-9_]*$/),
-	lang: z.string().min(1)
+export const OutputsSpec = s.object({
+	library: s.pipe(s.string, s.regex(/^[a-z][a-z0-9_]*$/)),
+	lang: NonEmptyString
 });
-export type OutputsSpec = z.infer<typeof OutputsSpec>;
+export type OutputsSpec = s.Infer<typeof OutputsSpec>;
 
 /** One library's numbers on one input, or why it is excluded there. */
-export const InputOutput = z.discriminatedUnion('ok', [
-	z.strictObject({
-		file: z.string().min(1),
-		ok: z.literal(true),
-		tokens: z.number().int().positive(),
+export const InputOutput = s.variant('ok', [
+	s.object({
+		file: NonEmptyString,
+		ok: s.literal(true),
+		tokens: PositiveInt,
 		output: BenchCellOutput,
 		compressed: BenchCellCompressed
 	}),
-	z.strictObject({ file: z.string().min(1), ok: z.literal(false), reason: z.string().min(1) })
+	s.object({ file: NonEmptyString, ok: s.literal(false), reason: NonEmptyString })
 ]);
-export type InputOutput = z.infer<typeof InputOutput>;
+export type InputOutput = s.Infer<typeof InputOutput>;
 
 /** What one process of the pass reports: every input of the language. */
-export const OutputsResult = z.strictObject({
-	library: z.string().min(1),
-	lang: z.string().min(1),
-	loaded_langs: z
-		.array(z.string().min(1))
-		.meta({ description: 'The languages the library was set up with.' }),
-	inputs: z.array(InputOutput)
+export const OutputsResult = s.object({
+	library: NonEmptyString,
+	lang: NonEmptyString,
+	loaded_langs: meta(s.array(NonEmptyString), {
+		description: 'The languages the library was set up with.'
+	}),
+	inputs: s.array(InputOutput)
 });
-export type OutputsResult = z.infer<typeof OutputsResult>;
+export type OutputsResult = s.Infer<typeof OutputsResult>;
 
 /**
  * Checks one library on every input of one language, in this process.
@@ -158,7 +161,7 @@ export const measure_outputs = async (
 	);
 	return map_concurrent(specs, concurrency, async (spec) => {
 		const label = `the outputs of ${spec.library} on ${spec.lang}`;
-		const result = OutputsResult.parse(await run_node_json(OUTPUTS_PATH, spec, label));
+		const result = s.parse_or_throw(OutputsResult, await run_node_json(OUTPUTS_PATH, spec, label));
 		if (
 			result.library !== spec.library ||
 			result.lang !== spec.lang ||
@@ -266,7 +269,7 @@ export const to_deterministic_cells = (
 			} else failed.push({ library: id, reason: own.reason });
 		}
 		covered.push(input);
-		for (const mode of BenchMode.options) {
+		for (const mode of BenchMode.def) {
 			const cell = to_bench_cell(input, mode, numbers);
 			cells.push(cell);
 			for (const { library, reason } of failed) excluded.push({ cell: cell.id, library, reason });
@@ -276,7 +279,7 @@ export const to_deterministic_cells = (
 };
 
 if (import.meta.main) {
-	const spec = OutputsSpec.parse(JSON.parse(process.argv[2] ?? 'null'));
+	const spec = s.parse_or_throw(OutputsSpec, JSON.parse(process.argv[2] ?? 'null'));
 	const result = await run_outputs(spec);
 	// exits once the line is written, so a handle the library leaves open can't keep the process
 	// alive; the callback waits for the write, which is asynchronous to a pipe

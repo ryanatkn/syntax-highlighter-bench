@@ -45,6 +45,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BenchInstall, type BenchResults } from '../src/lib/results_schema.ts';
 import type { HighlighterAdapter } from './adapter.ts';
@@ -163,7 +164,7 @@ export const measure_install = (
 		for (const dep of optional) visit(dep, dir, false, label);
 	};
 	for (const name of names) visit(name, from_dir, true, 'the library');
-	return BenchInstall.parse({
+	return s.parse_or_throw(BenchInstall, {
 		packages: seen.size,
 		files,
 		bytes,

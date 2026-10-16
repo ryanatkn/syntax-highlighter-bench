@@ -1,4 +1,5 @@
 import { assert, describe, test } from 'vitest';
+import * as s from '@fuzdev/fuz_schema/schema.ts';
 
 import { BENCH_ANCHOR_STABLE_BELOW, BenchAnchor } from '#lib/results_schema.ts';
 import { measure_anchor, run_anchor_workload, to_anchor_drift } from '../../../bench/anchor.ts';
@@ -49,6 +50,6 @@ describe('to_anchor_drift', () => {
 	});
 
 	test('is the shape a results file carries', () => {
-		BenchAnchor.parse(to_anchor_drift([1234, 1250]));
+		s.parse_or_throw(BenchAnchor, to_anchor_drift([1234, 1250]));
 	});
 });
