@@ -60,23 +60,26 @@ export const refined = <T extends s.Schema>(
 	schema: T,
 	fn: (value: s.Infer<T>, issue: BenchIssueReporter) => void
 ): s.PipeSchema<s.Infer<T>, T> => {
-	const action: s.SchemaAction<s.Infer<T>> = {
+	const action: s.SchemaRefinement<s.Infer<T>> = {
 		kind: 'refine',
 		def: fn,
 		run: (value, ctx) => {
 			fn(value, (path, message) => {
 				const count = ctx.fails;
 				s.fail(ctx, 'refine', value_at(value, path));
-				if (!ctx.probe) {
-					const added = ctx.issues![count]!;
-					added.path = [...path];
+				// past the parse's issue cap `fail` builds none, so read only the one it added
+				const added = ctx.probe ? undefined : ctx.issues?.[count];
+				if (added) {
+					// a path is built innermost first, each parent pushing its key as the issue
+					// bubbles out, and `parse` reverses it on return
+					added.path = [...path].reverse();
 					added.message = message;
 				}
 			});
 			return value;
 		}
 	};
-	return s.pipe<T, s.Infer<T>>(schema, action);
+	return s.pipe(schema, action);
 };
 
 /**

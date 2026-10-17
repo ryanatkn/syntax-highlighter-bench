@@ -80,7 +80,7 @@
 				"id": "fuz_code",
 				"label": "fuz_code",
 				"package": "@fuzdev/fuz_code",
-				"version": "0.53.0",
+				"version": "0.54.0",
 				"output": "classes",
 				"engine": "scanner",
 				"by_maintainer": true,
@@ -12681,8 +12681,8 @@
 		"fuz_code": {
 			"packages": 7,
 			"files": 402,
-			"bytes": 2492562,
-			"closure": "ad3509a70dfcd92eff90ab54ccb90af5146ee6f4417c7ff01520c0f5ee5ed29f"
+			"bytes": 2533038,
+			"closure": "18e66e3bb0bd7d205af65b95e134a8bd61bba43294a2ceeac8e208bcab9e1f10"
 		}
 	},
 	"heap": {

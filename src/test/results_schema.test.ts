@@ -12,6 +12,7 @@ import {
 	bench_run_is_complete,
 	order_keys_by_schema,
 	parse_bench_results,
+	refined,
 	to_bench_cell_id,
 	type BenchStartupKey,
 	to_max_compressed_bytes
@@ -1293,6 +1294,47 @@ describe('libraries', () => {
 		const data2 = load_fixture();
 		data2.meta.libraries[0]!.extra_packages = { 'prism-svelte': '' };
 		assert.ok(!s.parse(BenchResults, data2).ok);
+	});
+});
+
+describe('refined', () => {
+	const Leaf = refined(s.object({ b: s.number }), (_value, issue) =>
+		issue(['a', 0, 'b'], 'bad leaf')
+	);
+	const Nested = s.object({ x: s.object({ y: Leaf }) });
+
+	test('an issue at a multi-segment path reads outer to inner', () => {
+		const parsed = s.parse(Nested, { x: { y: { b: 1 } } });
+		assert.ok(!parsed.ok);
+		assert.deepStrictEqual(
+			parsed.issues.map((i) => [i.path, i.message]),
+			[[['x', 'y', 'a', 0, 'b'], 'bad leaf']]
+		);
+	});
+
+	test('a failure past the issue cap builds nothing and does not throw', () => {
+		const Cap = s.object({
+			many: s.array(s.number),
+			refine: Leaf
+		});
+		// a hundred and fifty failures before the refined one, past the cap
+		const parsed = s.parse(Cap, { many: Array.from({ length: 150 }, () => 'x'), refine: { b: 1 } });
+		assert.ok(!parsed.ok);
+		assert.strictEqual(parsed.issues.length, 100);
+		assert.deepStrictEqual(parsed.issues[99]!.path, ['many', 99]);
+		assert.ok(parsed.issues.every((i) => i.message !== 'bad leaf'));
+	});
+
+	test('the hundredth issue is the last refined one that fits', () => {
+		const Many = s.array(Leaf);
+		const parsed = s.parse(
+			Many,
+			Array.from({ length: 150 }, () => ({ b: 1 }))
+		);
+		assert.ok(!parsed.ok);
+		assert.strictEqual(parsed.issues.length, 100);
+		assert.deepStrictEqual(parsed.issues[99]!.path, [99, 'a', 0, 'b']);
+		assert.strictEqual(parsed.issues[99]!.message, 'bad leaf');
 	});
 });
 
