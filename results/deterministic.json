@@ -80,7 +80,7 @@
 				"id": "fuz_code",
 				"label": "fuz_code",
 				"package": "@fuzdev/fuz_code",
-				"version": "0.54.0",
+				"version": "0.56.0",
 				"output": "classes",
 				"engine": "scanner",
 				"by_maintainer": true,
@@ -2759,7 +2759,7 @@
 				"prism": 62,
 				"shiki_js": 102,
 				"shiki_wasm": 102,
-				"fuz_code": 59
+				"fuz_code": 70
 			},
 			"output": {},
 			"compressed": {}
@@ -2796,8 +2796,8 @@
 					"spans": 111
 				},
 				"fuz_code": {
-					"html_bytes": 2636,
-					"spans": 59
+					"html_bytes": 3022,
+					"spans": 70
 				}
 			},
 			"compressed": {
@@ -2818,8 +2818,8 @@
 					"brotli": 476
 				},
 				"fuz_code": {
-					"gzip": 452,
-					"brotli": 360
+					"gzip": 475,
+					"brotli": 383
 				}
 			}
 		},
@@ -2841,7 +2841,7 @@
 				"prism": 153,
 				"shiki_js": 123,
 				"shiki_wasm": 123,
-				"fuz_code": 148
+				"fuz_code": 149
 			},
 			"output": {},
 			"compressed": {}
@@ -2878,8 +2878,8 @@
 					"spans": 132
 				},
 				"fuz_code": {
-					"html_bytes": 7302,
-					"spans": 148
+					"html_bytes": 7336,
+					"spans": 149
 				}
 			},
 			"compressed": {
@@ -2900,7 +2900,7 @@
 					"brotli": 486
 				},
 				"fuz_code": {
-					"gzip": 631,
+					"gzip": 636,
 					"brotli": 534
 				}
 			}
@@ -3288,7 +3288,7 @@
 					"spans": 162
 				},
 				"fuz_code": {
-					"html_bytes": 8175,
+					"html_bytes": 8196,
 					"spans": 185
 				}
 			},
@@ -3310,8 +3310,8 @@
 					"brotli": 613
 				},
 				"fuz_code": {
-					"gzip": 831,
-					"brotli": 697
+					"gzip": 832,
+					"brotli": 695
 				}
 			}
 		},
@@ -3370,7 +3370,7 @@
 					"spans": 111
 				},
 				"fuz_code": {
-					"html_bytes": 4884,
+					"html_bytes": 4919,
 					"spans": 109
 				}
 			},
@@ -3392,8 +3392,8 @@
 					"brotli": 547
 				},
 				"fuz_code": {
-					"gzip": 707,
-					"brotli": 595
+					"gzip": 703,
+					"brotli": 590
 				}
 			}
 		},
@@ -3497,7 +3497,7 @@
 				"prism": 75,
 				"shiki_js": 111,
 				"shiki_wasm": 111,
-				"fuz_code": 73
+				"fuz_code": 83
 			},
 			"output": {},
 			"compressed": {}
@@ -3534,8 +3534,8 @@
 					"spans": 144
 				},
 				"fuz_code": {
-					"html_bytes": 3263,
-					"spans": 73
+					"html_bytes": 3603,
+					"spans": 83
 				}
 			},
 			"compressed": {
@@ -3556,8 +3556,8 @@
 					"brotli": 543
 				},
 				"fuz_code": {
-					"gzip": 512,
-					"brotli": 432
+					"gzip": 524,
+					"brotli": 442
 				}
 			}
 		},
@@ -3907,7 +3907,7 @@
 				"prism": 619,
 				"shiki_js": 640,
 				"shiki_wasm": 640,
-				"fuz_code": 696
+				"fuz_code": 705
 			},
 			"output": {},
 			"compressed": {}
@@ -3944,8 +3944,8 @@
 					"spans": 681
 				},
 				"fuz_code": {
-					"html_bytes": 31423,
-					"spans": 696
+					"html_bytes": 31792,
+					"spans": 705
 				}
 			},
 			"compressed": {
@@ -3966,8 +3966,8 @@
 					"brotli": 1913
 				},
 				"fuz_code": {
-					"gzip": 2384,
-					"brotli": 2108
+					"gzip": 2387,
+					"brotli": 2107
 				}
 			}
 		},
@@ -4026,7 +4026,7 @@
 					"spans": 724
 				},
 				"fuz_code": {
-					"html_bytes": 27207,
+					"html_bytes": 27411,
 					"spans": 628
 				}
 			},
@@ -4048,8 +4048,8 @@
 					"brotli": 1945
 				},
 				"fuz_code": {
-					"gzip": 2232,
-					"brotli": 1988
+					"gzip": 2226,
+					"brotli": 1975
 				}
 			}
 		},
@@ -4399,7 +4399,7 @@
 				"prism": 13208,
 				"shiki_js": 21562,
 				"shiki_wasm": 21562,
-				"fuz_code": 12485
+				"fuz_code": 14356
 			},
 			"output": {},
 			"compressed": {}
@@ -4436,8 +4436,8 @@
 					"spans": 22620
 				},
 				"fuz_code": {
-					"html_bytes": 569828,
-					"spans": 12485
+					"html_bytes": 636982,
+					"spans": 14356
 				}
 			},
 			"compressed": {
@@ -4458,8 +4458,8 @@
 					"brotli": 11964
 				},
 				"fuz_code": {
-					"gzip": 29673,
-					"brotli": 11066
+					"gzip": 30490,
+					"brotli": 11312
 				}
 			}
 		},
@@ -4481,7 +4481,7 @@
 				"prism": 1624,
 				"shiki_js": 2368,
 				"shiki_wasm": 2368,
-				"fuz_code": 1566
+				"fuz_code": 1780
 			},
 			"output": {},
 			"compressed": {}
@@ -4518,8 +4518,8 @@
 					"spans": 2695
 				},
 				"fuz_code": {
-					"html_bytes": 69518,
-					"spans": 1566
+					"html_bytes": 76962,
+					"spans": 1780
 				}
 			},
 			"compressed": {
@@ -4540,8 +4540,8 @@
 					"brotli": 2429
 				},
 				"fuz_code": {
-					"gzip": 4673,
-					"brotli": 2200
+					"gzip": 4805,
+					"brotli": 2254
 				}
 			}
 		},
@@ -4563,7 +4563,7 @@
 				"prism": 213,
 				"shiki_js": 345,
 				"shiki_wasm": 345,
-				"fuz_code": 204
+				"fuz_code": 255
 			},
 			"output": {},
 			"compressed": {}
@@ -4600,8 +4600,8 @@
 					"spans": 364
 				},
 				"fuz_code": {
-					"html_bytes": 8926,
-					"spans": 204
+					"html_bytes": 10768,
+					"spans": 255
 				}
 			},
 			"compressed": {
@@ -4622,8 +4622,8 @@
 					"brotli": 520
 				},
 				"fuz_code": {
-					"gzip": 552,
-					"brotli": 431
+					"gzip": 584,
+					"brotli": 449
 				}
 			}
 		},
@@ -4645,7 +4645,7 @@
 				"prism": 5385,
 				"shiki_js": 9004,
 				"shiki_wasm": 9004,
-				"fuz_code": 5067
+				"fuz_code": 5842
 			},
 			"output": {},
 			"compressed": {}
@@ -4682,8 +4682,8 @@
 					"spans": 9288
 				},
 				"fuz_code": {
-					"html_bytes": 232715,
-					"spans": 5067
+					"html_bytes": 260709,
+					"spans": 5842
 				}
 			},
 			"compressed": {
@@ -4704,8 +4704,8 @@
 					"brotli": 10035
 				},
 				"fuz_code": {
-					"gzip": 11477,
-					"brotli": 9267
+					"gzip": 11818,
+					"brotli": 9413
 				}
 			}
 		},
@@ -4809,7 +4809,7 @@
 				"prism": 21625,
 				"shiki_js": 21014,
 				"shiki_wasm": 21014,
-				"fuz_code": 20374
+				"fuz_code": 21128
 			},
 			"output": {},
 			"compressed": {}
@@ -4846,8 +4846,8 @@
 					"spans": 21802
 				},
 				"fuz_code": {
-					"html_bytes": 994686,
-					"spans": 20374
+					"html_bytes": 1022410,
+					"spans": 21128
 				}
 			},
 			"compressed": {
@@ -4868,8 +4868,8 @@
 					"brotli": 1803
 				},
 				"fuz_code": {
-					"gzip": 45890,
-					"brotli": 1860
+					"gzip": 46471,
+					"brotli": 1878
 				}
 			}
 		},
@@ -4891,7 +4891,7 @@
 				"prism": 2223,
 				"shiki_js": 2163,
 				"shiki_wasm": 2163,
-				"fuz_code": 2094
+				"fuz_code": 2172
 			},
 			"output": {},
 			"compressed": {}
@@ -4928,8 +4928,8 @@
 					"spans": 2246
 				},
 				"fuz_code": {
-					"html_bytes": 102179,
-					"spans": 2094
+					"html_bytes": 105047,
+					"spans": 2172
 				}
 			},
 			"compressed": {
@@ -4950,8 +4950,8 @@
 					"brotli": 1803
 				},
 				"fuz_code": {
-					"gzip": 5324,
-					"brotli": 1860
+					"gzip": 5392,
+					"brotli": 1878
 				}
 			}
 		},
@@ -4973,7 +4973,7 @@
 				"prism": 309,
 				"shiki_js": 265,
 				"shiki_wasm": 265,
-				"fuz_code": 296
+				"fuz_code": 298
 			},
 			"output": {},
 			"compressed": {}
@@ -5010,8 +5010,8 @@
 					"spans": 278
 				},
 				"fuz_code": {
-					"html_bytes": 14872,
-					"spans": 296
+					"html_bytes": 14952,
+					"spans": 298
 				}
 			},
 			"compressed": {
@@ -5032,8 +5032,8 @@
 					"brotli": 885
 				},
 				"fuz_code": {
-					"gzip": 1108,
-					"brotli": 936
+					"gzip": 1122,
+					"brotli": 946
 				}
 			}
 		},
@@ -5137,7 +5137,7 @@
 				"prism": 17780,
 				"shiki_js": 19774,
 				"shiki_wasm": 19774,
-				"fuz_code": 15906
+				"fuz_code": 15897
 			},
 			"output": {},
 			"compressed": {}
@@ -5174,8 +5174,8 @@
 					"spans": 20674
 				},
 				"fuz_code": {
-					"html_bytes": 723594,
-					"spans": 15906
+					"html_bytes": 723087,
+					"spans": 15897
 				}
 			},
 			"compressed": {
@@ -5196,8 +5196,8 @@
 					"brotli": 15454
 				},
 				"fuz_code": {
-					"gzip": 45040,
-					"brotli": 14572
+					"gzip": 45005,
+					"brotli": 14573
 				}
 			}
 		},
@@ -6449,7 +6449,7 @@
 				"prism": 753,
 				"shiki_js": 903,
 				"shiki_wasm": 903,
-				"fuz_code": 718
+				"fuz_code": 748
 			},
 			"output": {},
 			"compressed": {}
@@ -6486,8 +6486,8 @@
 					"spans": 878
 				},
 				"fuz_code": {
-					"html_bytes": 33014,
-					"spans": 718
+					"html_bytes": 34116,
+					"spans": 748
 				}
 			},
 			"compressed": {
@@ -6508,8 +6508,8 @@
 					"brotli": 2432
 				},
 				"fuz_code": {
-					"gzip": 2933,
-					"brotli": 2501
+					"gzip": 2943,
+					"brotli": 2508
 				}
 			}
 		},
@@ -6531,7 +6531,7 @@
 				"prism": 801,
 				"shiki_js": 954,
 				"shiki_wasm": 954,
-				"fuz_code": 808
+				"fuz_code": 854
 			},
 			"output": {},
 			"compressed": {}
@@ -6568,8 +6568,8 @@
 					"spans": 965
 				},
 				"fuz_code": {
-					"html_bytes": 37489,
-					"spans": 808
+					"html_bytes": 39109,
+					"spans": 854
 				}
 			},
 			"compressed": {
@@ -6590,8 +6590,8 @@
 					"brotli": 1702
 				},
 				"fuz_code": {
-					"gzip": 2077,
-					"brotli": 1733
+					"gzip": 2092,
+					"brotli": 1751
 				}
 			}
 		},
@@ -6613,7 +6613,7 @@
 				"prism": 23069,
 				"shiki_js": 22620,
 				"shiki_wasm": 22620,
-				"fuz_code": 24239
+				"fuz_code": 25017
 			},
 			"output": {},
 			"compressed": {}
@@ -6650,8 +6650,8 @@
 					"spans": 23608
 				},
 				"fuz_code": {
-					"html_bytes": 1105854,
-					"spans": 24239
+					"html_bytes": 1134423,
+					"spans": 25017
 				}
 			},
 			"compressed": {
@@ -6672,8 +6672,8 @@
 					"brotli": 8419
 				},
 				"fuz_code": {
-					"gzip": 58799,
-					"brotli": 8827
+					"gzip": 59362,
+					"brotli": 8885
 				}
 			}
 		},
@@ -6695,7 +6695,7 @@
 				"prism": 1992,
 				"shiki_js": 2257,
 				"shiki_wasm": 2257,
-				"fuz_code": 1974
+				"fuz_code": 2056
 			},
 			"output": {},
 			"compressed": {}
@@ -6732,8 +6732,8 @@
 					"spans": 2243
 				},
 				"fuz_code": {
-					"html_bytes": 90754,
-					"spans": 1974
+					"html_bytes": 93704,
+					"spans": 2056
 				}
 			},
 			"compressed": {
@@ -6754,8 +6754,8 @@
 					"brotli": 4023
 				},
 				"fuz_code": {
-					"gzip": 6006,
-					"brotli": 4200
+					"gzip": 6055,
+					"brotli": 4213
 				}
 			}
 		},
@@ -6777,7 +6777,7 @@
 				"prism": 219,
 				"shiki_js": 200,
 				"shiki_wasm": 200,
-				"fuz_code": 224
+				"fuz_code": 227
 			},
 			"output": {},
 			"compressed": {}
@@ -6814,8 +6814,8 @@
 					"spans": 203
 				},
 				"fuz_code": {
-					"html_bytes": 10124,
-					"spans": 224
+					"html_bytes": 10238,
+					"spans": 227
 				}
 			},
 			"compressed": {
@@ -6836,8 +6836,8 @@
 					"brotli": 737
 				},
 				"fuz_code": {
-					"gzip": 1016,
-					"brotli": 873
+					"gzip": 1024,
+					"brotli": 881
 				}
 			}
 		},
@@ -6896,7 +6896,7 @@
 					"spans": 7548
 				},
 				"fuz_code": {
-					"html_bytes": 315901,
+					"html_bytes": 317056,
 					"spans": 6737
 				}
 			},
@@ -6918,8 +6918,8 @@
 					"brotli": 16062
 				},
 				"fuz_code": {
-					"gzip": 21155,
-					"brotli": 15910
+					"gzip": 21160,
+					"brotli": 15927
 				}
 			}
 		},
@@ -6978,7 +6978,7 @@
 					"spans": 7819
 				},
 				"fuz_code": {
-					"html_bytes": 316754,
+					"html_bytes": 317482,
 					"spans": 6430
 				}
 			},
@@ -7001,7 +7001,7 @@
 				},
 				"fuz_code": {
 					"gzip": 21239,
-					"brotli": 15238
+					"brotli": 15244
 				}
 			}
 		},
@@ -7060,7 +7060,7 @@
 					"spans": 5144
 				},
 				"fuz_code": {
-					"html_bytes": 216733,
+					"html_bytes": 219652,
 					"spans": 4294
 				}
 			},
@@ -7082,8 +7082,8 @@
 					"brotli": 19396
 				},
 				"fuz_code": {
-					"gzip": 23074,
-					"brotli": 19490
+					"gzip": 23104,
+					"brotli": 19493
 				}
 			}
 		},
@@ -7105,7 +7105,7 @@
 				"prism": 11718,
 				"shiki_js": 15424,
 				"shiki_wasm": 15424,
-				"fuz_code": 12616
+				"fuz_code": 12619
 			},
 			"output": {},
 			"compressed": {}
@@ -7142,8 +7142,8 @@
 					"spans": 14493
 				},
 				"fuz_code": {
-					"html_bytes": 600555,
-					"spans": 12616
+					"html_bytes": 605336,
+					"spans": 12619
 				}
 			},
 			"compressed": {
@@ -7164,8 +7164,8 @@
 					"brotli": 38098
 				},
 				"fuz_code": {
-					"gzip": 48224,
-					"brotli": 38255
+					"gzip": 48272,
+					"brotli": 38271
 				}
 			}
 		},
@@ -7187,7 +7187,7 @@
 				"prism": 1643,
 				"shiki_js": 2176,
 				"shiki_wasm": 2176,
-				"fuz_code": 1778
+				"fuz_code": 1781
 			},
 			"output": {},
 			"compressed": {}
@@ -7224,8 +7224,8 @@
 					"spans": 1985
 				},
 				"fuz_code": {
-					"html_bytes": 76252,
-					"spans": 1778
+					"html_bytes": 77029,
+					"spans": 1781
 				}
 			},
 			"compressed": {
@@ -7246,8 +7246,8 @@
 					"brotli": 3812
 				},
 				"fuz_code": {
-					"gzip": 5123,
-					"brotli": 3956
+					"gzip": 5128,
+					"brotli": 3953
 				}
 			}
 		},
@@ -7306,7 +7306,7 @@
 					"spans": 187
 				},
 				"fuz_code": {
-					"html_bytes": 8443,
+					"html_bytes": 8513,
 					"spans": 195
 				}
 			},
@@ -7328,8 +7328,8 @@
 					"brotli": 763
 				},
 				"fuz_code": {
-					"gzip": 977,
-					"brotli": 861
+					"gzip": 973,
+					"brotli": 858
 				}
 			}
 		},
@@ -7597,7 +7597,7 @@
 				"prism": 102203,
 				"shiki_js": 128376,
 				"shiki_wasm": 128376,
-				"fuz_code": 88274
+				"fuz_code": 93959
 			},
 			"output": {},
 			"compressed": {}
@@ -7634,8 +7634,8 @@
 					"spans": 135519
 				},
 				"fuz_code": {
-					"html_bytes": 4107443,
-					"spans": 88274
+					"html_bytes": 4300733,
+					"spans": 93959
 				}
 			},
 			"compressed": {
@@ -7656,8 +7656,8 @@
 					"brotli": 54032
 				},
 				"fuz_code": {
-					"gzip": 94567,
-					"brotli": 49312
+					"gzip": 96894,
+					"brotli": 49378
 				}
 			}
 		},
@@ -7679,7 +7679,7 @@
 				"prism": 1220,
 				"shiki_js": 2698,
 				"shiki_wasm": 2698,
-				"fuz_code": 1216
+				"fuz_code": 1393
 			},
 			"output": {},
 			"compressed": {}
@@ -7716,8 +7716,8 @@
 					"spans": 2820
 				},
 				"fuz_code": {
-					"html_bytes": 58474,
-					"spans": 1216
+					"html_bytes": 64804,
+					"spans": 1393
 				}
 			},
 			"compressed": {
@@ -7738,8 +7738,8 @@
 					"brotli": 4515
 				},
 				"fuz_code": {
-					"gzip": 4552,
-					"brotli": 3921
+					"gzip": 4640,
+					"brotli": 4004
 				}
 			}
 		},
@@ -7761,7 +7761,7 @@
 				"prism": 108,
 				"shiki_js": 197,
 				"shiki_wasm": 197,
-				"fuz_code": 103
+				"fuz_code": 122
 			},
 			"output": {},
 			"compressed": {}
@@ -7798,8 +7798,8 @@
 					"spans": 209
 				},
 				"fuz_code": {
-					"html_bytes": 4781,
-					"spans": 103
+					"html_bytes": 5427,
+					"spans": 122
 				}
 			},
 			"compressed": {
@@ -7820,8 +7820,8 @@
 					"brotli": 656
 				},
 				"fuz_code": {
-					"gzip": 621,
-					"brotli": 507
+					"gzip": 646,
+					"brotli": 536
 				}
 			}
 		},
@@ -8007,7 +8007,7 @@
 				"prism": 3057,
 				"shiki_js": 3554,
 				"shiki_wasm": 3554,
-				"fuz_code": 2801
+				"fuz_code": 2957
 			},
 			"output": {},
 			"compressed": {}
@@ -8044,8 +8044,8 @@
 					"spans": 3589
 				},
 				"fuz_code": {
-					"html_bytes": 129205,
-					"spans": 2801
+					"html_bytes": 134881,
+					"spans": 2957
 				}
 			},
 			"compressed": {
@@ -8066,8 +8066,8 @@
 					"brotli": 6344
 				},
 				"fuz_code": {
-					"gzip": 7280,
-					"brotli": 6176
+					"gzip": 7367,
+					"brotli": 6237
 				}
 			}
 		},
@@ -8171,7 +8171,7 @@
 				"prism": 9932,
 				"shiki_js": 11117,
 				"shiki_wasm": 11117,
-				"fuz_code": 8529
+				"fuz_code": 8526
 			},
 			"output": {},
 			"compressed": {}
@@ -8208,8 +8208,8 @@
 					"spans": 11831
 				},
 				"fuz_code": {
-					"html_bytes": 419074,
-					"spans": 8529
+					"html_bytes": 418897,
+					"spans": 8526
 				}
 			},
 			"compressed": {
@@ -8230,8 +8230,8 @@
 					"brotli": 29891
 				},
 				"fuz_code": {
-					"gzip": 39376,
-					"brotli": 28742
+					"gzip": 39361,
+					"brotli": 28718
 				}
 			}
 		},
@@ -9110,7 +9110,7 @@
 					"spans": 241
 				},
 				"fuz_code": {
-					"html_bytes": 11957,
+					"html_bytes": 11978,
 					"spans": 260
 				}
 			},
@@ -9132,8 +9132,8 @@
 					"brotli": 849
 				},
 				"fuz_code": {
-					"gzip": 1052,
-					"brotli": 922
+					"gzip": 1055,
+					"brotli": 911
 				}
 			}
 		},
@@ -9192,7 +9192,7 @@
 					"spans": 1469
 				},
 				"fuz_code": {
-					"html_bytes": 58174,
+					"html_bytes": 58279,
 					"spans": 1263
 				}
 			},
@@ -9215,7 +9215,7 @@
 				},
 				"fuz_code": {
 					"gzip": 3661,
-					"brotli": 3083
+					"brotli": 3080
 				}
 			}
 		},
@@ -9237,7 +9237,7 @@
 				"prism": 14457,
 				"shiki_js": 14888,
 				"shiki_wasm": 14888,
-				"fuz_code": 14353
+				"fuz_code": 14400
 			},
 			"output": {},
 			"compressed": {}
@@ -9274,8 +9274,8 @@
 					"spans": 14806
 				},
 				"fuz_code": {
-					"html_bytes": 676535,
-					"spans": 14353
+					"html_bytes": 679092,
+					"spans": 14400
 				}
 			},
 			"compressed": {
@@ -9296,8 +9296,8 @@
 					"brotli": 27816
 				},
 				"fuz_code": {
-					"gzip": 37257,
-					"brotli": 28210
+					"gzip": 37285,
+					"brotli": 28237
 				}
 			}
 		},
@@ -9356,7 +9356,7 @@
 					"spans": 16323
 				},
 				"fuz_code": {
-					"html_bytes": 690636,
+					"html_bytes": 696271,
 					"spans": 15149
 				}
 			},
@@ -9378,8 +9378,8 @@
 					"brotli": 21947
 				},
 				"fuz_code": {
-					"gzip": 29521,
-					"brotli": 22213
+					"gzip": 29558,
+					"brotli": 22232
 				}
 			}
 		},
@@ -9401,7 +9401,7 @@
 				"prism": 1048,
 				"shiki_js": 1196,
 				"shiki_wasm": 1196,
-				"fuz_code": 1055
+				"fuz_code": 1053
 			},
 			"output": {},
 			"compressed": {}
@@ -9438,8 +9438,8 @@
 					"spans": 1196
 				},
 				"fuz_code": {
-					"html_bytes": 50228,
-					"spans": 1055
+					"html_bytes": 50355,
+					"spans": 1053
 				}
 			},
 			"compressed": {
@@ -9460,8 +9460,8 @@
 					"brotli": 3514
 				},
 				"fuz_code": {
-					"gzip": 4020,
-					"brotli": 3457
+					"gzip": 4014,
+					"brotli": 3436
 				}
 			}
 		},
@@ -9520,7 +9520,7 @@
 					"spans": 134
 				},
 				"fuz_code": {
-					"html_bytes": 5777,
+					"html_bytes": 5812,
 					"spans": 115
 				}
 			},
@@ -9542,7 +9542,7 @@
 					"brotli": 703
 				},
 				"fuz_code": {
-					"gzip": 831,
+					"gzip": 830,
 					"brotli": 692
 				}
 			}
@@ -9647,7 +9647,7 @@
 				"prism": 89,
 				"shiki_js": 144,
 				"shiki_wasm": 144,
-				"fuz_code": 89
+				"fuz_code": 102
 			},
 			"output": {},
 			"compressed": {}
@@ -9684,8 +9684,8 @@
 					"spans": 169
 				},
 				"fuz_code": {
-					"html_bytes": 3954,
-					"spans": 89
+					"html_bytes": 4396,
+					"spans": 102
 				}
 			},
 			"compressed": {
@@ -9706,8 +9706,8 @@
 					"brotli": 450
 				},
 				"fuz_code": {
-					"gzip": 449,
-					"brotli": 354
+					"gzip": 461,
+					"brotli": 353
 				}
 			}
 		},
@@ -9729,7 +9729,7 @@
 				"prism": 274,
 				"shiki_js": 215,
 				"shiki_wasm": 215,
-				"fuz_code": 244
+				"fuz_code": 247
 			},
 			"output": {},
 			"compressed": {}
@@ -9766,8 +9766,8 @@
 					"spans": 239
 				},
 				"fuz_code": {
-					"html_bytes": 13058,
-					"spans": 244
+					"html_bytes": 13172,
+					"spans": 247
 				}
 			},
 			"compressed": {
@@ -9788,8 +9788,8 @@
 					"brotli": 861
 				},
 				"fuz_code": {
-					"gzip": 1093,
-					"brotli": 908
+					"gzip": 1107,
+					"brotli": 921
 				}
 			}
 		},
@@ -9848,7 +9848,7 @@
 					"spans": 608
 				},
 				"fuz_code": {
-					"html_bytes": 22622,
+					"html_bytes": 22630,
 					"spans": 490
 				}
 			},
@@ -9870,8 +9870,8 @@
 					"brotli": 2004
 				},
 				"fuz_code": {
-					"gzip": 2294,
-					"brotli": 1984
+					"gzip": 2286,
+					"brotli": 1975
 				}
 			}
 		},
@@ -10258,7 +10258,7 @@
 					"spans": 381
 				},
 				"fuz_code": {
-					"html_bytes": 14261,
+					"html_bytes": 14373,
 					"spans": 317
 				}
 			},
@@ -10281,7 +10281,7 @@
 				},
 				"fuz_code": {
 					"gzip": 1446,
-					"brotli": 1230
+					"brotli": 1226
 				}
 			}
 		},
@@ -10385,7 +10385,7 @@
 				"prism": 1063,
 				"shiki_js": 2301,
 				"shiki_wasm": 2301,
-				"fuz_code": 1059
+				"fuz_code": 1247
 			},
 			"output": {},
 			"compressed": {}
@@ -10422,8 +10422,8 @@
 					"spans": 2110
 				},
 				"fuz_code": {
-					"html_bytes": 48404,
-					"spans": 1059
+					"html_bytes": 55132,
+					"spans": 1247
 				}
 			},
 			"compressed": {
@@ -10444,8 +10444,8 @@
 					"brotli": 2970
 				},
 				"fuz_code": {
-					"gzip": 2888,
-					"brotli": 2606
+					"gzip": 2985,
+					"brotli": 2677
 				}
 			}
 		},
@@ -10467,7 +10467,7 @@
 				"prism": 554,
 				"shiki_js": 8536,
 				"shiki_wasm": 8536,
-				"fuz_code": 489
+				"fuz_code": 557
 			},
 			"output": {},
 			"compressed": {}
@@ -10504,8 +10504,8 @@
 					"spans": 7490
 				},
 				"fuz_code": {
-					"html_bytes": 47858,
-					"spans": 489
+					"html_bytes": 50170,
+					"spans": 557
 				}
 			},
 			"compressed": {
@@ -10526,8 +10526,8 @@
 					"brotli": 2562
 				},
 				"fuz_code": {
-					"gzip": 4533,
-					"brotli": 2128
+					"gzip": 4536,
+					"brotli": 2119
 				}
 			}
 		},
@@ -10631,7 +10631,7 @@
 				"prism": 9327,
 				"shiki_js": 6717,
 				"shiki_wasm": 6717,
-				"fuz_code": 7541
+				"fuz_code": 7497
 			},
 			"output": {},
 			"compressed": {}
@@ -10668,8 +10668,8 @@
 					"spans": 6294
 				},
 				"fuz_code": {
-					"html_bytes": 332168,
-					"spans": 7541
+					"html_bytes": 329828,
+					"spans": 7497
 				}
 			},
 			"compressed": {
@@ -10690,8 +10690,8 @@
 					"brotli": 14244
 				},
 				"fuz_code": {
-					"gzip": 19476,
-					"brotli": 14825
+					"gzip": 19458,
+					"brotli": 14801
 				}
 			}
 		},
@@ -11242,7 +11242,7 @@
 					"spans": 1030
 				},
 				"fuz_code": {
-					"html_bytes": 66182,
+					"html_bytes": 66189,
 					"spans": 1501
 				}
 			},
@@ -11264,8 +11264,8 @@
 					"brotli": 1030
 				},
 				"fuz_code": {
-					"gzip": 1707,
-					"brotli": 1218
+					"gzip": 1702,
+					"brotli": 1215
 				}
 			}
 		},
@@ -11287,7 +11287,7 @@
 				"prism": 8497,
 				"shiki_js": 8171,
 				"shiki_wasm": 8171,
-				"fuz_code": 8698
+				"fuz_code": 8699
 			},
 			"output": {},
 			"compressed": {}
@@ -11324,8 +11324,8 @@
 					"spans": 6727
 				},
 				"fuz_code": {
-					"html_bytes": 380224,
-					"spans": 8698
+					"html_bytes": 380322,
+					"spans": 8699
 				}
 			},
 			"compressed": {
@@ -11346,8 +11346,8 @@
 					"brotli": 1991
 				},
 				"fuz_code": {
-					"gzip": 5697,
-					"brotli": 2265
+					"gzip": 5686,
+					"brotli": 2225
 				}
 			}
 		},
@@ -11406,7 +11406,7 @@
 					"spans": 2417
 				},
 				"fuz_code": {
-					"html_bytes": 133175,
+					"html_bytes": 133644,
 					"spans": 3072
 				}
 			},
@@ -11428,8 +11428,8 @@
 					"brotli": 2194
 				},
 				"fuz_code": {
-					"gzip": 3587,
-					"brotli": 2297
+					"gzip": 3596,
+					"brotli": 2305
 				}
 			}
 		}
@@ -12399,9 +12399,9 @@
 				}
 			},
 			"single:ts": {
-				"raw": 21340,
-				"gzip": 7801,
-				"brotli": 6951,
+				"raw": 21532,
+				"gzip": 7866,
+				"brotli": 7003,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12410,9 +12410,9 @@
 				}
 			},
 			"single:js": {
-				"raw": 21340,
-				"gzip": 7801,
-				"brotli": 6951,
+				"raw": 21532,
+				"gzip": 7866,
+				"brotli": 7003,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12421,9 +12421,9 @@
 				}
 			},
 			"single:css": {
-				"raw": 7215,
-				"gzip": 2857,
-				"brotli": 2589,
+				"raw": 8224,
+				"gzip": 3184,
+				"brotli": 2878,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12432,9 +12432,9 @@
 				}
 			},
 			"single:html": {
-				"raw": 30028,
-				"gzip": 10776,
-				"brotli": 9541,
+				"raw": 31168,
+				"gzip": 11106,
+				"brotli": 9810,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12465,9 +12465,9 @@
 				}
 			},
 			"single:svelte": {
-				"raw": 32633,
-				"gzip": 11651,
-				"brotli": 10283,
+				"raw": 33773,
+				"gzip": 11973,
+				"brotli": 10595,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12509,9 +12509,9 @@
 				}
 			},
 			"docs": {
-				"raw": 43921,
-				"gzip": 15110,
-				"brotli": 13410,
+				"raw": 45063,
+				"gzip": 15419,
+				"brotli": 13678,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12520,9 +12520,9 @@
 				}
 			},
 			"web_rust": {
-				"raw": 53241,
-				"gzip": 17888,
-				"brotli": 15692,
+				"raw": 54383,
+				"gzip": 18247,
+				"brotli": 15946,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12531,9 +12531,9 @@
 				}
 			},
 			"all": {
-				"raw": 53241,
-				"gzip": 17888,
-				"brotli": 15692,
+				"raw": 54383,
+				"gzip": 18247,
+				"brotli": 15946,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12542,9 +12542,9 @@
 				}
 			},
 			"timed": {
-				"raw": 53052,
-				"gzip": 17829,
-				"brotli": 15653,
+				"raw": 54194,
+				"gzip": 18185,
+				"brotli": 15894,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12553,9 +12553,9 @@
 				}
 			},
 			"without:ts": {
-				"raw": 53052,
-				"gzip": 17829,
-				"brotli": 15653,
+				"raw": 54194,
+				"gzip": 18185,
+				"brotli": 15894,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12564,9 +12564,9 @@
 				}
 			},
 			"without:js": {
-				"raw": 53052,
-				"gzip": 17829,
-				"brotli": 15653,
+				"raw": 54194,
+				"gzip": 18185,
+				"brotli": 15894,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12575,9 +12575,9 @@
 				}
 			},
 			"without:css": {
-				"raw": 53052,
-				"gzip": 17829,
-				"brotli": 15653,
+				"raw": 54194,
+				"gzip": 18185,
+				"brotli": 15894,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12586,9 +12586,9 @@
 				}
 			},
 			"without:html": {
-				"raw": 52964,
-				"gzip": 17776,
-				"brotli": 15647,
+				"raw": 54106,
+				"gzip": 18134,
+				"brotli": 15844,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12597,9 +12597,9 @@
 				}
 			},
 			"without:json": {
-				"raw": 51664,
-				"gzip": 17511,
-				"brotli": 15389,
+				"raw": 52806,
+				"gzip": 17814,
+				"brotli": 15590,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12608,9 +12608,9 @@
 				}
 			},
 			"without:svelte": {
-				"raw": 50251,
-				"gzip": 16921,
-				"brotli": 14832,
+				"raw": 51392,
+				"gzip": 17231,
+				"brotli": 15088,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12619,9 +12619,9 @@
 				}
 			},
 			"without:md": {
-				"raw": 48668,
-				"gzip": 16400,
-				"brotli": 14349,
+				"raw": 49810,
+				"gzip": 16710,
+				"brotli": 14562,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12630,9 +12630,9 @@
 				}
 			},
 			"without:bash": {
-				"raw": 44953,
-				"gzip": 15254,
-				"brotli": 13499,
+				"raw": 46095,
+				"gzip": 15686,
+				"brotli": 13744,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12641,9 +12641,9 @@
 				}
 			},
 			"without:rust": {
-				"raw": 46721,
-				"gzip": 16017,
-				"brotli": 14189,
+				"raw": 47863,
+				"gzip": 16364,
+				"brotli": 14396,
 				"wasm": null,
 				"css": {
 					"raw": 1800,
@@ -12681,8 +12681,8 @@
 		"fuz_code": {
 			"packages": 7,
 			"files": 402,
-			"bytes": 2533038,
-			"closure": "18e66e3bb0bd7d205af65b95e134a8bd61bba43294a2ceeac8e208bcab9e1f10"
+			"bytes": 2542170,
+			"closure": "c842531969b398dcd9e48dc3295fed8628962a171072588d2a3d154ced17a20d"
 		}
 	},
 	"heap": {
