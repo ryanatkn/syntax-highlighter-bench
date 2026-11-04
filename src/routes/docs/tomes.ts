@@ -7,7 +7,6 @@ import MethodPage from './method/+page.svelte';
 import DeterministicPage from './deterministic/+page.svelte';
 import ResultsPage from './results/+page.svelte';
 import ApiPage from './api/+page.svelte';
-import LibraryPage from './library/+page.svelte';
 
 export const tomes: Array<Tome> = [
 	{
@@ -94,14 +93,6 @@ export const tomes: Array<Tome> = [
 		category: 'reference',
 		Component: ApiPage,
 		related_tomes: ['results'],
-		related_modules: [],
-		related_declarations: []
-	},
-	{
-		slug: 'library',
-		category: 'reference',
-		Component: LibraryPage,
-		related_tomes: [],
 		related_modules: [],
 		related_declarations: []
 	}
