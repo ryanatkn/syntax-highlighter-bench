@@ -1,5 +1,4 @@
 import { afterEach, assert, beforeEach, describe, test } from 'vitest';
-import { spawnSync } from 'node:child_process';
 
 import { SPREAD_DISTURBED_ABOVE } from '#lib/bench_constants.ts';
 import {
@@ -30,7 +29,6 @@ import { to_install_closures } from '../../../bench/install.ts';
 import { to_bench_libraries } from '../../../bench/library_info.ts';
 import {
 	CHANGED_SUFFIX,
-	OVERLAPPED_SUFFIX,
 	RunError,
 	format_run_plan,
 	format_run_summary,
@@ -52,13 +50,11 @@ const manifest = load_corpus_manifest();
 let dir: string;
 let out: string;
 let journal_path: string;
-let lock_path: string;
 
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), 'bench_run_journal_test_'));
 	out = join(dir, 'run.json');
 	journal_path = `${out}.journal.jsonl`;
-	lock_path = join(dir, 'bench.lock');
 });
 
 afterEach(() => {
@@ -147,7 +143,6 @@ const create_machine = (
 		interrupt_after: Infinity,
 		log: [] as Array<string>,
 		options: {
-			lock_path,
 			// holds no deterministic file, unless a test puts one there
 			results_dir: dir,
 			read_load: () => 0,
@@ -219,7 +214,6 @@ describe('a timed run keeps a journal', () => {
 		assert.match(error.message, /^interrupted during cell /);
 		assert.match(error.message, /is kept: run the same command with --resume to continue/);
 		assert.ok(!existsSync(out));
-		assert.ok(!existsSync(lock_path));
 		const journal = read_journal_ok();
 		assert.strictEqual(journal.results.size, 3);
 		assert.strictEqual(journal.segments, 1);
@@ -330,7 +324,6 @@ describe('a timed run keeps a journal', () => {
 		assert.strictEqual(error.exit_code, 2);
 		assert.match(error.message, /there is no journal to resume at /);
 		assert.strictEqual(machine.spawned, 0);
-		assert.ok(!existsSync(lock_path));
 	});
 
 	test('a journal resumed with another flag is refused, naming what differs', async () => {
@@ -441,7 +434,6 @@ describe('a timed run keeps a journal', () => {
 			assert.ok(!existsSync(out));
 			assert.ok(!existsSync(journal_path));
 			assert.ok(existsSync(journal_path + CHANGED_SUFFIX));
-			assert.ok(!existsSync(lock_path));
 			// the set-aside journal is not one a run resumes
 			const resumed = await catch_run_error(parse('--resume'), machine.options);
 			assert.match(resumed.message, /there is no journal to resume/);
@@ -460,52 +452,6 @@ describe('a timed run keeps a journal', () => {
 		assert.match(error.message, /failed \(exit 1\):\nError: boom/);
 		assert.ok(!existsSync(out));
 		assert.ok(existsSync(journal_path));
-	});
-
-	test('a stale lock, whose process is gone, is taken over and released', async () => {
-		// a process that has already exited, so its pid names no one
-		const { pid } = spawnSync(process.execPath, ['-e', '']);
-		writeFileSync(
-			lock_path,
-			JSON.stringify({ pid, label: 'full run', cwd: '/elsewhere', started_at: 'now' })
-		);
-		const { results } = await run_bench(parse(), create_machine().options);
-		assert.ok(results.cells.length > 0);
-		assert.ok(existsSync(out));
-		assert.ok(!existsSync(lock_path));
-	});
-
-	test('a run that lost the machine lock sets its journal aside, however it ends', async () => {
-		/** Another run takes the lock over. */
-		const take_lock = (): void =>
-			writeFileSync(
-				lock_path,
-				JSON.stringify({ pid: process.pid + 1, label: 'full run', cwd: '/', started_at: 'now' })
-			);
-		for (const interrupt_after of [Infinity, 3]) {
-			const machine = create_machine((spec) => {
-				take_lock();
-				return to_outcome(spec, STEADY);
-			});
-			machine.interrupt_after = interrupt_after;
-			const error = await catch_run_error(parse(), machine.options);
-			assert.strictEqual(error.exit_code, interrupt_after === Infinity ? 1 : 130);
-			assert.match(error.message, /taken over during the run/);
-			assert.match(
-				error.message,
-				/set aside as .*\.journal\.jsonl\.overlapped and can not be resumed/
-			);
-			assert.ok(!error.message.includes('--resume'));
-			assert.ok(!existsSync(out));
-			assert.ok(!existsSync(journal_path));
-			assert.ok(existsSync(journal_path + OVERLAPPED_SUFFIX));
-			// the other run's lock is untouched, and nothing resumes what was set aside
-			assert.ok(existsSync(lock_path));
-			rmSync(lock_path);
-			const resumed = await catch_run_error(parse('--resume'), create_machine().options);
-			assert.match(resumed.message, /there is no journal to resume/);
-			rmSync(journal_path + OVERLAPPED_SUFFIX);
-		}
 	});
 
 	test('a journal holding a result the run never asks for is refused before measuring', async () => {
@@ -530,7 +476,6 @@ describe('a timed run keeps a journal', () => {
 			assert.match(error.message, expected);
 			assert.ok(!error.message.includes('is kept'));
 			assert.strictEqual(machine.spawned, 3);
-			assert.ok(!existsSync(lock_path));
 		}
 	});
 
@@ -772,7 +717,6 @@ describe('a timed run and the deterministic results file', () => {
 		);
 		assert.strictEqual(machine.spawned, 0);
 		assert.ok(!existsSync(journal_path));
-		assert.ok(!existsSync(lock_path));
 		// a file for another tree
 		const stale = structuredClone(deterministic);
 		stale.meta.libraries[0]!.version = '0.0.1';
@@ -835,7 +779,6 @@ describe('before a timed run measures', () => {
 				assert.strictEqual(error.exit_code, 2);
 				assert.match(error.message, /can't write to .*: .*locked is not a writable directory/);
 				assert.strictEqual(machine.spawned, 0);
-				assert.ok(!existsSync(lock_path));
 			}
 		} finally {
 			chmodSync(locked, 0o755);
@@ -868,7 +811,6 @@ describe('before a timed run measures', () => {
 		const long = format_run_plan({ ...plan, processes: Array(400).fill(plan.processes[0]) });
 		assert.match(long, /estimate +about \d+ min for the planned processes/);
 		assert.ok(!existsSync(join(dir, 'not_made')));
-		assert.ok(!existsSync(lock_path));
 	});
 
 	test('--plan says what a journal holds, and refuses what the run would', async () => {

@@ -395,8 +395,8 @@ node bench/run.ts --help`;
 		</p>
 		<p>
 			<strong>Part of the run.</strong> The cold-start processes follow the cells in the same run:
-			under the same machine lock, between the same anchor readings, in the same journal, and
-			written to the same results file. A smoke run takes one sample of every scenario.
+			between the same anchor readings, in the same journal, and written to the same results file. A
+			smoke run takes one sample of every scenario.
 		</p>
 	</TomeSection>
 	<TomeSection>
@@ -564,11 +564,6 @@ node bench/run.ts --help`;
 				ask for is refused too.
 			</li>
 			<li>
-				<strong>Never after an overlap.</strong> A run that lost the machine lock sets its journal
-				aside as <code>&lt;journal&gt;.overlapped</code>, since another run may have overlapped it.
-				It writes no results, and the journal can't be resumed.
-			</li>
-			<li>
 				<strong>What is skipped.</strong> The processes the journal holds are not run again. The
 				rest run in the order planned, and the results are assembled exactly as an uninterrupted run
 				assembles them.
@@ -720,17 +715,6 @@ node bench/run.ts --help`;
 			records it as <code>load_at_start</code>. On a quiet machine it is well under 1, and a timed
 			run warns when it is over 1, since something else is then running. It warns and goes on: the
 			anchor, the spread, and the retries are what judge the run.
-		</p>
-	</TomeSection>
-	<TomeSection>
-		<TomeSectionHeader text="One run at a time" />
-		<p>
-			Two measurement runs at once make each other wrong, not just noisy. A run takes a machine-wide
-			lock, the file <code>/tmp/fuz_benchmark.lock</code> that names its process, and holds it for
-			as long as it measures, as does each segment of a resumed run. The path is fixed and ignores
-			<code>TMPDIR</code>, and the lock is fuz_util's benchmark lock, so any other benchmark that
-			uses it takes the same one and never measures at the same time as this one. A second run is
-			refused and told who holds the lock. A lock whose process is gone is taken over.
 		</p>
 	</TomeSection>
 	<TomeSection>

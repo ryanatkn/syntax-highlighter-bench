@@ -15,7 +15,7 @@ full on the method page of the site's docs, [`/docs/method`](https://syntax-high
 | `calibration_<machine>.json` | a machine's noise floor, from a calibration run. A full run on the same machine copies the floor into its own file | yes, beside the run that carries it |
 | `scratch/` | smoke runs and filtered runs, which are never publishable | no: git ignores it |
 | `full_<machine>.journal.jsonl`, `calibrate_<machine>.journal.jsonl` | the journal of a timed run that has not finished: every process's result, appended as it is measured, so a stopped run can be resumed. It is removed when the results file is written | no: git ignores it |
-| `*.journal.jsonl.overlapped`, `*.journal.jsonl.changed` | the journal of a run that lost the machine lock, or during which a measured package changed on disk, set aside. Another run may have overlapped it, or its samples are of two versions, so it can't be resumed: delete it | no: git ignores it |
+| `*.journal.jsonl.changed` | the journal of a run during which a measured package changed on disk, set aside. Its samples are of two versions, so it can't be resumed: delete it | no: git ignores it |
 
 A timed run never writes `latest.json`: `npm run results:publish` copies a
 run's dated file to that name once the file is shown to be publishable, as the
@@ -187,9 +187,8 @@ Everything below runs on the publishing machine, from the root of the checkout.
    `NODE_OPTIONS`, and commit. So between stopping and resuming, commit
    nothing, install nothing, and update nothing. A resume that is refused names
    what differs. To start over instead, delete the journal. If the journal was
-   set aside as `.overlapped` (another run held the machine at the same time)
-   or as `.changed` (a measured package changed on disk during the run), delete
-   it and start over.
+   set aside as `.changed` (a measured package changed on disk during the run),
+   delete it and start over.
 10. **Check the run**, with the list below. A run that fails a check is
     measured again, not published with a note. To see what moved since the
     published run, before step 11 replaces it:

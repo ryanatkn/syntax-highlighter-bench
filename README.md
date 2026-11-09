@@ -160,14 +160,8 @@ naming the difference, unless it is the same run: the flags, corpus, library
 versions and extra packages, machine and its frequency settings, kernel
 release, Node version, `NODE_OPTIONS`, and commit. A journal already there
 stops a run that wasn't given `--resume`. A run during which a measured package
-changed on disk sets its journal aside as `.changed`, and one that lost the
-machine lock as `.overlapped`; neither can be resumed, so delete it and start
-over.
-
-**The machine lock.** One measurement at a time, machine-wide: a run holds
-`/tmp/fuz_benchmark.lock` while it measures, and a second is refused and told
-who holds it. It is fuz_util's benchmark lock, so any other benchmark that uses
-it can't measure at the same time as this one.
+changed on disk sets its journal aside as `.changed`; it can't be resumed, so
+delete it and start over.
 
 ## Publishing
 
@@ -417,8 +411,7 @@ fresh process for each cell, iterations calibrated per library, language
 binding kept out of the timed loop, an untimed rewarm and a minor collection
 before timing, token counts recorded, a check before measuring that excludes a
 library returning nothing (and records it as excluded), machine drift detected
-by an anchor workload, ported from it, and a machine-wide lock (here
-fuz_util's, which Twinkleplop's runs don't share). The first adapter rules come
+by an anchor workload, ported from it. The first adapter rules come
 from the same harness: the same stage, explicit languages with no fallback, and
 token counts recorded rather than equalized. So do Shiki's two engines measured
 as two libraries, Shiki's benchmark samples as an input source, and the `docs`
@@ -437,7 +430,6 @@ forces one every round), and reads the HTML inside the timed call. Also changed:
   every round
 - drift is the largest change between any two anchor readings, where
   Twinkleplop compares the first with the last
-- the lock refuses a second run, where Twinkleplop's queues it
 - a cell reports percentiles and a spread, without Twinkleplop's bootstrap
   interval
 
@@ -455,7 +447,7 @@ Cold start generalizes Twinkleplop's cold-start harness across libraries. Kept
 from it: a fresh process for each sample, scenarios interleaved round by round,
 the first rounds discarded, the compile cache off, the bundled chunk measured
 against the unbundled import, a bare Node baseline, time to a first highlight,
-medians rather than means, and the machine lock. Changed here: the scenarios
+medians rather than means. Changed here: the scenarios
 run for every library through the adapters' bundle entries; a time is the
 process's own clock from its start, read once when the scenario's work is done,
 where Twinkleplop reads that clock between each step and also reports a wall

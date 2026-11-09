@@ -464,7 +464,6 @@ const create_machine = (answer: (planned: PlannedStartup) => ChildOutcome = to_o
 		interrupt_after: Infinity,
 		log: [] as Array<string>,
 		options: {
-			lock_path: join(dir, 'bench.lock'),
 			// holds no deterministic file
 			results_dir: dir,
 			read_load: () => 0,
@@ -732,7 +731,7 @@ describe('cold start in a timed run', () => {
 		assert.match(error.message, /prism core: built 10 bytes/);
 		assert.strictEqual(machine.spawned, 0);
 		assert.deepStrictEqual(readdirSync(dir), []);
-		// and a build that fails is the run's failure, with the lock released
+		// and a build that fails is the run's failure
 		const failed = await catch_run_error(() =>
 			run_bench(parse(), {
 				...machine.options,
@@ -740,7 +739,6 @@ describe('cold start in a timed run', () => {
 			})
 		);
 		assert.match(failed.message, /the cold-start modules could not be written: the build failed/);
-		assert.ok(!existsSync(machine.options.lock_path));
 	});
 });
 

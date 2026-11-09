@@ -67,7 +67,6 @@ describe('run_bench', () => {
 		{ timeout: 60_000 },
 		async () => {
 			const out = join(dir, 'smoke.json');
-			const lock_path = join(dir, 'smoke.lock');
 			const log: Array<string> = [];
 			const options = parse(
 				'--smoke',
@@ -83,7 +82,6 @@ describe('run_bench', () => {
 				out
 			);
 			const { results, path, pairs } = await run_bench(options, {
-				lock_path,
 				log: (line) => log.push(line)
 			});
 
@@ -154,8 +152,7 @@ describe('run_bench', () => {
 			}
 			assert.deepStrictEqual(pairs, []);
 
-			// the lock was held for the run and is free again, and no temp file is left
-			assert.ok(!existsSync(lock_path));
+			// no temp file is left
 			assert.deepStrictEqual(
 				readdirSync(dir).filter((name) => name.endsWith('.tmp')),
 				[]
@@ -179,7 +176,6 @@ describe('run_bench', () => {
 			let spawned = 0;
 			let stop_after = 1;
 			const bench_options = {
-				lock_path: join(dir, 'resumed.lock'),
 				log: () => {},
 				measure_anchor: () => 1000,
 				// real processes, and then what a signal to the child looks like
@@ -219,30 +215,6 @@ describe('run_bench', () => {
 		}
 	);
 
-	test('refuses to run while the machine lock is held, and writes nothing', async () => {
-		const out = join(dir, 'refused.json');
-		const lock_path = join(dir, 'held.lock');
-		writeFileSync(
-			lock_path,
-			JSON.stringify({ pid: process.pid, label: 'full run', cwd: '/elsewhere', started_at: 'now' })
-		);
-		let error: unknown;
-		try {
-			await run_bench(parse('--smoke', '--langs', 'json', '--sizes', 'micro', '--out', out), {
-				lock_path,
-				log: () => {}
-			});
-		} catch (caught) {
-			error = caught;
-		}
-		assert.ok(error instanceof RunError);
-		assert.strictEqual(error.exit_code, 2);
-		assert.match(error.message, new RegExp(`held by pid ${process.pid} \\(full run`));
-		assert.ok(!existsSync(out));
-		// the holder's lock is untouched
-		assert.ok(existsSync(lock_path));
-	});
-
 	const assert_refused = async (
 		args: Array<string>,
 		expected: RegExp,
@@ -251,7 +223,6 @@ describe('run_bench', () => {
 		let error: unknown;
 		try {
 			await run_bench(parse(...args), {
-				lock_path: join(dir, 'unused.lock'),
 				log: () => {},
 				...bench_options
 			});
@@ -261,8 +232,6 @@ describe('run_bench', () => {
 		assert.ok(error instanceof RunError, args.join(' '));
 		assert.strictEqual(error.exit_code, 2);
 		assert.match(error.message, expected);
-		// refused before anything was measured: the lock was never taken
-		assert.ok(!existsSync(join(dir, 'unused.lock')));
 	};
 
 	test('a complete run needs the machine named, whatever --out says', async () => {

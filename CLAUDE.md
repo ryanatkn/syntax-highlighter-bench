@@ -529,9 +529,9 @@ inputs in memory and compares them, and their entries, with the committed ones:
 
 `node bench/deterministic.ts` measures everything that is the same on any
 machine and writes `results/deterministic.json` through `BenchResults`. It
-times nothing and takes no machine lock. `--check` regenerates in memory and
-exits 1 with the places that differ (`diff_json`, which names a cell by its id)
-when the committed file is stale; `--out <path>` reads and writes another file.
+times nothing. `--check` regenerates in memory and exits 1 with the places that
+differ (`diff_json`, which names a cell by its id) when the committed file is
+stale; `--out <path>` reads and writes another file.
 The committed file must be diff-clean: regenerate it whenever a library
 version, the corpus, a feature set, an adapter's `bundle_entry`, Vite, or a
 dependency the lockfile installs for a library changes, and commit the result.
@@ -747,10 +747,8 @@ sources.
 ## Timed harness
 
 `node bench/run.ts` is a run; `node --expose-gc bench/cell.ts '<spec>'` is one
-library on one cell, which only the parent spawns. The anchor and the idea
-of a machine lock follow Twinkleplop's comparison harness (MIT; the lock itself
-is fuz_util's, not shared with Twinkleplop's), and the timing engine is adapted
-from it; a process per library, rather than per cell, is a change made here.
+library on one cell, which only the parent spawns. The anchor follows Twinkleplop's comparison
+harness (MIT), and the timing engine is adapted from it; a process per library, rather than per cell, is a change made here.
 The credit is in the README and in the doc comments of `bench/run.ts`,
 `bench/cell.ts`, `bench/measure.ts`, and `bench/anchor.ts`, the last of which is
 a port. Statistics come from
@@ -758,8 +756,8 @@ fuz_util's `stats.js` and terminal formatting from its `time.js`. Its
 `BenchmarkStats` and `benchmark_format_*` don't fit: they drop outliers and
 report a mean over many samples, and here a sample is a whole round and the
 rounds are few. The spreads (`stats_spread`), the deviation of a ratio
-(`stats_ratio_deviation`), the process noise (`stats_pairwise_deviation`), and
-the machine lock (`benchmark_lock.ts`) are fuz_util's too.
+(`stats_ratio_deviation`) and the process noise (`stats_pairwise_deviation`) are
+fuz_util's too.
 
 **One process, one library.** Every number is one library alone in a fresh
 process, so the roster can't move another library's number. Two effects made
@@ -893,8 +891,7 @@ a full collector without measuring the roster under both methods.
   the journal records) or `--resume` without a journal, a journal whose header
   differs or that holds a result the plan could never ask for
   (`find_unplanned_result`), and a calibration file that doesn't parse. `--plan` prints it (`format_run_plan`, with
-  `estimate_run_ms`) and stops there. `run_bench` then makes the directory and
-  takes the machine lock.
+  `estimate_run_ms`) and stops there. `run_bench` then makes the directory.
 - `read_commit` runs in `plan_run`, before any anchor reading, on purpose: the
   anchor reads several percent slower after a process's first spawn, so every
   reading must come after one. The load average is read first of all, before
@@ -927,10 +924,10 @@ a full collector without measuring the roster under both methods.
   attempt. The file is written atomically, and it is the value `BenchResults`
   parsed.
 - `RunError.exit_code` is 2 when the caller must change something (flags, a
-  missing `--machine`, a held lock, an output path, a journal, filters matching
+  missing `--machine`, an output path, a journal, filters matching
   nothing), the signal's code when interrupted (`SIGNAL_EXIT`), and 1
   otherwise.
-- `RunBenchOptions` lets tests pass a lock path, a results directory, a logger,
+- `RunBenchOptions` lets tests pass a results directory, a logger,
   `prepare_startup`, and for a timed run `spawn_cell`, `spawn_startup`, and
   `measure_anchor`, so the journal, resume, and retry paths are tested end to
   end with invented process results (`src/test/bench/run.journal.test.ts`, and
@@ -966,16 +963,13 @@ date so a run resumed on a later day finds it). Smoke runs keep none.
   cut back to its last whole line before appending. A whole line that doesn't
   parse refuses the journal.
 - However a segment ends (finished, a `RunError`, or the `exit` a signal handler
-  causes) one `close()` takes its closing anchor reading, closes the journal,
-  and releases the lock, and a stopped one says how to resume. A SIGKILL leaves
+  causes) one `close()` takes its closing anchor reading and closes the journal,
+  and a stopped one says how to resume. A SIGKILL leaves
   no closing reading.
-- A segment whose `lock.release()` reports the lock was lost may have overlapped
-  another run. On every path `close()` renames its journal to
-  `<journal>.overlapped` (`OVERLAPPED_SUFFIX`), which no run resumes, the
-  message says so, and no results file is written. A run whose packages changed
-  on disk sets its journal aside the same way, as `<journal>.changed`
-  (`CHANGED_SUFFIX`). A run only ever resumes the journal at its exact path, so
-  any suffix takes a journal out of reach, and one `.gitignore` rule covers them.
+- A run whose packages changed on disk sets its journal aside as
+  `<journal>.changed` (`CHANGED_SUFFIX`), which no run resumes, and no results
+  file is written. A run only ever resumes the journal at its exact path, so
+  any suffix takes a journal out of reach, and one `.gitignore` rule covers it.
 - The assembled file records `segments`, `generated_at` from the first segment
   (so a full run's dated name is the day it started), `duration_ms` summed over
   segments, and an anchor over every reading.
@@ -1013,9 +1007,9 @@ credited in the README and the module's doc comment).
   `adapter.bundle_entry(langs)` written verbatim to
   `node_modules/.cache/syntax-highlighter-bench/startup/<library>/<set>.entry.mjs`,
   so its bare specifiers resolve from this repo's `node_modules`.
-- **`prepare_startup`** writes everything before any process starts, under the
-  machine lock: each scenario's module (`to_startup_child_source`), the
-  unbundled entries, and any bundle that is missing or isn't the size the
+- **`prepare_startup`** writes everything before any process
+  starts: each scenario's module (`to_startup_child_source`), the unbundled
+  entries, and any bundle that is missing or isn't the size the
   carried deterministic file reports (raw and gzip), built with the same
   `build_bundle`. A bundle that still differs after building stops the run with
   exit 2. Without a carried file every bundle is rebuilt, since nothing says a
@@ -1052,7 +1046,7 @@ credited in the README and the module's doc comment).
   scenario, the median sets it aside, and re-sampling one scenario later would
   take it out of the interleaving. **No noise floor** either: a calibration
   plans no cold start (`run_measures`).
-- **In the run**: after the cells, in the same segment — same lock, same anchor
+- **In the run**: after the cells, in the same segment, with the same anchor
   bracket, journaled as `startup` lines keyed by scenario and round, replayed
   on `--resume` like cell results, and assembled by `to_startup_entries` into
   `startup` and `meta.startup_excluded`. `--metrics` leaves either part out,
@@ -1116,21 +1110,6 @@ under `BENCH_ANCHOR_STABLE_BELOW` (in the schema, which checks the two agree).
 With two readings that is the plain change. It only brackets what was measured,
 so the summary also lists every library-cell whose `spread` still exceeds
 `SPREAD_DISTURBED_ABOVE` after its retries.
-
-**The lock** is fuz_util's `benchmark_lock.ts`: `benchmark_lock_acquire` takes
-`BENCHMARK_LOCK_PATH`, the fixed `/tmp/fuz_benchmark.lock`, which ignores
-`TMPDIR` on purpose, so this harness and any other benchmark that uses
-fuz_util's benchmark lock share one lock and never measure at once. It names the holder's
-process and is held for as long as a segment measures. A second run is refused
-with exit 2 and `benchmark_lock_format_refusal`'s message. A lock whose
-process is gone is taken over. `release` reports whether the lock was still
-this process's, and a run that lost it writes nothing. The only private lock
-is `RunBenchOptions.lock_path`: tests pass their own with their results
-directory, so `gro check` neither takes nor waits on the machine's. The CLI has
-no such flag, and setting `TMPDIR` no longer separates two runs, so a second
-smoke run started while any benchmark holds the lock is refused: wait for it.
-That is right, since a smoke run's parallel processes would disturb the run
-that holds it. The lock's own behavior is tested in fuz_util.
 
 **Keep the spawning tests few.** `src/test/bench/run.spawn.test.ts` is the only
 file that starts harness processes, and each costs a Node start. How a

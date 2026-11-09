@@ -19,15 +19,13 @@
  *
  * In a timed run the parent does no work while a process is measuring. It
  * spawns one process at a time with a blocking call, so it has no timers and
- * reads the child's output only after the child has exited. It holds the
- * machine lock from before the first anchor reading until the results are ready
- * to write. A smoke run's numbers mean nothing, so it alone runs its processes
- * several at a time.
+ * reads the child's output only after the child has exited. A smoke run's
+ * numbers mean nothing, so it alone runs its processes several at a time.
  *
  * After the cells come the cold-start scenarios (`bench/coldstart.ts`): each
  * sample a fresh process, the scenarios interleaved round by round. They are
- * more processes of the same run, so they share its lock, its anchor readings,
- * its journal, and its results file.
+ * more processes of the same run, so they share its anchor readings, its
+ * journal, and its results file.
  *
  * A timed run appends every result to a journal (`bench/journal.ts`) between
  * processes, so a run that is stopped continues with `--resume` instead of
@@ -36,9 +34,8 @@
  * agreed best.
  *
  * The anchor follows the comparison harness of Twinkleplop
- * (https://github.com/pngwn/twinkleplop, MIT), as do a machine-wide lock (here
- * fuz_util's, which Twinkleplop's runs don't share) and spawning a fresh process
- * per cell; a process per library is this harness's change.
+ * (https://github.com/pngwn/twinkleplop, MIT), as does spawning a fresh process per
+ * cell; a process per library is this harness's change.
  *
  * Node-only.
  *
@@ -61,11 +58,6 @@ import {
 import { availableParallelism, cpus, hostname, loadavg, release, totalmem } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-	benchmark_lock_acquire,
-	benchmark_lock_format_refusal,
-	type BenchmarkLock
-} from '@fuzdev/fuz_util/benchmark_lock.js';
 import {
 	stats_median,
 	stats_pairwise_deviation,
@@ -178,9 +170,8 @@ export const SIGNAL_EXIT = { SIGINT: 130, SIGTERM: 143, SIGHUP: 129 } as const;
 
 /**
  * A run that can't continue. `exit_code` is 2 when the caller has to change
- * something first (the flags, a missing machine name, a held lock, an output
- * path), a signal's code when the run was interrupted, and 1 for everything
- * else.
+ * something first (the flags, a missing machine name, an output path), a signal's code
+ * when the run was interrupted, and 1 for everything else.
  */
 export class RunError extends Error {
 	readonly exit_code: number;
@@ -1520,12 +1511,6 @@ export const format_run_summary = (
  * a process is run and the anchor read.
  */
 export interface RunBenchOptions {
-	/**
-	 * The lock file, `BENCHMARK_LOCK_PATH` by default: the one fuz_util's benchmark
-	 * lock fixes for every benchmark on the machine. Tests pass their own so they
-	 * neither take nor wait on the machine's.
-	 */
-	lock_path?: string;
 	/** The results directory. */
 	results_dir?: string;
 	/** Receives progress and notes. Defaults to stderr. */
@@ -1900,9 +1885,6 @@ const find_unplanned_result = (
 	return null;
 };
 
-/** The suffix a journal is renamed with when its run lost the machine lock. */
-export const OVERLAPPED_SUFFIX = '.overlapped';
-
 /**
  * The suffix a journal is renamed with when a package changed on disk during its
  * run. Its cold-start samples taken after the change were never checked against
@@ -2076,15 +2058,13 @@ const measure_smoke = async (
  *
  * Results the journal already holds are replayed in place of their processes.
  * However the segment ends, by finishing, failing, or a signal, it takes its
- * closing anchor reading, releases the lock, and leaves the journal for
- * `--resume`, or sets it aside if the lock had been lost. Only a process killed
- * outright (SIGKILL, power) takes no reading, and the next segment's opening
- * reading stands in for it.
+ * closing anchor reading and leaves the journal for `--resume`. Only a process
+ * killed outright (SIGKILL, power) takes no reading, and the next segment's
+ * opening reading stands in for it.
  */
 const measure_segment = async (
 	plan: RunPlan,
 	bench_options: RunBenchOptions,
-	lock: BenchmarkLock,
 	on_progress: OnProgress,
 	log: (line: string) => void
 ): Promise<Measured> => {
@@ -2114,12 +2094,9 @@ const measure_segment = async (
 
 	const writer = open_journal(journal_path, journal ? journal.complete_bytes : plan.header!);
 	let closed = false;
-	let overlapped = false;
 	/**
-	 * Ends the segment, once, however it ends: takes the closing reading, closes
-	 * the journal, and releases the lock. A segment that had lost the lock may
-	 * have overlapped another run, so its journal is set aside under a name no
-	 * run resumes.
+	 * Ends the segment, once, however it ends: takes the closing reading and closes
+	 * the journal.
 	 */
 	const close = (): void => {
 		if (closed) return;
@@ -2130,27 +2107,18 @@ const measure_segment = async (
 			writer.append({ type: 'anchor', at_ms: at_ms(), anchor_ns: closing });
 		} catch {
 			// the journal still holds every result
-		} finally {
-			writer.close();
-			if (!lock.release()) {
-				overlapped = true;
-				renameSync(journal_path, journal_path + OVERLAPPED_SUFFIX);
-			}
 		}
+		writer.close();
 	};
 	/** What becomes of the journal of a segment that stopped. */
-	const to_hint = (): string =>
-		overlapped
-			? `the machine lock ${lock.path} was taken over during the run, so another run may have overlapped this one: the journal was set aside as ${to_display_path(journal_path + OVERLAPPED_SUFFIX)} and can not be resumed`
-			: `the journal ${to_display_path(journal_path)} is kept: run the same command with --resume to continue, or remove it to start over`;
+	const hint = `the journal ${to_display_path(journal_path)} is kept: run the same command with --resume to continue, or remove it to start over`;
 	// a signal exits the process from its handler, between two processes
 	const on_exit = (): void => {
 		if (closed) return;
 		close();
-		log(to_hint());
+		log(hint);
 	};
-	// before the run's own release of the lock, so the closing reading is taken under it
-	process.prependOnceListener('exit', on_exit);
+	process.once('exit', on_exit);
 	try {
 		const opening = read_anchor();
 		readings_ns.push(opening);
@@ -2215,7 +2183,6 @@ const measure_segment = async (
 			}
 		});
 		close();
-		if (overlapped) throw new RunError(`${to_hint()}: nothing was written`);
 		if (replay.size + replay_startup.size > 0) {
 			// each fits the plan, or `plan_run` would have refused: a retry the results don't call
 			// for, or a sample of a scenario that was excluded
@@ -2237,7 +2204,7 @@ const measure_segment = async (
 		if (closed) throw error;
 		close();
 		if (error instanceof RunError) {
-			throw new RunError(`${error.message}\n${to_hint()}`, error.exit_code);
+			throw new RunError(`${error.message}\n${hint}`, error.exit_code);
 		}
 		throw error;
 	} finally {
@@ -2252,9 +2219,9 @@ const measure_segment = async (
  * @param bench_options - paths, a logger, and how a process is run, for tests
  * @returns the validated results, the path they were written to, and a
  * calibration's pairs
- * @throws `RunError` if the run can't start, a process fails, or the lock is
- * lost. No results are written unless every process succeeded. A timed run that
- * stops leaves its journal, and `--resume` continues it.
+ * @throws `RunError` if the run can't start, or a process fails. No results are written unless every
+ * process succeeded. A timed run that stops leaves its journal, and `--resume`
+ * continues it.
  */
 export const run_bench = async (
 	options: RunOptions,
@@ -2275,119 +2242,98 @@ export const run_bench = async (
 		throw new RunError(`can't write to ${path}: ${(error as Error).message}`, 2);
 	}
 
-	const acquired = benchmark_lock_acquire(`syntax-highlighter-bench ${options.kind} run`, {
-		path: bench_options.lock_path
-	});
-	if (!acquired.ok) throw new RunError(benchmark_lock_format_refusal(acquired), 2);
-	const { lock } = acquired;
-	const release_on_exit = (): void => void lock.release();
-	process.once('exit', release_on_exit);
-	try {
-		// under the lock, so no other run is reading the modules while they are written
-		if (startup_scenarios.length > 0) {
-			let prepared: PreparedStartup;
-			try {
-				prepared = await (bench_options.prepare_startup ?? prepare_startup)(
-					startup_scenarios,
-					adapters,
-					{ expected_bundle: plan.deterministic?.bundle ?? null }
-				);
-			} catch (error) {
-				throw new RunError(
-					`the cold-start modules could not be written: ${(error as Error).message}`
-				);
-			}
-			if (prepared.mismatched.length > 0) {
-				throw new RunError(
-					`a bundle built for cold start is not the one the deterministic results file measured, so its time would not be that bundle's:\n${prepared.mismatched.map((line) => `  ${line}`).join('\n')}\nregenerate the file with \`npm run bench:deterministic\``,
-					2
-				);
-			}
-			if (prepared.built.length > 0) {
-				log(
-					`built ${prepared.built.length} bundle(s) for cold start: ${prepared.built.join(', ')}`
-				);
-			}
-		}
-		const total = processes.length + plan.startup_processes;
-		log(
-			`${options.kind} run on ${machine.name}: ${cells.length} cells, ${startup_scenarios.length} cold-start scenarios, ${total} processes${plan.concurrency > 1 ? `, ${plan.concurrency} at a time` : ''}, libraries ${adapters.map((a) => a.id).join(', ')}`
-		);
-		// `plan_run` has already spawned a process, to read the commit: the anchor reads several
-		// percent slower after a process's first spawn, so every reading must come after one
-		const show_progress = process.stderr.isTTY && !bench_options.log;
-		let done = 0;
-		const on_progress: OnProgress = (label) => {
-			done++;
-			if (!show_progress) return;
-			process.stderr.write(`\r\x1b[K  [${done}/${Math.max(done, total)}] ${label}`);
-		};
-		const measured =
-			options.kind === 'smoke'
-				? await measure_smoke(plan, bench_options, on_progress, log)
-				: await measure_segment(plan, bench_options, lock, on_progress, log);
-		if (show_progress) process.stderr.write('\r\x1b[K');
-
-		// a cold-start process resolves its packages when it is spawned, and no check sees them
-		const roster_change = find_roster_change(plan.libraries, () =>
-			(bench_options.read_libraries ?? to_bench_libraries)(adapters)
-		);
-		if (roster_change !== null) {
-			let set_aside = '';
-			if (journal_path !== null) {
-				renameSync(journal_path, journal_path + CHANGED_SUFFIX);
-				set_aside = `: the journal was set aside as ${to_display_path(journal_path + CHANGED_SUFFIX)} and can not be resumed, since cold-start samples taken after the change were never checked against it`;
-			}
-			throw new RunError(
-				`${roster_change}: a package changed on disk during the run, so nothing was written and the run starts over${set_aside}`,
-				2
-			);
-		}
-		const { results, pairs } = assemble_results({
-			options,
-			generated_at: plan.generated_at,
-			duration_ms: measured.duration_ms,
-			segments: measured.segments,
-			load_at_start: measured.load_at_start,
-			machine,
-			node: plan.node,
-			commit: plan.commit,
-			corpus_hash: plan.corpus_hash,
-			adapters,
-			libraries: plan.libraries,
-			processes: measured.processes,
-			startup_scenarios,
-			startup: measured.startup,
-			anchor: to_anchor_drift(measured.readings_ns),
-			noise_floor: plan.noise_floor,
-			deterministic: plan.deterministic
-		});
-
-		// a timed segment has released the lock already, and set its journal aside if it was lost
-		if (!lock.release()) {
-			throw new RunError(
-				`the machine lock ${lock.path} was taken over during the run, so another run may have overlapped this one: nothing was written`
-			);
-		}
-		// whole or not at all: a reader never sees half a file
-		const temp_path = `${path}.${process.pid}.tmp`;
+	if (startup_scenarios.length > 0) {
+		let prepared: PreparedStartup;
 		try {
-			writeFileSync(temp_path, serialize_results(results));
-			renameSync(temp_path, path);
+			prepared = await (bench_options.prepare_startup ?? prepare_startup)(
+				startup_scenarios,
+				adapters,
+				{ expected_bundle: plan.deterministic?.bundle ?? null }
+			);
 		} catch (error) {
-			rmSync(temp_path, { force: true });
 			throw new RunError(
-				`can't write ${path}: ${(error as Error).message}${journal_path === null ? '' : `\nthe journal ${to_display_path(journal_path)} is kept, and holds the whole run: fix the output, then run the same command with --resume`}`,
+				`the cold-start modules could not be written: ${(error as Error).message}`
+			);
+		}
+		if (prepared.mismatched.length > 0) {
+			throw new RunError(
+				`a bundle built for cold start is not the one the deterministic results file measured, so its time would not be that bundle's:\n${prepared.mismatched.map((line) => `  ${line}`).join('\n')}\nregenerate the file with \`npm run bench:deterministic\``,
 				2
 			);
 		}
-		// the results are written, so the journal has nothing left to resume
-		if (journal_path !== null) rmSync(journal_path, { force: true });
-		return { results, path, pairs };
-	} finally {
-		lock.release();
-		process.off('exit', release_on_exit);
+		if (prepared.built.length > 0) {
+			log(`built ${prepared.built.length} bundle(s) for cold start: ${prepared.built.join(', ')}`);
+		}
 	}
+	const total = processes.length + plan.startup_processes;
+	log(
+		`${options.kind} run on ${machine.name}: ${cells.length} cells, ${startup_scenarios.length} cold-start scenarios, ${total} processes${plan.concurrency > 1 ? `, ${plan.concurrency} at a time` : ''}, libraries ${adapters.map((a) => a.id).join(', ')}`
+	);
+	// `plan_run` has already spawned a process, to read the commit: the anchor reads several
+	// percent slower after a process's first spawn, so every reading must come after one
+	const show_progress = process.stderr.isTTY && !bench_options.log;
+	let done = 0;
+	const on_progress: OnProgress = (label) => {
+		done++;
+		if (!show_progress) return;
+		process.stderr.write(`\r\x1b[K  [${done}/${Math.max(done, total)}] ${label}`);
+	};
+	const measured =
+		options.kind === 'smoke'
+			? await measure_smoke(plan, bench_options, on_progress, log)
+			: await measure_segment(plan, bench_options, on_progress, log);
+	if (show_progress) process.stderr.write('\r\x1b[K');
+
+	// a cold-start process resolves its packages when it is spawned, and no check sees them
+	const roster_change = find_roster_change(plan.libraries, () =>
+		(bench_options.read_libraries ?? to_bench_libraries)(adapters)
+	);
+	if (roster_change !== null) {
+		let set_aside = '';
+		if (journal_path !== null) {
+			renameSync(journal_path, journal_path + CHANGED_SUFFIX);
+			set_aside = `: the journal was set aside as ${to_display_path(journal_path + CHANGED_SUFFIX)} and can not be resumed, since cold-start samples taken after the change were never checked against it`;
+		}
+		throw new RunError(
+			`${roster_change}: a package changed on disk during the run, so nothing was written and the run starts over${set_aside}`,
+			2
+		);
+	}
+	const { results, pairs } = assemble_results({
+		options,
+		generated_at: plan.generated_at,
+		duration_ms: measured.duration_ms,
+		segments: measured.segments,
+		load_at_start: measured.load_at_start,
+		machine,
+		node: plan.node,
+		commit: plan.commit,
+		corpus_hash: plan.corpus_hash,
+		adapters,
+		libraries: plan.libraries,
+		processes: measured.processes,
+		startup_scenarios,
+		startup: measured.startup,
+		anchor: to_anchor_drift(measured.readings_ns),
+		noise_floor: plan.noise_floor,
+		deterministic: plan.deterministic
+	});
+
+	// whole or not at all: a reader never sees half a file
+	const temp_path = `${path}.${process.pid}.tmp`;
+	try {
+		writeFileSync(temp_path, serialize_results(results));
+		renameSync(temp_path, path);
+	} catch (error) {
+		rmSync(temp_path, { force: true });
+		throw new RunError(
+			`can't write ${path}: ${(error as Error).message}${journal_path === null ? '' : `\nthe journal ${to_display_path(journal_path)} is kept, and holds the whole run: fix the output, then run the same command with --resume`}`,
+			2
+		);
+	}
+	// the results are written, so the journal has nothing left to resume
+	if (journal_path !== null) rmSync(journal_path, { force: true });
+	return { results, path, pairs };
 };
 
 /**
@@ -2407,7 +2353,7 @@ export const main = async (args: ReadonlyArray<string>): Promise<number> => {
 		console.log(format_run_help());
 		return 0;
 	}
-	// an exit runs what `run_bench` registered: a timed run's closing reading, and the lock's release
+	// an exit runs what `run_bench` registered: a timed run's closing reading
 	for (const [signal, code] of Object.entries(SIGNAL_EXIT)) {
 		process.on(signal, () => process.exit(code));
 	}
