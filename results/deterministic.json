@@ -80,7 +80,7 @@
 				"id": "fuz_code",
 				"label": "fuz_code",
 				"package": "@fuzdev/fuz_code",
-				"version": "0.56.0",
+				"version": "0.59.0",
 				"output": "classes",
 				"engine": "scanner",
 				"by_maintainer": true,
@@ -12681,15 +12681,15 @@
 		"fuz_code": {
 			"packages": 7,
 			"files": 402,
-			"bytes": 2544230,
-			"closure": "29924ea0b2b0ea168507bbe505903b665572c661cb1402f1c8e9a67a6385565b"
+			"bytes": 2681970,
+			"closure": "6569ad702389b0707664dbd9756c53eceaaf05cf5325e8918fa2adc4553a4383"
 		}
 	},
 	"heap": {
 		"twinkleplop": {
 			"ts": {
 				"retained_kb": 1900,
-				"code_kb": 260,
+				"code_kb": 279,
 				"external_kb": 541
 			},
 			"js": {
@@ -12704,7 +12704,7 @@
 			},
 			"html": {
 				"retained_kb": 1394,
-				"code_kb": 199,
+				"code_kb": 217,
 				"external_kb": 360
 			},
 			"json": {
@@ -12771,7 +12771,7 @@
 			},
 			"bash": {
 				"retained_kb": 109,
-				"code_kb": 602,
+				"code_kb": 582,
 				"external_kb": 0
 			},
 			"rust": {
@@ -12783,106 +12783,106 @@
 		"shiki_js": {
 			"ts": {
 				"retained_kb": 3623,
-				"code_kb": 3359,
+				"code_kb": 3018,
 				"external_kb": 0
 			},
 			"js": {
 				"retained_kb": 3123,
-				"code_kb": 2527,
+				"code_kb": 2288,
 				"external_kb": 0
 			},
 			"css": {
-				"retained_kb": 2003,
-				"code_kb": 981,
+				"retained_kb": 2021,
+				"code_kb": 945,
 				"external_kb": 0
 			},
 			"html": {
 				"retained_kb": 4686,
-				"code_kb": 2709,
+				"code_kb": 2368,
 				"external_kb": 0
 			},
 			"json": {
-				"retained_kb": 1341,
+				"retained_kb": 1359,
 				"code_kb": 292,
 				"external_kb": 0
 			},
 			"svelte": {
 				"retained_kb": 6333,
-				"code_kb": 3384,
+				"code_kb": 3098,
 				"external_kb": 0
 			},
 			"md": {
-				"retained_kb": 2517,
-				"code_kb": 801,
+				"retained_kb": 2541,
+				"code_kb": 767,
 				"external_kb": 0
 			},
 			"bash": {
-				"retained_kb": 1943,
-				"code_kb": 648,
+				"retained_kb": 1966,
+				"code_kb": 618,
 				"external_kb": 0
 			},
 			"rust": {
 				"retained_kb": 1614,
-				"code_kb": 512,
+				"code_kb": 477,
 				"external_kb": 0
 			}
 		},
 		"shiki_wasm": {
 			"ts": {
 				"retained_kb": 3401,
-				"code_kb": 312,
-				"external_kb": 41416
+				"code_kb": 267,
+				"external_kb": 456
 			},
 			"js": {
 				"retained_kb": 3394,
-				"code_kb": 315,
-				"external_kb": 28872
+				"code_kb": 273,
+				"external_kb": 456
 			},
 			"css": {
 				"retained_kb": 2675,
-				"code_kb": 285,
-				"external_kb": 20168
+				"code_kb": 244,
+				"external_kb": 456
 			},
 			"html": {
 				"retained_kb": 4840,
-				"code_kb": 331,
-				"external_kb": 20168
+				"code_kb": 284,
+				"external_kb": 456
 			},
 			"json": {
 				"retained_kb": 2276,
-				"code_kb": 269,
-				"external_kb": 16840
+				"code_kb": 229,
+				"external_kb": 456
 			},
 			"svelte": {
 				"retained_kb": 5694,
-				"code_kb": 356,
-				"external_kb": 49608
+				"code_kb": 311,
+				"external_kb": 456
 			},
 			"md": {
 				"retained_kb": 3226,
-				"code_kb": 307,
-				"external_kb": 16840
+				"code_kb": 269,
+				"external_kb": 456
 			},
 			"bash": {
 				"retained_kb": 2639,
-				"code_kb": 286,
-				"external_kb": 16840
+				"code_kb": 247,
+				"external_kb": 456
 			},
 			"rust": {
 				"retained_kb": 2409,
-				"code_kb": 277,
-				"external_kb": 16840
+				"code_kb": 238,
+				"external_kb": 456
 			}
 		},
 		"fuz_code": {
 			"ts": {
 				"retained_kb": 176,
-				"code_kb": 61,
+				"code_kb": 79,
 				"external_kb": 0
 			},
 			"js": {
 				"retained_kb": 165,
-				"code_kb": 57,
+				"code_kb": 76,
 				"external_kb": 0
 			},
 			"css": {
