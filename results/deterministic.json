@@ -12681,8 +12681,8 @@
 		"fuz_code": {
 			"packages": 7,
 			"files": 390,
-			"bytes": 2564100,
-			"closure": "6decb6c96ef90cddf1e60b039452f010a6bdcf43d55930c7e76725d692a9faca"
+			"bytes": 2598876,
+			"closure": "ae7e6e70bd71de4a606d8145110640a05d2297ca7c9cf8c6a345867c6193bee5"
 		}
 	},
 	"heap": {
