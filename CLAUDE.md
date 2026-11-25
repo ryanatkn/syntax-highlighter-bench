@@ -13,7 +13,7 @@ For coding conventions, see Skill(fuz-stack).
 ## Gro commands
 
 ```bash
-gro check     # typecheck, test, lint, format check (run before committing)
+gro check     # typecheck, test, format check (run before committing)
 gro typecheck # typecheck only (faster iteration)
 gro test      # run tests with vitest
 gro build     # build for production (static adapter)
@@ -129,7 +129,7 @@ modules that import nothing (`bench_constants.ts`, `bench_format.ts`,
 `ratio.ts`) and `src/lib/results_schema.ts`, which depends only on
 `@fuzdev/fuz_schema` and `bench_constants.ts`.
 
-`gro check` typechecks and lints `bench/`, but `gro format` sweeps only `src/`
+`gro check` typechecks `bench/` (and `--lint` lints it), but `gro format` sweeps only `src/`
 and the root config files. `src/test/bench/format.test.ts` fails when a harness
 file is unformatted; fix it with the command above.
 
